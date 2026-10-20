@@ -245,7 +245,11 @@ const App = {
         this.start();
       } catch(err){
         btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ (เชื่อมฐานข้อมูลจริง)';
-        const eb = $('#lgErr'); eb.innerHTML = IC.alarm+' '+(err.message||'เข้าสู่ระบบไม่สำเร็จ'); eb.style.display='flex';
+        const msg = err.message==='401' ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง — ลองใหม่อีกครั้ง'
+          : err.message==='Failed to fetch' ? 'ติดต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่'
+          : /^[45]\d\d$/.test(err.message||'') ? `เซิร์ฟเวอร์ตอบกลับผิดพลาด (HTTP ${err.message})`
+          : (err.message||'เข้าสู่ระบบไม่สำเร็จ');
+        const eb = $('#lgErr'); eb.innerHTML = IC.alarm+' '+msg; eb.style.display='flex';
       }
     });
     $('#lgDemo').addEventListener('click', ()=>{
