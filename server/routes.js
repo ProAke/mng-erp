@@ -1,6 +1,6 @@
 /* MNG ERP — REST API (all data lives in MariaDB; two pools, merged here) */
 const express = require('express');
-const { workPool } = require('./db');
+const { workPool, authPool } = require('./db');
 
 const router = express.Router();
 
@@ -8,6 +8,12 @@ const router = express.Router();
 const J = (x, fb) => { if (x == null) return fb; if (typeof x !== 'string') return x; try { return JSON.parse(x); } catch { return fb; } };
 const numid = fid => parseInt(String(fid).replace(/^[a-z]/i, ''), 10);
 const pad = n => String(n).padStart(2, '0');
+const escS = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const LEAD_ROLES = ['super_admin', 'admin', 'manager'];
+const guardManage = (req, res, roles = LEAD_ROLES) => {
+  if (!roles.includes(req.user?.role)) { res.status(403).json({ error: 'สิทธิ์ไม่พอ — เฉพาะ Admin/Manager' }); return false; }
+  return true;
+};
 const STATUS_MAP  = { delivery: 'done', hold: 'todo', cancel: 'done' };
 const PRIO_BASE   = { high: 'high', normal: 'med' };
 const toDbPrio    = p => (p === 'urgent' || p === 'high') ? 'high' : 'normal';
@@ -89,15 +95,27 @@ router.get('/bootstrap', async (req, res) => {
   try {
     const [team]    = await workPool.query('SELECT * FROM erp_team ORDER BY id');
     const [clients] = await workPool.query('SELECT * FROM erp_clients ORDER BY id');
-    const [projR]   = await workPool.query('SELECT * FROM projects ORDER BY id');
+    const [projR]   = await workPool.query('SELECT * FROM projects WHERE COALESCE(erp_archived,0)=0 ORDER BY id');
     const [taskR]   = await workPool.query('SELECT * FROM tasks WHERE archived = 0 ORDER BY id');
+    const [archP]   = await workPool.query('SELECT id FROM projects WHERE COALESCE(erp_archived,0)=1');
     const [eventR]  = await workPool.query('SELECT * FROM erp_events ORDER BY date, start');
     const [invR]    = await workPool.query('SELECT * FROM erp_invoices ORDER BY no');
     const [actR]    = await workPool.query('SELECT * FROM erp_activity ORDER BY id DESC LIMIT 30');
     const [setR]    = await workPool.query('SELECT data FROM erp_settings WHERE id = 1');
 
-    const tasks = taskR.map(shapeTask);
+    const archIds = new Set(archP.map(x => 'p' + x.id));
+    const tasks = taskR.map(shapeTask).filter(t => !archIds.has(t.project));
     const projects = projR.map(r => shapeProject(r, tasks));
+
+    // enrich team ด้วยข้อมูลบัญชี auth พร้อมกำหนดสิทธิ์จากหน้าทีมได้
+    const emails = team.map(t => t.email).filter(Boolean);
+    let authByEmail = {};
+    if (emails.length) {
+      try {
+        const [au] = await authPool.query('SELECT id, email, role, status FROM users WHERE email IN (?)', [emails]);
+        authByEmail = Object.fromEntries(au.map(a => [a.email, a]));
+      } catch {}
+    }
 
     // ---- trend (live computation) ----
     const [createdM]  = await workPool.query("SELECT MONTH(created_at) m, COUNT(*) c FROM tasks WHERE YEAR(created_at)=2026 GROUP BY MONTH(created_at)");
@@ -112,7 +130,8 @@ router.get('/bootstrap', async (req, res) => {
 
     res.json({
       user: req.user,
-      team: team.map(r => ({ id: 'u' + r.id, name: r.name, role: r.role, color: r.color, email: r.email || '', phone: r.phone || '', me: !!r.is_me })),
+      team: team.map(r => ({ id: 'u' + r.id, name: r.name, role: r.role, color: r.color, email: r.email || '', phone: r.phone || '', me: !!r.is_me,
+        authUserId: authByEmail[r.email]?.id || null, authRole: authByEmail[r.email]?.role || null, authStatus: authByEmail[r.email]?.status || null })),
       projects, tasks,
       events: eventR.map(shapeEvent),
       clients: clients.map(shapeClient),
@@ -278,6 +297,141 @@ router.post('/projects', async (req, res) => {
     await logActivity(`สร้างโปรเจกต์ <b>${b.name.trim()}</b>`, 1);
     res.json({ id: 'p' + r.insertId });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ---------------- PROJECTS: manage (แก้ไข/เก็บถาวร/กู้คืน) ---------------- */
+router.patch('/projects/:id', async (req, res) => {
+  if (!guardManage(req, res)) return;
+  const id = numid(req.params.id);
+  if (!id) return res.status(400).json({ error: 'bad_id' });
+  try {
+    const [cur] = await workPool.query('SELECT id, title FROM projects WHERE id = ?', [id]);
+    if (!cur.length) return res.status(404).json({ error: 'ไม่พบโปรเจกต์' });
+    const b = req.body || {};
+    const sets = [], vals = [], changes = [];
+    if (b.name != null && String(b.name).trim()) { sets.push('title = ?'); vals.push(String(b.name).trim()); changes.push('ชื่อ'); }
+    if (b.desc !== undefined) { sets.push('description = ?'); vals.push(b.desc || null); changes.push('รายละเอียด'); }
+    if (b.clientName !== undefined || b.client !== undefined) {
+      const cn = b.clientName ?? b.client ?? null;
+      sets.push('erp_client = ?'); vals.push(cn);
+      if (cn) { const [c] = await workPool.query('SELECT id FROM erp_clients WHERE name = ? LIMIT 1', [cn]); sets.push('erp_client_id = ?'); vals.push(c[0]?.id ?? null); }
+      else { sets.push('erp_client_id = ?'); vals.push(null); }
+      changes.push('ลูกค้า');
+    }
+    if (b.budget !== undefined) { sets.push('erp_budget = ?'); vals.push(b.budget ?? 0); changes.push('งบประมาณ'); }
+    if (b.start  !== undefined) { sets.push('erp_start = ?'); vals.push(b.start || null); }
+    if (b.end    !== undefined) { sets.push('erp_end = ?');   vals.push(b.end || null);   }
+    if (b.grad   !== undefined) { sets.push('erp_grad = ?');  vals.push(b.grad || null); changes.push('สี'); }
+    if (b.color  !== undefined) { sets.push('erp_color = ?'); vals.push(b.color || null); }
+    if (b.status !== undefined) { sets.push('erp_status = ?'); vals.push(b.status || null); changes.push('สถานะ'); }
+    if (b.members !== undefined) { sets.push('erp_members = ?'); vals.push(JSON.stringify((b.members || []).map(numid).filter(Boolean))); changes.push('สมาชิก'); }
+    if (!sets.length) return res.json({ ok: true, unchanged: true });
+    vals.push(id);
+    await workPool.query(`UPDATE projects SET ${sets.join(', ')} WHERE id = ?`, vals);
+    await logActivity(`แก้ไขโปรเจกต์ <b>${escS(b.name || cur[0].title)}</b> (${changes.join(', ') || 'รายละเอียด'})`, 1);
+    res.json({ ok: true });
+  } catch (e) { console.error('[projects/patch]', e.message); res.status(500).json({ error: e.message }); }
+});
+
+router.delete('/projects/:id', async (req, res) => {           // เก็บถาวร (soft-delete — ตารางเดิมของระบบ ไม่ลบจริง)
+  if (!guardManage(req, res)) return;
+  const id = numid(req.params.id);
+  if (!id) return res.status(400).json({ error: 'bad_id' });
+  try {
+    const [cur] = await workPool.query('SELECT id, title FROM projects WHERE id = ?', [id]);
+    if (!cur.length) return res.status(404).json({ error: 'ไม่พบโปรเจกต์' });
+    const [tc] = await workPool.query('SELECT COUNT(*) c FROM tasks WHERE project_id = ?', [id]);
+    await workPool.query('UPDATE projects SET erp_archived = 1 WHERE id = ?', [id]);
+    await logActivity(`เก็บโปรเจกต์ <b>${escS(cur[0].title)}</b> เข้าคลัง (งาน ${tc[0].c} ชิ้นถูกซ่อนด้วย)`, 1);
+    res.json({ ok: true, tasksHidden: tc[0].c });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.post('/projects/:id/restore', async (req, res) => {
+  if (!guardManage(req, res)) return;
+  const id = numid(req.params.id);
+  if (!id) return res.status(400).json({ error: 'bad_id' });
+  try {
+    const [cur] = await workPool.query('SELECT id, title FROM projects WHERE id = ?', [id]);
+    if (!cur.length) return res.status(404).json({ error: 'ไม่พบโปรเจกต์' });
+    await workPool.query('UPDATE projects SET erp_archived = 0 WHERE id = ?', [id]);
+    await logActivity(`กู้คืนโปรเจกต์ <b>${escS(cur[0].title)}</b> จากคลัง`, 1);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/projects/archived', async (req, res) => {          // รายการในคลัง (สำหรับหน้า settings)
+  if (!guardManage(req, res)) return;
+  try {
+    const [rows] = await workPool.query(
+      'SELECT id, title, erp_client, erp_grad, erp_color FROM projects WHERE COALESCE(erp_archived,0)=1 ORDER BY id');
+    const out = [];
+    for (const r of rows) {
+      const [tc] = await workPool.query('SELECT COUNT(*) c FROM tasks WHERE project_id = ? AND archived = 0', [r.id]);
+      out.push({ id: 'p' + r.id, name: r.title, client: r.erp_client || '', grad: r.erp_grad || 'g-slate', color: r.erp_color || '#5A6280', tasks: tc[0].c });
+    }
+    res.json(out);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ---------------- TEAMS (erp_team — CRUD + ผูกสิทธิ์ auth) ---------------- */
+router.post('/teams', async (req, res) => {
+  if (!guardManage(req, res)) return;
+  try {
+    const b = req.body || {};
+    if (!b.name?.trim()) return res.status(400).json({ error: 'name_required' });
+    const email = String(b.email || '').trim().toLowerCase() || null;
+    let authId = null;
+    if (email) { const [u] = await authPool.query('SELECT id FROM users WHERE email = ? LIMIT 1', [email]); authId = u[0]?.id ?? null; }
+    const [r] = await workPool.query(
+      'INSERT INTO erp_team (name, role, color, email, phone, auth_user_id, is_me) VALUES (?,?,?,?,?,?,0)',
+      [b.name.trim(), b.role?.trim() || 'สมาชิกทีม', b.color || '#6C5CE7', email, b.phone?.trim() || null, authId]);
+    await logActivity(`เพิ่มสมาชิกทีม <b>${escS(b.name.trim())}</b>`, 1);
+    res.status(201).json({ id: 'u' + r.insertId, authUserId: authId });
+  } catch (e) { console.error('[teams/post]', e.message); res.status(500).json({ error: e.message }); }
+});
+
+router.patch('/teams/:id', async (req, res) => {
+  if (!guardManage(req, res)) return;
+  const id = numid(req.params.id);
+  if (!id) return res.status(400).json({ error: 'bad_id' });
+  try {
+    const [cur] = await workPool.query('SELECT id, name FROM erp_team WHERE id = ?', [id]);
+    if (!cur.length) return res.status(404).json({ error: 'ไม่พบสมาชิก' });
+    const b = req.body || {};
+    const sets = [], vals = [], changes = [];
+    if (b.name != null && String(b.name).trim()) { sets.push('name = ?'); vals.push(String(b.name).trim()); changes.push('ชื่อ'); }
+    if (b.role !== undefined)  { sets.push('role = ?');  vals.push(b.role || null);  changes.push('ตำแหน่ง'); }
+    if (b.color !== undefined) { sets.push('color = ?'); vals.push(b.color || null); changes.push('สี'); }
+    if (b.phone !== undefined) { sets.push('phone = ?'); vals.push(b.phone || null); changes.push('เบอร์'); }
+    if (b.email !== undefined) {
+      const em = String(b.email || '').trim().toLowerCase() || null;
+      sets.push('email = ?'); vals.push(em); changes.push('อีเมล');
+      let authId = null;
+      if (em) { const [u] = await authPool.query('SELECT id FROM users WHERE email = ? LIMIT 1', [em]); authId = u[0]?.id ?? null; }
+      sets.push('auth_user_id = ?'); vals.push(authId);
+    }
+    if (!sets.length) return res.json({ ok: true, unchanged: true });
+    vals.push(id);
+    await workPool.query(`UPDATE erp_team SET ${sets.join(', ')} WHERE id = ?`, vals);
+    await logActivity(`แก้ไขสมาชิกทีม <b>${escS(b.name || cur[0].name)}</b> (${changes.join(', ')})`, 1);
+    res.json({ ok: true });
+  } catch (e) { console.error('[teams/patch]', e.message); res.status(500).json({ error: e.message }); }
+});
+
+router.delete('/teams/:id', async (req, res) => {
+  if (!guardManage(req, res, ['super_admin', 'admin'])) return;
+  const id = numid(req.params.id);
+  if (!id) return res.status(400).json({ error: 'bad_id' });
+  try {
+    const [cur] = await workPool.query('SELECT id, name FROM erp_team WHERE id = ?', [id]);
+    if (!cur.length) return res.status(404).json({ error: 'ไม่พบสมาชิก' });
+    const [tc] = await workPool.query('SELECT COUNT(*) c FROM tasks WHERE erp_assignee = ?', [id]);
+    if (tc[0].c) await workPool.query('UPDATE tasks SET erp_assignee = NULL WHERE erp_assignee = ?', [id]);
+    await workPool.query('DELETE FROM erp_team WHERE id = ?', [id]);
+    await logActivity(`ลบสมาชิก <b>${escS(cur[0].name)}</b> ออกจากทีม${tc[0].c ? ` (งาน ${tc[0].c} ชิ้นกลับสู่สถานะว่าง)` : ''}`, 1);
+    res.json({ ok: true, unassigned: tc[0].c });
+  } catch (e) { console.error('[teams/delete]', e.message); res.status(500).json({ error: e.message }); }
 });
 
 /* ---------------- SETTINGS ---------------- */

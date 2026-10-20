@@ -588,6 +588,8 @@ function renderTeam(){
   wireSideCommon(view);
 
   const q=(Store.ui.q.team||'').toLowerCase();
+  const _lead = Remote.on && ['super_admin','admin','manager'].includes(Remote.user?.role);
+  const ROLE_TH_T = { super_admin:'Super Admin', admin:'Admin', manager:'Manager', user:'User', viewer:'Viewer' };
   const list = Store.data.team.filter(u=>!q||u.name.toLowerCase().includes(q)||u.role.toLowerCase().includes(q));
   view.innerHTML = `<div class="team-grid">${list.map(u=>{
     const open=Store.data.tasks.filter(t=>t.assignee===u.id&&t.status!=='done');
@@ -601,10 +603,17 @@ function renderTeam(){
       <div class="t-stats"><div><b>${open.length}</b><small>งานคงค้าง</small></div><div><b>${done}</b><small>ปิดแล้ว</small></div><div><b>${Math.round(hrs)}</b><small>ชม.เหลือ</small></div></div>
       <div style="text-align:left;font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between"><span>ภาระงานสัปดาห์นี้</span><b style="color:${col}">${pct}%</b></div>
       <div class="wkbar"><div style="width:${pct}%;background:${col}"></div></div>
-      <div style="margin-top:12px;display:flex;gap:7px;justify-content:center">
+      <div style="margin-top:12px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" data-act="open-member" data-id="${u.id}">${IC.eye} งานของ${esc(u.name.split(' ')[0])}</button>
-      </div></div>`;
-  }).join('')}</div>`;
+        ${_lead ? `<button class="btn btn-ghost btn-sm" data-act="team-edit" data-id="${u.id}">✏️</button>
+        <button class="btn btn-ghost btn-sm" data-act="team-del" data-id="${u.id}">🗑</button>` : ''}
+      </div>
+      ${u.authRole?`<div style="margin-top:8px;font-size:10px;color:var(--muted)">บัญชี: <span class="urole ur-${u.authRole}">${ROLE_TH_T[u.authRole]||u.authRole}</span></div>`:(_lead?`<div style="margin-top:8px;font-size:10px;color:var(--muted)">ยังไม่มีบัญชี login</div>`:'')}
+    </div>`;
+  }).join('')}
+  ${_lead ? `<div class="team-card add-team" data-act="team-new" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:2.5px dashed var(--line);min-height:230px;color:var(--muted)">
+    <span style="font-size:34px">${IC.plus}</span><b>เพิ่มสมาชิกทีม</b><small style="font-size:11px">ผูกอีเมล → ใช้สิทธิ์ login ร่วม MNG Hub ได้</small>
+  </div>` : ''}</div>`;
 }
 
 /* ============================================================
@@ -720,6 +729,12 @@ function renderSettings(){
       </div></td>
     </tr>`).join('');
 
+  const arch = Store.data.archProjects;
+  const archRows = (arch||[]).map(p=>`
+    <tr><td><div style="display:flex;gap:9px;align-items:center"><span class="pdot" style="background:${esc(p.color)}"></span><b>${esc(p.name)}</b>${p.client?`<br><small style="color:var(--muted)">${esc(p.client)}</small>`:''}</div></td>
+      <td style="font-size:12px;color:var(--muted)">งานที่ถูกซ่อน ${p.tasks} ชิ้น</td>
+      <td style="text-align:right"><button class="btn btn-ghost btn-sm" data-act="proj-restore" data-id="${p.id}">↩ กู้คืน</button></td></tr>`).join('');
+
   const adminSection = (Remote.on && isAdm) ? `
     <div class="card card-pad" style="grid-column:1/-1">
       <div class="card-head" style="margin-bottom:10px">
@@ -733,6 +748,12 @@ function renderSettings(){
             <tbody>${userRows}</tbody></table></div>
             <p style="font-size:11px;color:var(--muted);margin-top:10px">ผู้ใช้ถูกเก็บในฐาน <b>pacific_mng.users</b> — ใช้ login ร่วมกับ MNG Hub ทุกระบบ · การเปลี่ยนสิทธิ์/ระงับมีผลทันที (session ถูกตรวจสดทุก request)</p>`
           : '<div class="empty-state" style="padding:22px">ยังไม่มีรายชื่อ</div>'}
+    </div>
+    <div class="card card-pad" style="grid-column:1/-1">
+      <div class="card-title" style="margin-bottom:8px">🗄 คลังโปรเจกต์ (เก็บถาวรแล้ว — ไม่มีข้อมูลถูกลบจริง)</div>
+      ${arch===undefined ? '<div class="empty-state" style="padding:16px">กำลังโหลดคลัง…</div>'
+        : arch.length ? `<div style="overflow-x:auto"><table class="tbl"><tbody>${archRows}</tbody></table></div>`
+        : '<p style="font-size:12px;color:var(--muted)">คลังว่าง — โปรเจกต์ที่ "เก็บเข้าคลัง" จากหน้าโปรเจกต์จะมาอยู่ที่นี่พร้อมปุ่มกู้คืน</p>'}
     </div>` : '';
 
   view.innerHTML = `<div class="set-grid">
@@ -788,8 +809,9 @@ function renderSettings(){
   </div>`;
   $$('#themeDots .theme-dot').forEach(d=>d.onclick=()=>{st.theme=d.dataset.theme; Store.save(); Remote.push('/settings','PUT',st); App.applyTheme(); renderSettings(); toast('เปลี่ยนธีมสีแล้ว');});
   $$('[data-set]', view).forEach(sw=>sw.onclick=()=>{st[sw.dataset.set]=!st[sw.dataset.set]; sw.classList.toggle('on'); Store.save(); Remote.push('/settings','PUT',st);});
-  // lazy-load รายชื่อผู้ใช้ (admin เท่านั้น) — ครั้งแรกที่เปิดหน้า settings
+  // lazy-load รายชื่อผู้ใช้ + คลังโปรเจกต์ (admin เท่านั้น) — ครั้งแรกที่เปิดหน้า settings
   if(isAdm && Store.data.authUsers===undefined) loadAuthUsers().catch(()=>{ Store.data.authUsers=[]; });
+  if(isAdm && Store.data.archProjects===undefined) loadArchivedProjects().catch(()=>{ Store.data.archProjects=[]; });
 }
 
 /* ---------- side search wiring ---------- */

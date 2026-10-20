@@ -640,3 +640,5 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 .ul-inactive{background:#EDF0F7;color:#7A83A3}
 .ul-suspended{background:#FFE4E4;color:#E5484D}
 .ul-pending{background:#FFF4DB;color:#C07D00}
+.pdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.add-team:hover{border-color:var(--purple);color:var(--purple)}

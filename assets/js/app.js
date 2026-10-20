@@ -333,16 +333,22 @@ const App = {
           <div class="user-menu" id="userMenu">
             <a data-act="nav:settings">${IC.user} โปรไฟล์ของฉัน</a>
             <a data-act="nav:settings">${IC.gear} ตั้งค่าระบบ</a>
-            <a href="https://mng.uarea.in/workspace" target="_blank" rel="noopener">${IC.link} กลับสู่ MNG Hub</a>
+            <a href="https://mng.uarea.in/hub" target="_blank" rel="noopener">${IC.link} กลับสู่ MNG Hub</a>
             <a data-act="logout">${IC.logout} ออกจากระบบ</a>
           </div>
         </div>
       </div>`;
 
-    // bell dropdown
-    $('#bellBtn').addEventListener('click', e=>{ e.stopPropagation(); $('#notifPop').classList.toggle('open'); $('#userMenu').classList.remove('open'); });
+    // bell dropdown — อย่ากลืน click บน item ที่เป็น data-act (เดิมทำ logout/เมนูใช้ไม่ได้)
+    $('#bellBtn').addEventListener('click', e=>{
+      if(!e.target.closest('[data-act]')) e.stopPropagation();
+      $('#notifPop')?.classList.toggle('open'); $('#userMenu')?.classList.remove('open');
+    });
     // user menu
-    $('#userChip').addEventListener('click', e=>{ e.stopPropagation(); $('#userMenu').classList.toggle('open'); $('#notifPop').classList.remove('open'); });
+    $('#userChip').addEventListener('click', e=>{
+      if(!e.target.closest('[data-act]')) e.stopPropagation();
+      $('#userMenu')?.classList.toggle('open'); $('#notifPop')?.classList.remove('open');
+    });
     // global search
     const gq = $('#globalQ'), pop = $('#searchPop');
     const doSearch = ()=>{
@@ -421,6 +427,10 @@ const App = {
         case 'user-pass':   { const u = findAuthUser(+id); if(u) openUserPass(u); break; }
         case 'user-toggle': { const u = findAuthUser(+id); if(u) toggleAuthUser(u); break; }
         case 'self-pass':   saveSelfPass(); break;
+        case 'team-new':    openTeamForm(); break;
+        case 'team-edit':   { const m = Store.data.team.find(x=>x.id===id); if(m) openTeamForm(m); break; }
+        case 'team-del':    { const m = Store.data.team.find(x=>x.id===id); if(m) deleteTeamMember(m); break; }
+        case 'proj-restore': restoreProject(id); break;
         case 'reset-data':
           if(Remote.on){ toast('ข้อมูลจริงอยู่ใน MariaDB — รีเซ็ตผ่าน seed ฝั่งเซิร์ฟเวอร์ (npm run seed)','warn'); break; }
           confirmDlg('รีเซ็ตข้อมูลตัวอย่าง','ข้อมูลทั้งหมดที่แก้ไขจะหายและกลับเป็นชุดตัวอย่างเริ่มต้น ยืนยัน?', ()=>{ localStorage.removeItem(Store.KEY); location.reload(); }, 'รีเซ็ต'); break;
@@ -710,41 +720,81 @@ function openProjectModal(pid){
       </div>
     </div>
     <div class="modal-foot">
+      ${canLead() ? `<button class="btn btn-danger" id="pjDel" style="margin-right:auto">🗑 เก็บเข้าคลัง</button>` : ''}
       <button class="btn btn-ghost" onclick="closeModal()">ปิด</button>
+      ${canLead() ? `<button class="btn" id="pjEdit">✏️ แก้ไขโปรเจกต์</button>` : ''}
       <button class="btn btn-primary" id="pjGo">${IC.task} ดูงานทั้งหมดของโปรเจกต์</button>
     </div>`, {wide:true});
   $('#pjGo').onclick = ()=>{ Store.ui.f.taskProj = new Set([pid]); closeModal(); App.go('tasks'); };
+  if($('#pjEdit')) $('#pjEdit').onclick = ()=>openProjectForm(p);
+  if($('#pjDel')) $('#pjDel').onclick = ()=>archiveProject(p);
 }
 
-function openProjectForm(){
-  openModal(`${modalHead('เพิ่มโปรเจกต์ใหม่','ใส่เฉพาะข้อมูลหลัก — แก้ไขเพิ่มได้ภายหลัง')}
+const PROJ_COLORS = {'g-blue':'#2F6BF0','g-purple':'#6C5CE7','g-pink':'#F25C8B','g-green':'#14B890','g-orange':'#F2762E','g-teal':'#17A2B8','g-indigo':'#4B5ED9','g-slate':'#5A6280'};
+const canLead = () => Remote.on && ['super_admin','admin','manager'].includes(Remote.user?.role);
+
+function openProjectForm(p){
+  const isEdit = !!p; p = p || {};
+  const clientName = isEdit ? (Store.clientOf(p)?.name || p.clientName || '') : '';
+  openModal(`${modalHead(isEdit ? `แก้ไขโปรเจกต์ — ${p.name||''}` : 'เพิ่มโปรเจกต์ใหม่', isEdit ? 'บันทึกแล้งลง MariaDB ทันที คนทั้งทีมเห็นพร้อมกัน' : 'ใส่เฉพาะข้อมูลหลัก — แก้ไขเพิ่มได้ภายหลัง')}
     <div class="modal-body"><div class="form-grid">
-      <div class="f-group full"><label>ชื่อโปรเจกต์ *</label><input id="pName" placeholder="เช่น เว็บ e-commerce ร้าน X"></div>
-      <div class="f-group"><label>ลูกค้า</label><select id="pClient">${Store.data.clients.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')}<option value="Internal — MNG Groups">Internal</option></select></div>
-      <div class="f-group"><label>งบประมาณ (บาท)</label><input type="number" id="pBudget" value="100000" min="0" step="1000"></div>
-      <div class="f-group"><label>เริ่ม</label><input type="date" id="pStart" value="${todayS()}"></div>
-      <div class="f-group"><label>ส่งมอบ</label><input type="date" id="pEnd" value="${d2s(addDays(new Date(),30))}"></div>
+      <div class="f-group full"><label>ชื่อโปรเจกต์ *</label><input id="pName" value="${esc(p.name||'')}" placeholder="เช่น เว็บ e-commerce ร้าน X"></div>
+      <div class="f-group"><label>ลูกค้า</label><select id="pClient">${Store.data.clients.map(c=>`<option value="${esc(c.name)}" ${c.name===clientName?'selected':''}>${esc(c.name)}</option>`).join('')}<option value="Internal — MNG Groups" ${clientName==='Internal — MNG Groups'?'selected':''}>Internal</option></select></div>
+      <div class="f-group"><label>งบประมาณ (บาท)</label><input type="number" id="pBudget" value="${isEdit? (p.budget??0) : 100000}" min="0" step="1000"></div>
+      <div class="f-group"><label>เริ่ม</label><input type="date" id="pStart" value="${isEdit ? (p.start||todayS()) : todayS()}"></div>
+      <div class="f-group"><label>ส่งมอบ</label><input type="date" id="pEnd" value="${isEdit ? (p.end||d2s(addDays(new Date(),30))) : d2s(addDays(new Date(),30))}"></div>
+      ${isEdit ? `<div class="f-group"><label>สถานะ</label><select id="pStatus">
+        ${Object.entries(STATUS_META).map(([k,v])=>`<option value="${k}" ${p.status===k?'selected':''}>${v.label}</option>`).join('')}</select></div>
+      <div class="f-group full"><label>รายละเอียด/ขอบเขตงาน</label><textarea id="pDesc" rows="2">${esc(p.desc||'')}</textarea></div>` : ''}
       <div class="f-group full"><label>สีการ์ด</label><div class="chips" id="pGrad">
-        ${['g-blue','g-purple','g-pink','g-green','g-orange','g-teal','g-indigo','g-slate'].map((g,i)=>`<span class="chip ${i===0?'on':''}" data-g="${g}"><span class="dot" style="background:var(--${'blue,purple,pink,green,yellow,teal,indigo,muted'.split(',')[i]},#8a8fb1})"></span>${g}</span>`).join('')}</div></div>
+        ${Object.keys(PROJ_COLORS).map((g,i)=>`<span class="chip ${(isEdit?(p.grad===g):i===0)?'on':''}" data-g="${g}"><span class="dot" style="background:${PROJ_COLORS[g]}"></span>${g}</span>`).join('')}</div></div>
     </div></div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
-      <button class="btn btn-primary" id="pSave">สร้างโปรเจกต์</button></div>`);
-  let grad='g-blue';
+      <button class="btn btn-primary" id="pSave">${isEdit?'บันทึกการแก้ไข':'สร้างโปรเจกต์'}</button></div>`);
+  let grad = isEdit ? (p.grad||'g-blue') : 'g-blue';
   $$('#pGrad .chip').forEach(c=>c.onclick=()=>{grad=c.dataset.g; $$('#pGrad .chip').forEach(x=>x.classList.toggle('on',x===c));});
   $('#pSave').onclick = async ()=>{
     const name=$('#pName').value.trim(); if(!name) return toast('กรุณาใส่ชื่อโปรเจกต์','err');
-    const colors={'g-blue':'#2F6BF0','g-purple':'#6C5CE7','g-pink':'#F25C8B','g-green':'#14B890','g-orange':'#F2762E','g-teal':'#17A2B8','g-indigo':'#4B5ED9','g-slate':'#5A6280'};
+    const body = { name, clientName:$('#pClient').value, budget:+$('#pBudget').value||0,
+      start:$('#pStart').value, end:$('#pEnd').value, grad, color:PROJ_COLORS[grad] };
+    if(isEdit){ body.status = $('#pStatus').value; body.desc = $('#pDesc').value; }
+    const btn = $('#pSave'); btn.disabled = true;
     if(Remote.on){
       try {
-        await Remote.req('/projects', {method:'POST', body:{name, clientName:$('#pClient').value, budget:+$('#pBudget').value||0, start:$('#pStart').value, end:$('#pEnd').value, grad, color:colors[grad]}});
-        closeModal(); await Remote.refreshAll(); toast('สร้างโปรเจกต์แล้ว ✓ (MariaDB)');
-      } catch(e){ toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+e.message,'err'); }
+        if(isEdit) await Remote.req('/projects/'+p.id, {method:'PATCH', body});
+        else       await Remote.req('/projects', {method:'POST', body});
+        closeModal(); await Remote.refreshAll(); toast((isEdit?'บันทึกโปรเจกต์แล้ว ✓':'สร้างโปรเจกต์แล้ว ✓')+' (MariaDB)');
+      } catch(e){ toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+e.message,'err'); btn.disabled=false; }
       return;
     }
-    Store.data.projects.push({id:uid('p'), name, short:name.slice(0,14), client:$('#pClient').value, grad, color:colors[grad],
-      status:'todo', progress:0, budget:+$('#pBudget').value||0, spent:0, start:$('#pStart').value, end:$('#pEnd').value, owner:'u1', members:['u1'], desc:''});
-    Store.logActivity(`สร้างโปรเจกต์ <b>${esc(name)}</b>`); Store.save(); closeModal(); App.refresh(); toast('สร้างโปรเจกต์แล้ว');
+    if(isEdit){ Object.assign(p, {name, short:name.slice(0,14), client:body.clientName, grad, color:PROJ_COLORS[grad], budget:body.budget, start:body.start, end:body.end, status:body.status, desc:body.desc});
+      Store.logActivity(`แก้ไขโปรเจกต์ <b>${esc(name)}</b>`);
+    } else {
+      Store.data.projects.push({id:uid('p'), name, short:name.slice(0,14), client:body.clientName, grad, color:PROJ_COLORS[grad],
+        status:'todo', progress:0, budget:body.budget, spent:0, start:body.start, end:body.end, owner:'u1', members:['u1'], desc:''});
+      Store.logActivity(`สร้างโปรเจกต์ <b>${esc(name)}</b>`);
+    }
+    Store.save(); closeModal(); App.refresh(); toast(isEdit?'บันทึกการแก้ไขแล้ว':'สร้างโปรเจกต์แล้ว');
   };
+}
+
+/* เก็บโปรเจกต์เข้าคลัง (กู้คืนได้ ไม่ลบทำลายตารางเดิม) */
+function archiveProject(p){
+  const nTasks = Store.data.tasks.filter(t=>t.project===p.id).length;
+  confirmDlg(`เก็บโปรเจกต์ "${p.name}" เข้าคลัง?`,
+    `โปรเจกต์และงาน <b>${nTasks} ชิ้น</b> จะถูกซ่อนจากทุกหน้า — ไม่มีข้อมูลถูกลบจริง กู้คืนได้ที่ ตั้งค่า → คลังโปรเจกต์`,
+    async ()=>{
+      if(Remote.on){
+        try{ await Remote.req('/projects/'+p.id, {method:'DELETE'}); await Remote.refreshAll();
+          toast(`เก็บ "${esc(p.name)}" เข้าคลังแล้ว (งาน ${nTasks} ชิ้นถูกซ่อนด้วย)`, 'warn');
+        }catch(e){ toast('เก็บเข้าคลังไม่สำเร็จ: '+e.message, 'err'); }
+        return;
+      }
+      p.archived = true;
+      Store.data.projects = Store.data.projects.filter(x=>x.id!==p.id);
+      Store.data.tasks = Store.data.tasks.filter(t=>t.project!==p.id);
+      Store.save(); App.refresh(); toast('เก็บโปรเจกต์เข้าคลังแล้ว (โหมดสาธิต)','warn');
+    }, 'เก็บเข้าคลัง');
 }
 
 function openInvoiceModal(id){
@@ -948,6 +998,85 @@ async function saveSelfPass(){
     $('#pwCur').value = $('#pwNew').value = $('#pwNew2').value = '';
     toast('เปลี่ยนรหัสผ่านของคุณแล้ว ✓ — session อื่นถ้ามีจะถูกเด้งออก','ok');
   } catch(e){ toast(e.message || 'เปลี่ยนไม่สำเร็จ', 'error'); }
+}
+
+/* ============================================================
+   TEAM MANAGEMENT — erp_team CRUD (+ ผูกสิทธิ์ login ถ้ามีบัญชี)
+   ============================================================ */
+function openTeamForm(u){
+  const isEdit = !!u; u = u || {};
+  openModal(`${modalHead(isEdit ? `✏️ แก้ไขสมาชิก — ${esc(u.name||'')}` : '➕ เพิ่มสมาชิกทีม',
+      'อีเมลที่กรอกจะถูกผูกกับบัญชี pacific_mng อัตโนมัติ (ถ้ามี) — ใช้ login ร่วมกันทั้ง Hub')}
+    <div class="modal-body"><div class="form-grid">
+      <div class="f-group full"><label>ชื่อ-สกุล *</label><input id="tmName" value="${esc(u.name||'')}" placeholder="เช่น น้ำฝน แสงจันทร์"></div>
+      <div class="f-group"><label>ตำแหน่ง/สายงาน</label><input id="tmRole" value="${esc(u.role||'')}" placeholder="เช่น Frontend Dev"></div>
+      <div class="f-group"><label>เบอร์โทร</label><input id="tmPhone" value="${esc(u.phone||'')}"></div>
+      <div class="f-group full"><label>อีเมล (ผูกบัญชี login ให้เห็นงานทั้ง Hub)</label><input id="tmEmail" type="email" value="${esc(u.email||'')}" placeholder="name@mng.co.th"></div>
+      ${isEdit && u.authUserId ? `<div class="f-group"><label>สิทธิ์ระบบของบัญชีนี้</label><select id="tmAuthRole">
+        ${['viewer','user','manager','admin','super_admin'].map(r=>`<option value="${r}" ${u.authRole===r?'selected':''} ${r==='super_admin' && Remote.user?.role!=='super_admin'?'disabled':''}>${ROLE_TH[r]}</option>`).join('')}
+      </select><small style="color:var(--muted);font-size:10.5px">แก้ลง pacific_mng.users โดยตรง — มีผลทุกแอป MNG Hub</small></div>` : ''}
+      ${isEdit && !u.authUserId ? `<div class="f-group full"><small style="color:var(--muted)">ยังไม่มีบัญชี login กับอีเมลนี้ — สร้างได้ที่ ตั้งค่า → ผู้ใช้และสิทธิ์ แล้วกลับมากรอกอีเมลให้ตรงกัน</small></div>` : ''}
+      <div class="f-group full"><label>สีโปรไฟล์</label><div class="chips" id="tmColor">
+        ${['#6C5CE7','#3BA7FF','#F25C8B','#14B890','#F2994A','#17A2B8','#4B5ED9','#5A6280'].map(c=>`<span class="chip ${(u.color===c)||(!isEdit&&c==='#6C5CE7')?'on':''}" data-c="${c}"><span class="dot" style="background:${c}"></span>${c}</span>`).join('')}</div></div>
+    </div></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="tmSave">${isEdit?'บันทึกการแก้ไข':'เพิ่มสมาชิก'}</button></div>`);
+  let color = u.color || '#6C5CE7';
+  $$('#tmColor .chip').forEach(x=>x.onclick=()=>{color=x.dataset.c; $$('#tmColor .chip').forEach(y=>y.classList.toggle('on',y===x));});
+  $('#tmSave').onclick = async ()=>{
+    const body = { name:$('#tmName').value.trim(), role:$('#tmRole').value.trim(),
+      phone:$('#tmPhone').value.trim(), email:$('#tmEmail').value.trim(), color };
+    if(!body.name) return toast('กรุณากรอกชื่อ','warn');
+    const btn = $('#tmSave'); btn.disabled = true;
+    if(Remote.on){
+      try {
+        if(isEdit){
+          await Remote.req('/teams/'+u.id, {method:'PATCH', body});
+          if(u.authUserId && $('#tmAuthRole')?.value && $('#tmAuthRole').value !== u.authRole)
+            await Remote.req('/users/'+u.authUserId, {method:'PATCH', body:{ role: $('#tmAuthRole').value }});
+        } else await Remote.req('/teams', {method:'POST', body});
+        closeModal(); await Remote.refreshAll();
+        toast((isEdit?'บันทึกสมาชิกแล้ว ✓':'เพิ่มสมาชิก ✓') + ' (MariaDB)');
+      } catch(e){ toast('บันทึกไม่สำเร็จ: '+e.message,'err'); btn.disabled=false; }
+      return;
+    }
+    if(isEdit) Object.assign(u, body); else Store.data.team.push({id:uid('u'), ...body, me:false});
+    Store.save(); closeModal(); App.refresh(); toast(isEdit?'บันทึกแล้ว':'เพิ่มสมาชิกแล้ว (สาธิต)');
+  };
+}
+
+function deleteTeamMember(u){
+  const n = Store.data.tasks.filter(t=>t.assignee===u.id).length;
+  confirmDlg(`ลบ ${u.name} ออกจากทีม?`,
+    (n? `งาน <b>${n} ชิ้น</b> ของเขาจะกลายเป็น "ไม่มีผู้รับผิดชอบ" · `:'') + `บัญชี login เดิม (ถ้ามี) จะยังอยู่ — ลบบัญชีทำที่ ตั้งค่า → ผู้ใช้และสิทธิ์`,
+    async ()=>{
+      if(Remote.on){
+        try {
+          const r = await Remote.req('/teams/'+u.id, {method:'DELETE'});
+          await Remote.refreshAll();
+          toast(`ลบ ${esc(u.name)} แล้ว${r.unassigned?` · งาน ${r.unassigned} ชิ้นกลับสู่ว่าง`:''}`, 'warn');
+        } catch(e){ toast('ลบไม่สำเร็จ: '+e.message,'err'); }
+        return;
+      }
+      Store.data.tasks.forEach(t=>{ if(t.assignee===u.id) t.assignee = null; });
+      Store.data.team = Store.data.team.filter(x=>x.id!==u.id);
+      Store.save(); App.refresh(); toast('ลบสมาชิกแล้ว (สาธิต)','warn');
+    }, 'ลบสมาชิก');
+}
+
+/* ---------- คลังโปรเจกต์ (เก็บถาวร/กู้คืน) ---------- */
+async function loadArchivedProjects(){
+  if(!Remote.on) return;
+  Store.data.archProjects = await Remote.req('/projects/archived');
+  if(location.hash.includes('settings')) App.refresh();
+}
+async function restoreProject(pid){
+  try {
+    await Remote.req('/projects/'+pid+'/restore', {method:'POST'});
+    toast('กู้คืนโปรเจกต์แล้ว ✓ กลับมาแสดงทุกหน้า');
+    Store.data.archProjects = (Store.data.archProjects||[]).filter(x=>x.id!==pid);
+    await Remote.refreshAll();
+  } catch(e){ toast('กู้คืนไม่สำเร็จ: '+e.message,'err'); }
 }
 
 /* ---------- boot ---------- */

@@ -41,7 +41,8 @@ app.use('/api', auth.middleware, api);
 /* ---------- static SPA ---------- */
 const root = path.join(__dirname, '..');
 app.use(express.static(root, { extensions: ['html'] }));
-app.get(/^\/(?!api\/).*/, (_req, res) => res.sendFile(path.join(root, 'index.html')));
+// catch-all → SPA; **ยกเว้น** /hub และ /workspace (ของ MNG Hub เดิม — อย่าเบ่งเส้นทาง)
+app.get(/^\/(?!api\/|hub(?:\/|$)|workspace(?:\/|$)).*/, (_req, res) => res.sendFile(path.join(root, 'index.html')));
 
 /* ---------- boot ---------- */
 (async () => {
