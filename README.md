@@ -42,17 +42,65 @@
 ### 🛎️ อื่นๆ
 - ค้นหารวมทั้งระบบ (งาน / อีเวนต์ / โปรเจกต์) จากแถบบน
 - การแจ้งเตือนอัจฉริยะ: งานเกินกำหนด, เดดไลน์วันนี้, บิลเกินกำหนด, ประชุมวันนี้
-- ข้อมูลบันทึกใน `localStorage` — แก้แล้วไม่หาย, พร้อมปุ่มรีเซ็ตข้อมูลตัวอย่าง
+- ข้อมูลจริงบันทึกลง **MariaDB** ทุกการกระทำ (มี localStorage เป็น cache/fallback โหมดสาธิต)
 
 ## 🚀 วิธีใช้งาน
 
-ไม่ต้อง build — เป็น static site ล้วน:
+### โหมดเต็ม (API + MariaDB) — แนะนำ
 
 ```bash
-# เปิดตรงๆ หรือ serve ด้วยอะไรก็ได้
-python3 -m http.server 8080
-# แล้วเปิด http://localhost:8080
+cd server
+cp .env.example .env      # แล้วใส่รหัสผ่านฐานข้อมูลจริง (อย่า commit .env!)
+npm install
+npm start                 # เปิด http://localhost:8080
 ```
+
+เซิร์ฟเวอร์จะ:
+1. ต่อ MariaDB 2 ก้อน **แยก connection pool** (ห้าม cross-join — ตามข้อกำหนดเดิมของระบบ)
+   - `pacific_mng` → **auth เท่านั้น** (ตาราง `users`, ตรวจ bcrypt)
+   - `pacific_mngworks` → ข้อมูลทั้งหมด (projects/tasks จริง + ตาราง `erp_*` ที่สร้างเพิ่ม)
+2. สร้าง schema เสริมแบบ additive-only (ไม่แตะ/ไม่ลบคอลัมน์เดิมของ MNG Workspace)
+3. seed ข้อมูล ERP รอบแรกอัตโนมัติ (team/clients/invoices/events) — รันซ้ำได้ ไม่ซ้ำซ้อน
+
+**Login:** ใช้บัญชีเดียวกับ MNG Hub เช่น `worapot@outlook.com` (sessions ออกอายุ 7 วัน)
+
+### โหมดสาธิต (ไม่มี backend)
+
+เปิด `index.html` ตรงๆ หรือ serve static ได้เลย (เช่น GitHub Pages) — ระบบจะ fallback
+ไปใช้ localStorage อัตโนมัติ พร้อมปุ่ม "ใช้โหมดสาธิต" ในหน้า login
+
+## 🗄️ สถาปัตยกรรมข้อมูล
+
+```
+┌─────────────┐   ┌──────────────┐         ┌────────────────────────┐
+│  SPA (JS)   │──▶│ Express API  │─ pool1 ─▶│ pacific_mng            │
+│  assets/js  │◀──│ server/      │         │  └ users (bcrypt auth) │
+└─────────────┘   │              │─ pool2 ─▶│ pacific_mngworks       │
+                  └──────────────┘         │  ├ projects (ของเดิม+erp_*)│
+                                           │  ├ tasks    (ของเดิม+erp_*)│
+                                           │  ├ erp_events  (ปฏิทิน)    │
+                                           │  ├ erp_invoices(การเงิน)   │
+                                           │  ├ erp_clients (CRM)      │
+                                           │  ├ erp_team / erp_activity│
+                                           │  └ erp_sessions/settings │
+                                           └────────────────────────┘
+```
+
+คอลัมน์ที่เติมเข้าไปในตารางเดิมมี prefix `erp_` (nullable/default เสมอ) — แอป MNG Workspace เดิมยังทำงานได้ปกติ 100%
+
+### API หลัก
+
+| Method | Endpoint | คำอธิบาย |
+|---|---|---|
+| POST | `/api/auth/login` | ตรวจ bcrypt จาก `pacific_mng.users` → คืน session token |
+| GET | `/api/bootstrap` | ข้อมูลทั้งระบบครั้งเดียว (SPA hydrate) + trend คำนวณสด |
+| POST/PATCH/DELETE | `/api/tasks/:id` | CRUD งาน (PATCH รองรับ status/progress/ย้ายวัน/งานย่อย/คอมเมนต์) |
+| POST/PATCH/DELETE | `/api/events/:id` | CRUD อีเวนต์ปฏิทิน (ลากย้ายวันที่ = PATCH date) |
+| POST | `/api/invoices/:id/pay` | บันทึกรับชำระ + ติด activity log |
+| POST | `/api/invoices` `/api/projects` | สร้างใบแจ้งหนี้ (เลขที่ auto) / โปรเจกต์ |
+| PUT | `/api/settings` | ธีม/การแจ้งเตือน |
+
+ทุก mutation บันทึกลง `erp_activity` อัตโนมัติฝั่งเซิร์ฟเวอร์
 
 ## 🌐 Deploy บน GitHub Pages
 
@@ -67,13 +115,21 @@ git push origin main
 ```
 mng-erp/
 ├── index.html              # shell
-└── assets/
-    ├── css/styles.css      # ดีไซน์ทั้งหมด (pastel + gradient ตาม reference)
-    └── js/
-        ├── data.js         # seed data: โปรเจกต์/งาน/อีเวนต์/บิล/ลูกค้า/ทีม
-        ├── ui.js           # helpers, icons, charts (SVG), modal, toast
-        ├── views.js        # หน้าจอทั้ง 9 โมดูล
-        └── app.js          # store, router, topbar, forms, delegation
+├── assets/
+│   ├── css/styles.css      # ดีไซน์ทั้งหมด (pastel + gradient ตาม reference)
+│   └── js/
+│       ├── data.js         # seed data สำหรับโหมดสาธิต (offline fallback)
+│       ├── ui.js           # helpers, icons, charts (SVG), modal, toast
+│       ├── views.js        # หน้าจอทั้ง 9 โมดูล
+│       └── app.js          # store, router, Remote API, login, forms
+└── server/                 # ★ backend — Node.js + Express + MariaDB
+    ├── index.js            # entry: static SPA + /api/*
+    ├── db.js               # 2 pools + schema bootstrap (additive-only)
+    ├── seed.js             # seed ข้อมูล ERP + enrich ข้อมูลจริง (idempotent)
+    ├── auth.js             # bcrypt login + session middleware
+    ├── routes.js           # REST: bootstrap/tasks/events/invoices/projects/settings
+    ├── .env.example        # template config (ห้าม commit .env จริง)
+    └── package.json
 ```
 
 ## 🎨 ดีไซน์
@@ -84,4 +140,4 @@ mng-erp/
 
 ---
 
-สร้างสำหรับ MNG Groups · เชื่อมข้อมูลเดิมจาก MNG Workspace (mng.uarea.in)
+สร้างสำหรับ MNG Groups · ใช้ข้อมูลร่วมกับ MNG Workspace (mng.uarea.in) บน MariaDB `pacific_mngworks` — ปลอดภัยกับระบบเดิมแบบ additive-only

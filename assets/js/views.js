@@ -448,7 +448,9 @@ function renderTasks(){
         t.status = col.dataset.status;
         if(t.status==='done') t.progress=100;
         Store.logActivity(`ย้าย <b>${t.code}</b> ไปยัง "${STATUS_META[t.status].label}"`);
-        Store.save(); toast(`ย้าย ${t.code} → ${STATUS_META[t.status].label}`);
+        Store.save();
+        Remote.push('/tasks/'+t.id, 'PATCH', {status: t.status, progress: t.progress});
+        toast(`ย้าย ${t.code} → ${STATUS_META[t.status].label}`);
         renderTasks();
       });
     });
@@ -738,8 +740,8 @@ function renderSettings(){
       </div>
     </div>
   </div>`;
-  $$('#themeDots .theme-dot').forEach(d=>d.onclick=()=>{st.theme=d.dataset.theme; Store.save(); App.applyTheme(); renderSettings(); toast('เปลี่ยนธีมสีแล้ว');});
-  $$('[data-set]', view).forEach(sw=>sw.onclick=()=>{st[sw.dataset.set]=!st[sw.dataset.set]; sw.classList.toggle('on'); Store.save();});
+  $$('#themeDots .theme-dot').forEach(d=>d.onclick=()=>{st.theme=d.dataset.theme; Store.save(); Remote.push('/settings','PUT',st); App.applyTheme(); renderSettings(); toast('เปลี่ยนธีมสีแล้ว');});
+  $$('[data-set]', view).forEach(sw=>sw.onclick=()=>{st[sw.dataset.set]=!st[sw.dataset.set]; sw.classList.toggle('on'); Store.save(); Remote.push('/settings','PUT',st);});
 }
 
 /* ---------- side search wiring ---------- */

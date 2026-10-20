@@ -592,6 +592,38 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 .empty-state svg{width:52px;height:52px;margin-bottom:12px;opacity:.4}
 .empty-state p{font-size:13px}
 
+/* ---------- LOGIN ---------- */
+.login-ov{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(1100px 600px at 15% 0%, rgba(255,255,255,.5), transparent 55%),
+  linear-gradient(135deg,#b9c6ee 0%,#c9bfe9 38%,#aecdf6 78%,#9fc3f2 100%)}
+.login-card{background:#fff;border-radius:26px;box-shadow:0 40px 90px rgba(52,44,120,.3);padding:38px 40px 30px;width:100%;max-width:420px;animation:popIn .3s cubic-bezier(.2,1.2,.4,1)}
+.login-card .lg-logo{width:58px;height:58px;border-radius:17px;background:linear-gradient(135deg,var(--purple),var(--blue-2));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:19px;margin:0 auto 14px;box-shadow:0 10px 24px rgba(108,92,231,.4)}
+.login-card h2{text-align:center;font-size:21px}
+.login-card .lg-sub{text-align:center;font-size:12.5px;color:var(--muted);margin:5px 0 22px}
+.login-card .f-group{margin-bottom:15px}
+.login-card .lg-btn{width:100%;justify-content:center;padding:13px;font-size:14px;margin-top:4px}
+.login-err{background:var(--red-soft);color:var(--red);font-size:12.5px;font-weight:500;border-radius:11px;padding:10px 14px;margin-bottom:14px;display:flex;gap:9px;align-items:center}
+.login-err svg{width:16px;height:16px}
+.login-alt{text-align:center;margin-top:16px;font-size:12px;color:var(--muted)}
+.login-alt a{color:var(--purple);cursor:pointer;font-weight:600;text-decoration:none}
+.login-db{display:flex;align-items:center;justify-content:center;gap:8px;font-size:11.5px;margin-top:18px;padding-top:16px;border-top:1px dashed var(--line)}
+.login-db .dot{width:8px;height:8px;border-radius:50%}
+.login-db .dot.ok{background:var(--green);box-shadow:0 0 0 3px var(--green-soft)}
+.login-db .dot.bad{background:var(--red);box-shadow:0 0 0 3px var(--red-soft)}
+.boot-splash{position:fixed;inset:0;z-index:390;display:flex;flex-direction:column;gap:16px;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#b9c6ee,#c9bfe9 40%,#9fc3f2)}
+.boot-splash .lg-logo{width:64px;height:64px;border-radius:19px;background:linear-gradient(135deg,var(--purple),var(--blue-2));
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:21px;box-shadow:0 16px 34px rgba(108,92,231,.45);animation:pulse 1.4s ease infinite}
+.boot-splash p{color:#4a4e75;font-size:13px}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+.db-pill{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:600;padding:3px 10px;border-radius:999px;vertical-align:2px;margin-left:6px}
+.db-pill.on{background:var(--green-soft);color:#0da678}
+.db-pill.off{background:#f0f1f8;color:var(--muted)}
+.db-pill .dot{width:7px;height:7px;border-radius:50%}
+.db-pill.on .dot{background:#0da678;box-shadow:0 0 0 2px #b9f0de;animation:pulse 1.6s infinite}
+.db-pill.off .dot{background:#b9bdd8}
+
 /* responsive-ish */
 @media (max-width:1300px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.feat-row{grid-template-columns:1fr 1fr}.dash-grid,.rep-grid{grid-template-columns:1fr}.rep-grid .span2{grid-column:span 1}}
 @media (max-width:1080px){:root{--side-w:240px;--rail-w:64px}.kb-wrap{grid-template-columns:repeat(2,1fr)}}

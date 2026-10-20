@@ -1,0 +1,17 @@
+{
+  "name": "mng-erp-server",
+  "version": "2.0.0",
+  "description": "MNG ERP backend — Work Tracking Management (MariaDB)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mysql2": "^3.11.0"
+  }
+}

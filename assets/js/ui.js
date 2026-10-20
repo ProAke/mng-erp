@@ -45,8 +45,10 @@ const moneyK = n => n < 1000 ? '฿' + Number(n||0).toLocaleString('en-US') : '�
 
 /* ---------- avatar ---------- */
 function initials(name){
-  const parts = name.trim().split(/\s+/);
-  return parts[0][0].toUpperCase() + (parts[1] ? parts[1][0].toUpperCase() : '');
+  name = String(name||'').trim();
+  if(/[ก-๙]/.test(name)){ const chars = [...name.replace(/\s+/g,'')]; return (chars[0]||'?') + (chars[1]||''); }
+  const parts = name.split(/\s+/);
+  return (parts[0]?.[0]||'?').toUpperCase() + (parts[1] ? parts[1][0].toUpperCase() : '');
 }
 function avatar(u, cls=''){ return `<span class="av ${cls}" style="background:${u.color}" title="${esc(u.name)}">${initials(u.name)}</span>`; }
 function avatarStack(users, max=3){

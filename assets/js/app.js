@@ -4,6 +4,46 @@
 'use strict';
 
 /* ============================================================
+   REMOTE — MariaDB-backed API (graceful fallback to demo mode)
+   ============================================================ */
+const Remote = {
+  token: localStorage.getItem('mng_token') || null,
+  on: false,
+  async req(path, opts={}){
+    const r = await fetch('/api'+path, {
+      method: opts.method || 'GET',
+      headers: { 'Content-Type':'application/json', ...(this.token?{Authorization:'Bearer '+this.token}:{}) },
+      body: opts.body ? JSON.stringify(opts.body) : undefined,
+    });
+    if(r.status===401){ App.forceLogin('เซสชันหมดอายุ — กรุณาเข้าสู่ระบบใหม่'); throw new Error('401'); }
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.detail || d.error || ('HTTP '+r.status));
+    return d;
+  },
+  async health(){
+    try { const d = await (await fetch('/api/health')).json(); return !!(d.auth && d.work); }
+    catch { return false; }
+  },
+  async login(email, pw){
+    const d = await this.req('/auth/login', {method:'POST', body:{email, password:pw}});
+    this.token = d.token; localStorage.setItem('mng_token', d.token);
+    return d.user;
+  },
+  async logout(){
+    try { await this.req('/auth/logout', {method:'POST'}); } catch {}
+    this.token = null; localStorage.removeItem('mng_token');
+  },
+  push(path, method, body){          // fire-and-forget mutation
+    if(!this.on) return;
+    this.req(path, {method, body}).catch(e => toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+e.message, 'err'));
+  },
+  async refreshAll(){                // refetch bootstrap (after CREATE — need real ids)
+    if(!this.on) return;
+    try { Store.hydrate(await this.req('/bootstrap')); App.refresh(); } catch {}
+  },
+};
+
+/* ============================================================
    STORE
    ============================================================ */
 const Store = {
@@ -38,6 +78,17 @@ const Store = {
     localStorage.setItem(this.KEY, JSON.stringify(this.data));
   },
 
+  /* hydrate from server bootstrap (real MariaDB data) */
+  hydrate(d){
+    const ui = this.ui;
+    const cats = d.eventCats || {};
+    Object.values(cats).forEach(c => c.on = true);
+    this.data = { ...d, eventCats: cats };
+    this.ui = ui;
+    if(!this.ui.calCats || !this.ui.calCats.size) this.ui.calCats = new Set(Object.keys(cats));
+    this.save();
+  },
+
   /* lookups */
   getTask(id){ return this.data.tasks.find(t=>t.id===id); },
   getEvent(id){ return this.data.events.find(e=>e.id===id); },
@@ -69,8 +120,8 @@ const Store = {
     return out.slice(0,n);
   },
   moveToDate(kind, id, ds){
-    if(kind==='event'){ const e=this.getEvent(id); if(e) e.date=ds; }
-    else { const t=this.getTask(id); if(t) t.due=ds; }
+    if(kind==='event'){ const e=this.getEvent(id); if(e) e.date=ds; Remote.push('/events/'+id, 'PATCH', {date: ds}); }
+    else { const t=this.getTask(id); if(t) t.due=ds; Remote.push('/tasks/'+id, 'PATCH', {due: ds}); }
     this.save();
   },
   logActivity(text){
@@ -113,14 +164,95 @@ const App = {
     settings: { title:'ตั้งค่าระบบ',        sub:'โปรไฟล์ · ธีม · ข้อมูลสำรอง',       icon:IC.gear,   label:'ตั้งค่า',  render:renderSettings },
   },
 
-  init(){
+  async init(){
     Store.load();
+    this.splash('กำลังเชื่อมต่อฐานข้อมูล MariaDB…');
+    const healthy = await Remote.health();
+    let needLogin = false;
+    if(!healthy){
+      this._bootToast = ['ไม่พบเซิร์ฟเวอร์ API — ทำงานในโหมดสาธิต (localStorage)', 'warn'];
+    } else if(Remote.token){
+      try {
+        Remote.on = true;
+        Store.hydrate(await Remote.req('/bootstrap'));
+      } catch(e){ needLogin = true; Remote.on = false; }
+    } else needLogin = true;
+    this.splash(false);
+    if(needLogin){ this.showLogin(); return; }
+    this.start();
+  },
+
+  start(){
     this.applyTheme();
     this.renderRail();
     this.bindGlobal();
     window.addEventListener('hashchange', ()=>this.route());
     if(!location.hash) location.hash = '#/calendar';
     this.route();
+    if(this._bootToast){ toast(this._bootToast[0], this._bootToast[1]); this._bootToast = null; }
+    if(Remote.on) setTimeout(()=>toast('เชื่อมต่อฐานข้อมูลจริงแล้ว ✓ ข้อมูลจาก MariaDB pacific_mngworks'), 350);
+  },
+
+  splash(msg){
+    let s = $('#bootSplash');
+    if(msg===false){ s?.remove(); return; }
+    if(!s){
+      s = document.createElement('div');
+      s.id = 'bootSplash'; s.className = 'boot-splash';
+      document.body.appendChild(s);
+    }
+    s.innerHTML = `<div class="lg-logo">MNG</div><p>${msg}</p>`;
+  },
+
+  forceLogin(msg){
+    Remote.on = false; Remote.token = null; localStorage.removeItem('mng_token');
+    $('#appShell').style.display = 'none';
+    closeModal();
+    this.showLogin(msg);
+  },
+
+  showLogin(msg){
+    if($('.login-ov')) { if(msg) $('.login-ov .login-err') && ($('.login-ov .login-err').innerHTML = IC.alarm+' '+msg); return; }
+    const ov = document.createElement('div');
+    ov.className = 'login-ov';
+    ov.innerHTML = `
+      <div class="login-card">
+        <div class="lg-logo">MNG</div>
+        <h2>MNG Groups</h2>
+        <div class="lg-sub">ERP — Work Tracking Management · เข้าสู่ระบบด้วยบัญชีเดียวกับ MNG Hub</div>
+        <div class="login-err" style="display:none" id="lgErr"></div>
+        <form id="lgForm">
+          <div class="f-group"><label>อีเมล</label><input type="email" id="lgEmail" value="worapot@outlook.com" autocomplete="username" required></div>
+          <div class="f-group"><label>รหัสผ่าน</label><input type="password" id="lgPass" placeholder="••••••••" autocomplete="current-password" required></div>
+          <button class="btn btn-primary lg-btn" type="submit" id="lgBtn">เข้าสู่ระบบ (เชื่อมฐานข้อมูลจริง)</button>
+        </form>
+        <div class="login-alt">ไม่ต้องการเชื่อมฐานข้อมูล? <a id="lgDemo">ใช้โหมดสาธิต</a></div>
+        <div class="login-db"><span class="dot ok"></span> MariaDB · pacific_mng (auth) + pacific_mngworks (data) · 203.146.252.149</div>
+      </div>`;
+    document.body.appendChild(ov);
+    if(msg) { const e=$('#lgErr'); e.innerHTML = IC.alarm+' '+msg; e.style.display='flex'; }
+    $('#lgPass').focus();
+    $('#lgForm').addEventListener('submit', async e=>{
+      e.preventDefault();
+      const btn = $('#lgBtn'); btn.disabled = true; btn.textContent = 'กำลังตรวจสอบ…';
+      try {
+        await Remote.login($('#lgEmail').value.trim(), $('#lgPass').value);
+        Remote.on = true;
+        Store.hydrate(await Remote.req('/bootstrap'));
+        ov.remove();
+        $('#appShell').style.display = '';
+        this._bootToast = ['ยินดีต้อนรับ — เข้าสู่ระบบสำเร็จ ข้อมูลจริงจาก MariaDB ✓','ok'];
+        this.start();
+      } catch(err){
+        btn.disabled = false; btn.textContent = 'เข้าสู่ระบบ (เชื่อมฐานข้อมูลจริง)';
+        const eb = $('#lgErr'); eb.innerHTML = IC.alarm+' '+(err.message||'เข้าสู่ระบบไม่สำเร็จ'); eb.style.display='flex';
+      }
+    });
+    $('#lgDemo').addEventListener('click', ()=>{
+      ov.remove(); $('#appShell').style.display = '';
+      this._bootToast = ['โหมดสาธิต — ข้อมูลอยู่ใน localStorage เท่านั้น','warn'];
+      this.start();
+    });
   },
 
   applyTheme(){
@@ -164,8 +296,12 @@ const App = {
   renderTopbar(r){
     const tb = $('#topbar');
     const notifs = Store.notifs();
+    const me = Store.data.user;
+    const meName = me ? me.name : 'Worapot';
+    const meRole = me ? (me.role === 'super_admin' ? 'Super Admin' : me.role) : 'Administrator';
     tb.innerHTML = `
-      <div class="tb-title"><small>${r.sub}</small><h1>${r.title}</h1></div>
+      <div class="tb-title"><small>${r.sub}</small><h1>${r.title}
+        <span class="db-pill ${Remote.on?'on':'off'}"><span class="dot"></span>${Remote.on?'MariaDB':'สาธิต'}</span></h1></div>
       <div class="tb-search">${IC.search}
         <input type="text" id="globalQ" placeholder="ค้นหาอะไรก็ได้ในระบบ… (งาน / อีเวนต์ / โปรเจกต์)">
         <div class="search-pop" id="searchPop"></div>
@@ -184,8 +320,8 @@ const App = {
           </div>
         </div>
         <div class="user-chip" id="userChip">
-          <span class="uc-av">WP</span>
-          <span class="uc-name">Worapot<small>Administrator</small></span>
+          <span class="uc-av">${initials(meName)}</span>
+          <span class="uc-name">${esc(meName)}<small>${esc(meRole)}</small></span>
           ${IC.chevD}
           <div class="user-menu" id="userMenu">
             <a data-act="nav:settings">${IC.user} โปรไฟล์ของฉัน</a>
@@ -272,9 +408,13 @@ const App = {
         case 'export-json': exportJSON(); break;
         case 'print': window.print(); break;
         case 'invite': toast('คัดลอกลิงก์เชิญแล้ว (โหมดสาธิต)','ok'); break;
-        case 'save-settings': Store.save(); toast('บันทึกการตั้งค่าแล้ว'); break;
-        case 'reset-data': confirmDlg('รีเซ็ตข้อมูลตัวอย่าง','ข้อมูลทั้งหมดที่แก้ไขจะหายและกลับเป็นชุดตัวอย่างเริ่มต้น ยืนยัน?', ()=>{ localStorage.removeItem(Store.KEY); location.reload(); }, 'รีเซ็ต'); break;
-        case 'logout': toast('โหมดสาธิต — ยังเข้าสู่ระบบอยู่','warn'); break;
+        case 'save-settings': Store.save(); Remote.push('/settings','PUT',Store.data.settings); toast('บันทึกการตั้งค่าแล้ว'); break;
+        case 'reset-data':
+          if(Remote.on){ toast('ข้อมูลจริงอยู่ใน MariaDB — รีเซ็ตผ่าน seed ฝั่งเซิร์ฟเวอร์ (npm run seed)','warn'); break; }
+          confirmDlg('รีเซ็ตข้อมูลตัวอย่าง','ข้อมูลทั้งหมดที่แก้ไขจะหายและกลับเป็นชุดตัวอย่างเริ่มต้น ยืนยัน?', ()=>{ localStorage.removeItem(Store.KEY); location.reload(); }, 'รีเซ็ต'); break;
+        case 'logout':
+          if(Remote.on){ Remote.logout().finally(()=>location.reload()); }
+          else toast('โหมดสาธิต — ยังเข้าสู่ระบบอยู่','warn'); break;
       }
     });
   },
@@ -358,6 +498,7 @@ function openTaskModal(id){
 
   $$('#modalRoot [data-sub]').forEach(cb=>cb.addEventListener('change',()=>{
     t.subtasks[+cb.dataset.sub].d = cb.checked; Store.save();
+    Remote.push('/tasks/'+id, 'PATCH', {subtasks: t.subtasks});
     cb.closest('.sub-item').classList.toggle('done', cb.checked);
   }));
   $('#cmtBtn').onclick = ()=>{
@@ -365,12 +506,15 @@ function openTaskModal(id){
     const now = new Date();
     t.comments.push({u:'u1', at:`${todayS()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`, text:v});
     Store.logActivity(`คอมเมนต์ใน <b>${t.code}</b>: ${esc(v.slice(0,40))}`);
+    Remote.push('/tasks/'+id, 'PATCH', {comments: t.comments});
     Store.save(); closeModal(); openTaskModal(id); toast('เพิ่มความคิดเห็นแล้ว');
   };
   $('#tdEdit').onclick = ()=>openTaskForm(id);
   $('#tdDel').onclick = ()=>confirmDlg('ลบงานนี้?',`ต้องการลบ <b>${t.code} — ${esc(t.title)}</b> ใช่ไหม`,()=>{
     Store.data.tasks = Store.data.tasks.filter(x=>x.id!==id);
-    Store.logActivity(`ลบงาน <b>${t.code}</b>`); Store.save(); App.refresh(); toast('ลบงานแล้ว','warn');
+    Store.logActivity(`ลบงาน <b>${t.code}</b>`); Store.save();
+    Remote.push('/tasks/'+id, 'DELETE');
+    App.refresh(); toast('ลบงานแล้ว (เก็บเข้าแฟ้มในฐานข้อมูล)','warn');
   });
 }
 
@@ -400,22 +544,31 @@ function openTaskForm(id, presetStatus){
     </div>`);
   const pr = $('#fProg');
   pr.addEventListener('input',()=>{ $('#progLbl').textContent = pr.value+'%'; pr.style.setProperty('--p', pr.value+'%'); });
-  $('#fSave').onclick = ()=>{
+  $('#fSave').onclick = async ()=>{
     const title = $('#fTitle').value.trim();
     if(!title) return toast('กรุณาใส่ชื่องาน','err');
-    Object.assign(t, {
+    const payload = {
       title, project:$('#fProj').value, assignee:$('#fUser').value,
       status:$('#fStatus').value, priority:$('#fPrio').value,
       start:$('#fStart').value||todayS(), due:$('#fDue').value||todayS(),
       progress:+pr.value, est:+$('#fEst').value||0,
       tags:$('#fTags').value.split(',').map(s=>s.trim()).filter(Boolean),
       desc:$('#fDesc').value.trim(),
-    });
-    if(t.status==='done') t.progress=100;
+    };
+    if(payload.status==='done') payload.progress=100;
+    Object.assign(t, payload);
+    if(Remote.on){
+      if(id) Remote.push('/tasks/'+t.id, 'PATCH', payload);
+      else {
+        try { await Remote.req('/tasks', {method:'POST', body:payload}); }
+        catch(e){ toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+e.message,'err'); return; }
+      }
+    }
     if(!id){ Store.data.tasks.push(t); Store.logActivity(`สร้างงาน <b>${t.code}</b> — ${esc(title)}`); }
     else Store.logActivity(`แก้ไขงาน <b>${t.code}</b>`);
-    Store.save(); closeModal(); App.refresh();
-    toast(id?'บันทึกงานแล้ว':`สร้าง ${t.code} แล้ว — เดดไลน์ขึ้นปฏิทินอัตโนมัติ`);
+    Store.save(); closeModal();
+    if(Remote.on && !id) await Remote.refreshAll(); else App.refresh();
+    toast(id?'บันทึกงานแล้ว':`สร้างงานแล้ว — เดดไลน์ขึ้นปฏิทินอัตโนมัติ${Remote.on?' (MariaDB ✓)':''}`);
   };
 }
 
@@ -452,7 +605,9 @@ function openEventModal(id){
   $('#evEdit').onclick = ()=>openEventForm(id);
   $('#evDel').onclick = ()=>confirmDlg('ลบกิจกรรม?',`ต้องการลบ “${esc(e.title)}” ใช่ไหม`,()=>{
     Store.data.events = Store.data.events.filter(x=>x.id!==id);
-    Store.save(); App.refresh(); toast('ลบกิจกรรมแล้ว','warn');
+    Store.save();
+    Remote.push('/events/'+id, 'DELETE');
+    App.refresh(); toast('ลบกิจกรรมแล้ว','warn');
   });
 }
 
@@ -485,7 +640,7 @@ function openEventForm(id, presetDate){
   let cat = e.cat;
   $$('#eCat .chip').forEach(c=>c.onclick=()=>{ cat=c.dataset.cat; $$('#eCat .chip').forEach(x=>x.classList.toggle('on', x===c)); });
   $$('#eMembers .chip').forEach(c=>c.onclick=()=>c.classList.toggle('on'));
-  $('#eSave').onclick = ()=>{
+  $('#eSave').onclick = async ()=>{
     const title = $('#eTitle').value.trim();
     if(!title) return toast('กรุณาใส่ชื่อกิจกรรม','err');
     if(!$('#eDate').value) return toast('กรุณาเลือกวันที่','err');
@@ -497,9 +652,18 @@ function openEventForm(id, presetDate){
       desc:$('#eDesc').value.trim(),
     });
     if(e.allday){ e.start='00:00'; e.end='23:59'; }
+    if(Remote.on){
+      if(id) Remote.push('/events/'+e.id, 'PATCH', e);
+      else {
+        try { await Remote.req('/events', {method:'POST', body:e}); }
+        catch(err){ toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+err.message,'err'); return; }
+      }
+    }
     if(!id){ Store.data.events.push(e); Store.logActivity(`สร้างกิจกรรม <b>${esc(title)}</b> วันที่ ${fmtD(e.date)}`); }
     Store.ui.calSel = e.date;
-    Store.save(); closeModal(); App.refresh(); toast(id?'บันทึกกิจกรรมแล้ว':'เพิ่มกิจกรรมลงปฏิทินแล้ว');
+    Store.save(); closeModal();
+    if(Remote.on && !id) await Remote.refreshAll(); else App.refresh();
+    toast(id?'บันทึกกิจกรรมแล้ว':`เพิ่มกิจกรรมลงปฏิทินแล้ว${Remote.on?' (MariaDB ✓)':''}`);
   };
 }
 
@@ -555,9 +719,16 @@ function openProjectForm(){
       <button class="btn btn-primary" id="pSave">สร้างโปรเจกต์</button></div>`);
   let grad='g-blue';
   $$('#pGrad .chip').forEach(c=>c.onclick=()=>{grad=c.dataset.g; $$('#pGrad .chip').forEach(x=>x.classList.toggle('on',x===c));});
-  $('#pSave').onclick=()=>{
+  $('#pSave').onclick = async ()=>{
     const name=$('#pName').value.trim(); if(!name) return toast('กรุณาใส่ชื่อโปรเจกต์','err');
     const colors={'g-blue':'#2F6BF0','g-purple':'#6C5CE7','g-pink':'#F25C8B','g-green':'#14B890','g-orange':'#F2762E','g-teal':'#17A2B8','g-indigo':'#4B5ED9','g-slate':'#5A6280'};
+    if(Remote.on){
+      try {
+        await Remote.req('/projects', {method:'POST', body:{name, clientName:$('#pClient').value, budget:+$('#pBudget').value||0, start:$('#pStart').value, end:$('#pEnd').value, grad, color:colors[grad]}});
+        closeModal(); await Remote.refreshAll(); toast('สร้างโปรเจกต์แล้ว ✓ (MariaDB)');
+      } catch(e){ toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+e.message,'err'); }
+      return;
+    }
     Store.data.projects.push({id:uid('p'), name, short:name.slice(0,14), client:$('#pClient').value, grad, color:colors[grad],
       status:'todo', progress:0, budget:+$('#pBudget').value||0, spent:0, start:$('#pStart').value, end:$('#pEnd').value, owner:'u1', members:['u1'], desc:''});
     Store.logActivity(`สร้างโปรเจกต์ <b>${esc(name)}</b>`); Store.save(); closeModal(); App.refresh(); toast('สร้างโปรเจกต์แล้ว');
@@ -596,7 +767,9 @@ function markInvoicePaid(id){
   const i = Store.data.invoices.find(x=>x.id===id); if(!i) return;
   i.status='paid'; i.paid=todayS();
   Store.logActivity(`รับชำระใบแจ้งหนี้ <b>${i.no}</b> ${money(i.amount+i.vat)}`);
-  Store.save(); closeModal(); App.refresh(); toast(`รับชำระ ${i.no} แล้ว ✓`);
+  Store.save(); closeModal();
+  Remote.push('/invoices/'+id+'/pay', 'POST');
+  App.refresh(); toast(`รับชำระ ${i.no} แล้ว ✓${Remote.on?' (MariaDB)':''}`);
 }
 
 function openInvoiceForm(){
@@ -611,8 +784,15 @@ function openInvoiceForm(){
     <p style="font-size:12px;color:var(--muted);margin-top:10px">VAT 7% จะถูกบวกอัตโนมัติตอนออกบิล</p></div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
       <button class="btn btn-primary" id="iSave">สร้างใบแจ้งหนี้</button></div>`);
-  $('#iSave').onclick=()=>{
+  $('#iSave').onclick = async ()=>{
     const amt=+$('#iAmount').value||0, title=$('#iTitle').value.trim()||'ค่าบริการ';
+    if(Remote.on){
+      try {
+        const d = await Remote.req('/invoices', {method:'POST', body:{client:$('#iClient').value, title, amount:amt, due:$('#iDue').value, status:$('#iStatus').value}});
+        closeModal(); await Remote.refreshAll(); toast(`สร้างใบแจ้งหนี้ ${d.no} แล้ว ✓ (MariaDB)`);
+      } catch(e){ toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+e.message,'err'); }
+      return;
+    }
     const no='INV-2026-0'+(46+Store.data.invoices.length);
     Store.data.invoices.push({id:uid('i'), no, client:$('#iClient').value, title, amount:amt, vat:Math.round(amt*.07),
       issue:todayS(), due:$('#iDue').value, status:$('#iStatus').value, items:[{d:title,q:1,p:amt}]});
