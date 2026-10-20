@@ -627,3 +627,16 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 /* responsive-ish */
 @media (max-width:1300px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.feat-row{grid-template-columns:1fr 1fr}.dash-grid,.rep-grid{grid-template-columns:1fr}.rep-grid .span2{grid-column:span 1}}
 @media (max-width:1080px){:root{--side-w:240px;--rail-w:64px}.kb-wrap{grid-template-columns:repeat(2,1fr)}}
+
+/* ---------- admin user management ---------- */
+.urole{display:inline-block;padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:700;letter-spacing:.2px}
+.ur-super_admin{background:linear-gradient(135deg,#FFEEDB,#FFD9E8);color:#C2410C}
+.ur-admin{background:#E9E4FF;color:#6C5CE7}
+.ur-manager{background:#DBF1FF;color:#2F6BF0}
+.ur-user{background:#EAEEF7;color:#5A6280}
+.ur-viewer{background:#F0F2FA;color:#94A0C3}
+.ust{display:inline-block;padding:3px 10px;border-radius:999px;font-size:10.5px;font-weight:600}
+.ul-active{background:#DDF5EC;color:#0F9D6E}
+.ul-inactive{background:#EDF0F7;color:#7A83A3}
+.ul-suspended{background:#FFE4E4;color:#E5484D}
+.ul-pending{background:#FFF4DB;color:#C07D00}

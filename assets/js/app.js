@@ -27,11 +27,13 @@ const Remote = {
   async login(email, pw){
     const d = await this.req('/auth/login', {method:'POST', body:{email, password:pw}});
     this.token = d.token; localStorage.setItem('mng_token', d.token);
+    this.user = d.user;
     return d.user;
   },
   async logout(){
     try { await this.req('/auth/logout', {method:'POST'}); } catch {}
-    this.token = null; localStorage.removeItem('mng_token');
+    this.token = null; this.user = null; localStorage.removeItem('mng_token');
+    localStorage.removeItem('mng_erp_token');
   },
   push(path, method, body){          // fire-and-forget mutation
     if(!this.on) return;
@@ -175,6 +177,7 @@ const App = {
       try {
         Remote.on = true;
         Store.hydrate(await Remote.req('/bootstrap'));
+        Remote.user = await Remote.req('/users/me');
       } catch(e){ needLogin = true; Remote.on = false; }
     } else needLogin = true;
     this.splash(false);
@@ -413,6 +416,11 @@ const App = {
         case 'print': window.print(); break;
         case 'invite': toast('คัดลอกลิงก์เชิญแล้ว (โหมดสาธิต)','ok'); break;
         case 'save-settings': Store.save(); Remote.push('/settings','PUT',Store.data.settings); toast('บันทึกการตั้งค่าแล้ว'); break;
+        case 'user-new':    openUserForm(); break;
+        case 'user-edit':   { const u = findAuthUser(+id); if(u) openUserForm(u); break; }
+        case 'user-pass':   { const u = findAuthUser(+id); if(u) openUserPass(u); break; }
+        case 'user-toggle': { const u = findAuthUser(+id); if(u) toggleAuthUser(u); break; }
+        case 'self-pass':   saveSelfPass(); break;
         case 'reset-data':
           if(Remote.on){ toast('ข้อมูลจริงอยู่ใน MariaDB — รีเซ็ตผ่าน seed ฝั่งเซิร์ฟเวอร์ (npm run seed)','warn'); break; }
           confirmDlg('รีเซ็ตข้อมูลตัวอย่าง','ข้อมูลทั้งหมดที่แก้ไขจะหายและกลับเป็นชุดตัวอย่างเริ่มต้น ยืนยัน?', ()=>{ localStorage.removeItem(Store.KEY); location.reload(); }, 'รีเซ็ต'); break;
@@ -824,6 +832,122 @@ function exportCSV(){
 function exportJSON(){
   download(`mng-erp-backup-${todayS()}.json`, JSON.stringify(Store.data, null, 2), 'application/json');
   toast('ส่งออกข้อมูลสำรองแล้ว');
+}
+
+/* ============================================================
+   USER MANAGEMENT (Admin) — pacific_mng.users via /api/users
+   ============================================================ */
+const ROLE_TH = { super_admin:'Super Admin', admin:'Admin', manager:'Manager', user:'User', viewer:'Viewer' };
+const UST_TH  = { active:'ใช้งาน', inactive:'ปิดไว้', suspended:'ระงับ', pending:'รอยืนยัน' };
+
+async function loadAuthUsers(reload){
+  if(!Remote.on) return;
+  const list = await Remote.req('/users');
+  Store.data.authUsers = list;
+  if(location.hash.includes('settings')) App.refresh();
+}
+function findAuthUser(authId){ return (Store.data.authUsers||[]).find(u=>u.authId===authId); }
+
+function openUserForm(u){
+  const isEdit = !!u; u = u || {};
+  const meId = Remote.user?.authId;
+  const canSuper = Remote.user?.role === 'super_admin';
+  openModal(`
+    <div class="modal-head"><h3>${isEdit ? '✏️ แก้ไขผู้ใช้ — '+esc(u.name||'') : '👤 เพิ่มผู้ใช้ใหม่'}</h3><button class="modal-x" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="f-group"><label>ชื่อ-สกุล *</label><input id="ufName" value="${esc(u.name||'')}" placeholder="เช่น สมชาย ใจดี" autocomplete="off"></div>
+      <div class="f-group"><label>อีเมล (ใช้ login ร่วมกับ MNG Hub) *</label><input id="ufEmail" type="email" value="${esc(u.email||'')}" placeholder="user@mng.co.th" autocomplete="off"></div>
+      <div class="f-group"><label>เบอร์โทร</label><input id="ufPhone" value="${esc(u.phone||'')}" placeholder="08x-xxx-xxxx"></div>
+      <div class="form-grid">
+        <div class="f-group"><label>สิทธิ์</label><select id="ufRole">
+          ${['viewer','user','manager','admin','super_admin'].map(r=>`<option value="${r}" ${u.role===r||(!isEdit&&r==='user')?'selected':''} ${r==='super_admin'&&!canSuper?'disabled':''}>${ROLE_TH[r]}</option>`).join('')}
+        </select></div>
+        ${isEdit ? `<div class="f-group"><label>สถานะ</label><select id="ufStatus" ${u.authId===meId?'disabled':''}>
+          ${['active','pending','inactive','suspended'].map(s=>`<option value="${s}" ${u.status===s?'selected':''}>${UST_TH[s]}</option>`).join('')}
+        </select></div>` : ''}
+      </div>
+      ${!isEdit ? `<div class="f-group"><label>รหัสผ่านเริ่มต้น * (อย่างน้อย 6 ตัวอักษร)</label><input id="ufPass" type="password" autocomplete="new-password"></div>` : ''}
+      <p style="font-size:11px;color:var(--muted);margin-top:8px">ข้อมูลถูกบันทึกลงฐาน <b>pacific_mng.users</b> โดยตรง — ผู้ใช้สามารถเข้าสู่ระบบทุกแอปของ MNG Hub ได้ทันที${isEdit&&u.authId===meId?' · <b>หมายเหตุ:</b> เปลี่ยนสถานะ/สิทธิ์ของตัวเองไม่ได้ (server บล็อกไว้กันหลงล็อก)':''}</p>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="ufSave">${isEdit?'บันทึกการแก้ไข':'สร้างผู้ใช้'}</button></div>`);
+  $('#ufSave').onclick = async ()=>{
+    const body = {
+      name:  $('#ufName').value.trim(),
+      email: $('#ufEmail').value.trim(),
+      phone: $('#ufPhone').value.trim(),
+      role:  $('#ufRole').value,
+    };
+    if(!body.name)  return toast('กรุณากรอกชื่อ','warn');
+    if(!body.email) return toast('กรุณากรอกอีเมล','warn');
+    if(isEdit){ body.status = $('#ufStatus')?.value; }
+    else {
+      body.password = $('#ufPass').value;
+      if(body.password.length < 6) return toast('รหัสผ่านอย่างน้อย 6 ตัวอักษร','warn');
+    }
+    const btn = $('#ufSave'); btn.disabled = true; btn.textContent = 'กำลังบันทึก…';
+    try {
+      if(isEdit) await Remote.req('/users/' + u.authId, { method:'PATCH', body });
+      else       await Remote.req('/users', { method:'POST', body });
+      closeModal();
+      toast(isEdit ? 'บันทึกผู้ใช้แล้ว ✓' : `สร้างผู้ใช้ <b>${esc(body.name)}</b> สำเร็จ — login ได้ทันที ✓`, 'ok');
+      await loadAuthUsers(true);
+    } catch(e){
+      toast(e.message || 'บันทึกไม่สำเร็จ', 'error');
+      btn.disabled = false; btn.textContent = isEdit ? 'บันทึกการแก้ไข' : 'สร้างผู้ใช้';
+    }
+  };
+}
+
+function openUserPass(u){
+  openModal(`
+    <div class="modal-head"><h3>🔑 รีเซ็ตรหัสผ่าน — ${esc(u.name)}</h3><button class="modal-x" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="f-group"><label>รหัสผ่านใหม่ * (อย่างน้อย 6 ตัวอักษร)</label><input id="upPass" type="password" autocomplete="new-password"></div>
+      <div class="f-group"><label>ยืนยันรหัสผ่านใหม่ *</label><input id="upPass2" type="password" autocomplete="new-password"></div>
+      <p style="font-size:11px;color:var(--muted)">บันทึกแล้ว session ทั้งหมดของ ${esc(u.name)} จะถูกเด้งออก ต้อง login ด้วยรหัสใหม่เท่านั้น</p>
+    </div>
+    <div class="modal-foot"><button class="btn" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="upSet">ตั้งรหัสใหม่</button></div>`);
+  $('#upSet').onclick = async ()=>{
+    const p1 = $('#upPass').value, p2 = $('#upPass2').value;
+    if(p1.length < 6) return toast('รหัสผ่านอย่างน้อย 6 ตัวอักษร','warn');
+    if(p1 !== p2)     return toast('รหัสผ่านยืนยันไม่ตรงกัน','warn');
+    const btn = $('#upSet'); btn.disabled = true;
+    try {
+      await Remote.req('/users/' + u.authId + '/password', { method:'POST', body:{ password: p1 } });
+      closeModal(); toast(`ตั้งรหัสผ่านใหม่ให้ <b>${esc(u.name)}</b> แล้ว ✓ (เด้ง session เก่าออกแล้ว)`, 'ok');
+      await loadAuthUsers(true);
+    } catch(e){ toast(e.message || 'ไม่สำเร็จ', 'error'); btn.disabled = false; }
+  };
+}
+
+function toggleAuthUser(u){
+  const toSuspend = u.status === 'active';
+  const next = toSuspend ? 'suspended' : 'active';
+  confirmDlg(
+    toSuspend ? `ระงับการใช้งาน ${u.name}?` : `เปิดใช้งาน ${u.name}?`,
+    toSuspend ? `${esc(u.name)} จะ login ไม่ได้ทันที และ session ปัจจุบันจะถูกเด้งออก` : `${esc(u.name)} จะกลับมา login ได้เหมือนเดิม`,
+    async ()=>{
+      try {
+        await Remote.req('/users/' + u.authId, { method:'PATCH', body:{ status: next } });
+        toast((toSuspend?'ระงับ ⚠ ':'เปิดใช้งาน ✓ ') + esc(u.name), toSuspend?'warn':'ok');
+        await loadAuthUsers(true);
+      } catch(e){ toast(e.message || 'ไม่สำเร็จ', 'error'); }
+    },
+    toSuspend ? 'ระงับ' : 'เปิดใช้งาน');
+}
+
+async function saveSelfPass(){
+  const cur = $('#pwCur')?.value || '', nw = $('#pwNew')?.value || '', nw2 = $('#pwNew2')?.value || '';
+  if(!cur) return toast('กรอกรหัสผ่านปัจจุบันด้วย','warn');
+  if(nw.length < 6) return toast('รหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร','warn');
+  if(nw !== nw2) return toast('รหัสผ่านใหม่ยืนยันไม่ตรงกัน','warn');
+  try {
+    await Remote.req('/users/me/password', { method:'POST', body:{ current: cur, password: nw } });
+    $('#pwCur').value = $('#pwNew').value = $('#pwNew2').value = '';
+    toast('เปลี่ยนรหัสผ่านของคุณแล้ว ✓ — session อื่นถ้ามีจะถูกเด้งออก','ok');
+  } catch(e){ toast(e.message || 'เปลี่ยนไม่สำเร็จ', 'error'); }
 }
 
 /* ---------- boot ---------- */

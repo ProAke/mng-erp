@@ -35,6 +35,13 @@ async function middleware(req, res, next) {
       'SELECT user_id, name, email, role FROM erp_sessions WHERE token = ? AND expires_at > NOW() LIMIT 1', [token]);
     if (!rows.length) return res.status(401).json({ error: 'session_expired' });
     req.user = rows[0];
+    // เช็คสดจาก auth DB ทุก request — ระงับ/ลดสิทธิ์แล้วมีผลทันที
+    const [u] = await authPool.query('SELECT status, role, name FROM users WHERE id = ? LIMIT 1', [rows[0].user_id]);
+    if (!u.length)  return res.status(403).json({ error: 'account_removed' });
+    if (u[0].status !== 'active') return res.status(403).json({ error: 'บัญชีนี้ถูกระงับการใช้งาน' });
+    req.user.role = u[0].role;
+    req.user.name = u[0].name;
+    req.token = token;
     next();
   } catch (e) {
     res.status(503).json({ error: 'db_unavailable' });
