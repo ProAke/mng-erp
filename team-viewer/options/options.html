@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Team Viewer — Options</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 24px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    h1 { font-size: 20px; margin-bottom: 16px; }
+    .card {
+      background: #1e293b;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .card h2 { font-size: 14px; margin-bottom: 12px; color: #94a3b8; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 12px; color: #64748b; margin-bottom: 4px; }
+    .field input, .field select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 13px;
+    }
+    .field input:focus, .field select:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #334155; }
+    .actions { display: flex; gap: 8px; margin-top: 16px; }
+    .info { font-size: 11px; color: #475569; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h1>⚙️ Team Viewer — Settings</h1>
+
+  <div class="card">
+    <h2>Connection</h2>
+    <div class="field">
+      <label>Server URL</label>
+      <input type="url" id="server-url" placeholder="https://mng.uarea.in" />
+    </div>
+    <div class="field">
+      <label>API Key</label>
+      <input type="password" id="api-key" placeholder="Enter API key..." />
+    </div>
+    <div class="info">เชื่อมต่อกับ MNG ERP server เพื่อซิงค์ข้อมูลทีม</div>
+  </div>
+
+  <div class="card">
+    <h2>Notifications</h2>
+    <div class="field">
+      <label>
+        <input type="checkbox" id="notify-commands" checked />
+        แจ้งเตือนเมื่อมีคำสั่งใหม่
+      </label>
+    </div>
+    <div class="field">
+      <label>
+        <input type="checkbox" id="notify-screen" checked />
+        แจ้งเตือนเมื่อมีการแชร์หน้าจอ
+      </label>
+    </div>
+    <div class="field">
+      <label>
+        <input type="checkbox" id="notify-join" />
+        แจ้งเตือนเมื่อมีคนเข้าร่วม
+      </label>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Team</h2>
+    <div class="field">
+      <label>Your Name</label>
+      <input type="text" id="your-name" placeholder="ชื่อของคุณ..." />
+    </div>
+    <div class="field">
+      <label>Your Role</label>
+      <select id="your-role">
+        <option value="admin">Admin</option>
+        <option value="developer">Developer</option>
+        <option value="designer">Designer</option>
+        <option value="tester">Tester</option>
+        <option value="viewer">Viewer</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-primary" id="save-btn">Save</button>
+    <button class="btn btn-ghost" id="reset-btn">Reset</button>
+    <button class="btn btn-danger" id="clear-log-btn">Clear Log</button>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

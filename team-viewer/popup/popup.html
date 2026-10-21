@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Team Viewer</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 360px;
+      min-height: 480px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 13px;
+    }
+    .header {
+      background: linear-gradient(135deg, #1e293b, #334155);
+      padding: 16px;
+      border-bottom: 1px solid #475569;
+    }
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header .status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      font-size: 11px;
+      color: #94a3b8;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .section {
+      padding: 12px 16px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+    .member {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      background: #1e293b;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .member:hover { background: #334155; }
+    .member-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: #3b82f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .member-info { flex: 1; min-width: 0; }
+    .member-name { font-weight: 500; }
+    .member-role { font-size: 11px; color: #94a3b8; }
+    .member-status {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+    .member-status.online { background: #166534; color: #bbf7d0; }
+    .member-status.offline { background: #374151; color: #9ca3af; }
+    .member-status.busy { background: #92400e; color: #fde68a; }
+    .add-member {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .add-member input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 12px;
+    }
+    .add-member input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+    .btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-ghost { background: transparent; color: #94a3b8; border: 1px solid #334155; }
+    .btn-ghost:hover { background: #1e293b; }
+    .btn-sm { padding: 4px 8px; font-size: 11px; }
+    .tabs-list {
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .tab-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .tab-item:hover { background: #1e293b; }
+    .tab-item img { width: 16px; height: 16px; }
+    .tab-item .tab-title {
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .command-bar {
+      display: flex;
+      gap: 6px;
+    }
+    .command-bar input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      background: #0f172a;
+      color: #e2e8f0;
+      font-size: 13px;
+    }
+    .command-bar input:focus {
+      outline: none;
+      border-color: #3b82f6;
+    }
+    .log-list {
+      max-height: 100px;
+      overflow-y: auto;
+      font-size: 11px;
+    }
+    .log-item {
+      padding: 4px 0;
+      border-bottom: 1px solid #1e293b;
+      color: #94a3b8;
+    }
+    .log-item:last-child { border-bottom: none; }
+    .log-time { color: #475569; margin-right: 6px; }
+    .empty {
+      text-align: center;
+      padding: 16px;
+      color: #475569;
+      font-size: 12px;
+    }
+    .actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>👁️ Team Viewer</h1>
+    <div class="status">
+      <div class="status-dot"></div>
+      <span>Connected · MNG ERP</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Team Members</div>
+    <div id="team-list"></div>
+    <div class="add-member">
+      <input type="text" id="new-member-name" placeholder="ชื่อ..." />
+      <input type="text" id="new-member-role" placeholder="บทบาท..." style="width:80px" />
+      <button class="btn btn-primary btn-sm" id="add-member-btn">เพิ่ม</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Quick Commands</div>
+    <div class="command-bar">
+      <input type="text" id="command-input" placeholder="พิมพ์คำสั่ง..." />
+      <button class="btn btn-primary" id="send-command-btn">ส่ง</button>
+    </div>
+    <div class="actions" style="margin-top:8px">
+      <button class="btn btn-ghost btn-sm" data-cmd="ดูหน้าจอ">🖥️ Screen</button>
+      <button class="btn btn-ghost btn-sm" data-cmd="ส่งรายงาน">📋 Report</button>
+      <button class="btn btn-ghost btn-sm" data-cmd="เข้าร่วมประชุม">📞 Meeting</button>
+      <button class="btn btn-ghost btn-sm" data-cmd="แชร์ไฟล์">📎 Share</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Screen Share</div>
+    <div class="actions">
+      <button class="btn btn-primary btn-sm" id="start-share-btn">▶️ เริ่มแชร์</button>
+      <button class="btn btn-danger btn-sm" id="stop-share-btn">⏹️ หยุด</button>
+      <button class="btn btn-ghost btn-sm" id="capture-btn">📸 จับภาพ</button>
+    </div>
+    <div id="share-status" style="margin-top:8px;font-size:11px;color:#64748b"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Open Tabs</div>
+    <div class="tabs-list" id="tabs-list"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Activity Log</div>
+    <div class="log-list" id="log-list"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
