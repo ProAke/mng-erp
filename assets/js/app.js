@@ -15,7 +15,7 @@ const Remote = {
       headers: { 'Content-Type':'application/json', ...(this.token?{Authorization:'Bearer '+this.token}:{}) },
       body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
-    if(r.status===401){ App.forceLogin('เซสชันหมดอายุ — กรุณาเข้าสู่ระบบใหม่'); throw new Error('401'); }
+    if(r.status===401 && !opts._skipAuthGuard){ App.forceLogin('เซสชันหมดอายุ — กรณาเข้าสู่ระบบใหม่'); throw new Error('401'); }
     const d = await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(d.detail || d.error || ('HTTP '+r.status));
     return d;
@@ -42,6 +42,13 @@ const Remote = {
   async refreshAll(){                // refetch bootstrap (after CREATE — need real ids)
     if(!this.on) return;
     try { Store.hydrate(await this.req('/bootstrap')); App.refresh(); } catch {}
+  },
+  async logout(){
+    const t = this.token;
+    try { await this.req('/auth/logout', {method:'POST', _skipAuthGuard:true}); } catch {}
+    this.token = null; this.user = null;
+    localStorage.removeItem('mng_token');
+    localStorage.removeItem('mng_erp_token');
   },
 };
 
@@ -435,12 +442,38 @@ const App = {
           if(Remote.on){ toast('ข้อมูลจริงอยู่ใน MariaDB — รีเซ็ตผ่าน seed ฝั่งเซิร์ฟเวอร์ (npm run seed)','warn'); break; }
           confirmDlg('รีเซ็ตข้อมูลตัวอย่าง','ข้อมูลทั้งหมดที่แก้ไขจะหายและกลับเป็นชุดตัวอย่างเริ่มต้น ยืนยัน?', ()=>{ localStorage.removeItem(Store.KEY); location.reload(); }, 'รีเซ็ต'); break;
         case 'logout':
-          if(Remote.on){ Remote.logout().finally(()=>location.reload()); }
-          else toast('โหมดสาธิต — ยังเข้าสู่ระบบอยู่','warn'); break;
+          doLogout().catch(()=>location.replace(location.pathname + '#/login'));
+          break;
       }
     });
   },
 };
+
+/* ---------- logout ---------- */
+async function doLogout(){
+  const tok = Remote.token;
+  // แจ้งเซิร์ฟเวอร์ลบ session ก่อน (รอให้จบ — server เคลียร์ก่อน client)
+  if(tok){
+    try {
+      await fetch('/api/auth/logout', {
+        method:'POST',
+        headers:{'Content-Type':'application/json', Authorization:'Bearer '+tok},
+      });
+    } catch {}
+  }
+  // ล้าง local ทั้งหมด
+  Remote.token = null; Remote.user = null; Remote.on = false;
+  localStorage.removeItem('mng_token');
+  localStorage.removeItem('mng_erp_token');
+  // รีเซ็ต UI state ฝั่ง client
+  $('#appShell').style.display = 'none';
+  closeModal();
+  Store.ui = null;
+  Store.data = null;
+  // เปลี่ยนหน้าแบบบังคับ (ไม่พึ่ง hashchange — hash เดิมมีอยู่แล้วจะไม่ยิง)
+  const base = location.pathname.replace(/\/$/, '');
+  location.assign(base + '/?_t=' + Date.now());
+}
 
 /* ---------- calendar nav helpers ---------- */
 function shiftCal(dir){
