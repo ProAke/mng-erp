@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Security scan (npm audit)
+        run: |
+          npm audit --audit-level=moderate || echo "Vulnerabilities found but continuing"
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test
+          MYSQL_DATABASE: test_pacific_mng
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run seed on test DB
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: root
+          DB_PASSWORD: test
+          WORK_DB: test_pacific_mngworks
+          AUTH_DB: test_pacific_mng
+        run: |
+          npm run seed:test
+      - name: Run unit & integration tests
+        env:
+          SESSION_SECRET: test-secret-key-for-ci
+          AUTH_DB_HOST: 127.0.0.1
+          AUTH_DB_USER: root
+          AUTH_DB_PASSWORD: test
+          WORK_DB_HOST: 127.0.0.1
+          WORK_DB_USER: root
+          WORK_DB_PASSWORD: test
+        run: npm test
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [security, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: |
+            server/public/
+            server/views/
+            assets/
+          retention-days: 7
