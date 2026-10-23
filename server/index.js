@@ -36,6 +36,7 @@ app.post('/api/auth/logout', async (req, res) => {
 
 /* ---------- protected API ---------- */
 app.use('/api/users', auth.middleware, require('./users'));
+app.use('/api/drive', auth.middleware, require('./drive-routes'));
 app.use('/api', auth.middleware, api);
 
 /* ---------- static SPA ---------- */
