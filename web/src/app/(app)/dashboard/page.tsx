@@ -1,6 +1,6 @@
 'use client'
 
-import { useApp, useProjects, useTasks, useInvoices } from '@/lib/stores/app'
+import { useApp, useProjects, useTasks, useInvoices, useActivity } from '@/lib/stores/app'
 import { useAuth } from '@/lib/stores/auth'
 
 export default function DashboardPage() {
@@ -9,6 +9,7 @@ export default function DashboardPage() {
   const projects = useProjects()
   const tasks = useTasks()
   const invoices = useInvoices()
+  const activity = useActivity()
 
   if (loading && !data) {
     return (
@@ -52,38 +53,57 @@ export default function DashboardPage() {
         <StatCard label="บิลค้างชำระ" value={unpaid.length} tone="red" />
       </section>
 
-      {/* projects */}
-      <section className="rounded-xl bg-slate-900 border border-slate-800 p-5">
-        <h2 className="text-sm font-medium text-slate-300 mb-4">โปรเจกต์ที่กำลังทำ</h2>
-        {projects.length === 0 ? (
-          <p className="text-sm text-slate-600">ยังไม่มีโปรเจกต์</p>
-        ) : (
-          <div className="space-y-3">
-            {projects.slice(0, 6).map((p: any) => {
-              const progress = Number(p.progress ?? 0)
-              return (
-                <div key={p.id} className="flex items-center gap-4">
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ background: p.color || '#64748b' }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between gap-3">
-                      <span className="text-sm text-slate-200 truncate">{p.short || p.name}</span>
-                      <span className="text-xs text-slate-500 shrink-0">{progress}%</span>
-                    </div>
-                    <div className="mt-1.5 h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-amber-500 transition-all"
-                        style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
-                      />
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* projects */}
+        <div className="rounded-xl bg-slate-900 border border-slate-800 p-5">
+          <h2 className="text-sm font-medium text-slate-300 mb-4">โปรเจกต์ที่กำลังทำ</h2>
+          {projects.length === 0 ? (
+            <p className="text-sm text-slate-600">ยังไม่มีโปรเจกต์</p>
+          ) : (
+            <div className="space-y-3">
+              {projects.slice(0, 6).map((p: any) => {
+                const progress = Number(p.progress ?? 0)
+                return (
+                  <div key={p.id} className="flex items-center gap-4">
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ background: p.color || '#64748b' }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="text-sm text-slate-200 truncate">{p.short || p.name}</span>
+                        <span className="text-xs text-slate-500 shrink-0">{progress}%</span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-amber-500 transition-all"
+                          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* activity */}
+        <div className="rounded-xl bg-slate-900 border border-slate-800 p-5">
+          <h2 className="text-sm font-medium text-slate-300 mb-4">กิจกรรมล่าสุด</h2>
+          {activity.length === 0 ? (
+            <p className="text-sm text-slate-600">ยังไม่มีกิจกรรม</p>
+          ) : (
+            <ul className="space-y-2">
+              {activity.slice(0, 8).map((a: any, i: number) => (
+                <li key={i} className="flex items-start gap-3 text-sm">
+                  <span className="text-xs text-slate-600 shrink-0 mt-0.5 w-24 truncate">{a.at}</span>
+                  <span className="text-slate-300" dangerouslySetInnerHTML={{ __html: a.text }} />
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
 
       {/* tasks due */}
