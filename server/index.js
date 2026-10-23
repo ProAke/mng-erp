@@ -39,17 +39,17 @@ app.use('/api/users', auth.middleware, require('./users'));
 app.use('/api/drive', auth.middleware, require('./drive-routes'));
 app.use('/api', auth.middleware, api);
 
-/* ---------- static SPA ---------- */
-const root = path.join(__dirname, '..');
-// no-cache ทุกไฟล์ — ป้องกัน browser cache ไฟล์เก่า (เดปลอยแล้วยังใช้ app.js เก่า)
+/* ---------- static (Next.js static export) ---------- */
+const root = path.join(__dirname, 'public');
+// no-cache ทุกไฟล์ — ป้องกัน browser cache ไฟล์เก่า
 const noCache = (_res, p) => {
   _res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   _res.setHeader('Pragma', 'no-cache');
   _res.setHeader('Expires', '0');
 };
-app.use(express.static(root, { extensions: ['html'], setHeaders: noCache }));
-// catch-all → SPA; **ยกเว้น** /hub และ /workspace (ของ MNG Hub เดิม — อย่าเบ่งเส้นทาง)
-app.get(/^\/(?!api\/|hub(?:\/|$)|workspace(?:\/|$)).*/, (_req, res) => {
+app.use(express.static(root, { extensions: ['html'], index: 'index.html', setHeaders: noCache }));
+// catch-all → Next.js index.html (client-side routing); ยกเว้น api/hub/workspace/_next/static
+app.get(/^\/(?!api\/|hub(?:\/|$)|workspace(?:\/|$)|_next\/).*/, (_req, res) => {
   noCache(res);
   res.sendFile(path.join(root, 'index.html'));
 });
