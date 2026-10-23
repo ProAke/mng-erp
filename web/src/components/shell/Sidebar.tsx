@@ -64,8 +64,12 @@ export function Sidebar() {
 
       <div className="border-t border-slate-800 p-3">
         <div className="flex items-center gap-2.5 px-1 mb-2">
-          <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-medium text-slate-300">
-            {user?.name?.charAt(0) || '?'}
+          <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-medium text-slate-300 overflow-hidden">
+            {user?.avatar ? (
+              <img src={user.avatar} alt="avatar" className="w-full h-full object-cover" />
+            ) : (
+              user?.name?.charAt(0) || '?'
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="text-sm text-slate-200 truncate">{user?.name || 'ผู้ใช้'}</div>
