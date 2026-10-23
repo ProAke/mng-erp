@@ -67,13 +67,16 @@ router.post('/', async (req, res) => {
   if (!guardAdmin(req, res)) return;
   try {
     const b = req.body || {};
+    if (!b.email || typeof b.email !== 'string') return res.status(400).json({ error: 'ต้องระบุอีเมล' });
+    if (!b.role || !VALID_ROLES.includes(b.role)) return res.status(400).json({ error: `ต้องเลือกสิทธิ์: ${VALID_ROLES.join(', ')}` });
     const email = String(b.email || '').trim().toLowerCase();
     const name  = String(b.name || '').trim();
     const pw    = String(b.password || '');
     if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'รูปแบบอีเมลไม่ถูกต้อง' });
     if (!name)                return res.status(400).json({ error: 'กรุณากรอกชื่อ' });
-    if (pw.length < 6)        return res.status(400).json({ error: 'รหัสผ่านอย่างน้อย 6 ตัวอักษร' });
-    const role = VALID_ROLES.includes(b.role) ? b.role : 'user';
+    if (!pw || pw === 'null' || pw === 'undefined' || pw.length < 6)
+      return res.status(400).json({ error: 'รหัสผ่านอย่างน้อย 6 ตัวอักษร (ต้องตั้งให้ใช้งาน)' });
+    const role = b.role;
     if (role === 'super_admin' && !isSuper(req))
       return res.status(403).json({ error: 'เฉพาะ Super Admin เท่านั้นที่สร้าง Super Admin ได้' });
     const hash = await bcrypt.hash(pw, 12);
