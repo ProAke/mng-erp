@@ -12,6 +12,7 @@ export const userSchema = z.object({
   name: z.string(),
   email: z.string(),
   role: z.string(),
+  avatar: z.string().nullable().optional(),
 })
 
 export const bootstrapSchema = z.object({
@@ -20,6 +21,7 @@ export const bootstrapSchema = z.object({
     name: z.string(),
     email: z.string(),
     role: z.string(),
+    avatar: z.string().nullable().optional(),
   }),
   team: z.array(z.any()),
   projects: z.array(z.any()),
@@ -159,6 +161,10 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ oldPassword, newPassword }),
       }),
+    updateAvatar: (avatar: string) =>
+      request('/users/me/avatar', { method: 'PATCH', body: JSON.stringify({ avatar }) }),
+    adminSetAvatar: (id: number | string, avatar: string) =>
+      request(`/users/${id}/avatar`, { method: 'PATCH', body: JSON.stringify({ avatar }) }),
   },
 }
 

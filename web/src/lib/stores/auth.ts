@@ -11,6 +11,7 @@ export interface SessionUser {
   name: string
   email: string
   role: string
+  avatar?: string | null
 }
 
 interface AuthState {
@@ -54,6 +55,7 @@ export const useAuth = create<AuthState>((set) => ({
         name: data.user.name,
         email: data.user.email,
         role: data.user.role,
+        avatar: data.user.avatar ?? null,
       }
       set({ user, isAuthenticated: true })
       return user

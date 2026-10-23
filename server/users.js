@@ -23,7 +23,7 @@ async function userLog(req, text) {
 }
 const shape = r => ({
   id: 'u' + r.id, authId: r.id, email: r.email, name: r.name, phone: r.phone,
-  role: r.role, status: r.status, lastLogin: r.last_login_at, created: r.created_at,
+  role: r.role, status: r.status, avatar: r.avatar, lastLogin: r.last_login_at, created: r.created_at,
 });
 
 /* ---- self: เปลี่ยนรหัสผ่านของฉัน (ทุกคน / ต้องก่อน /:id) ---- */
@@ -46,10 +46,51 @@ router.post('/me/password', async (req, res) => {
   } catch (e) { console.error('[users/me/password]', e.message); res.status(500).json({ error: 'server_error' }); }
 });
 
-/* ---- ตัวตนปัจจุบัน (สดจาก auth DB ผ่าน middleware) ---- */
+/* ---- self: อัพเดตรูปโปรไฟล์ (URL หรือ base64 data URL) ---- */
+router.patch('/me/avatar', async (req, res) => {
+  try {
+    const url = String((req.body || {}).avatar || '').trim();
+    if (!url) return res.status(400).json({ error: 'กรุณาใส่ URL รูปหรือ base64 data URL' });
+    // ตรวจสอบว่าเป็น URL หรือ data URL ที่ถูกต้อง
+    const isDataUrl = /^data:image\/(png|jpe?g|gif|webp);base64,/.test(url);
+    const isHttpUrl = /^https?:\/\/.+/.test(url);
+    if (!isDataUrl && !isHttpUrl)
+      return res.status(400).json({ error: 'ต้องเป็น URL (https://...) หรือ base64 data URL (data:image/...;base64,...)' });
+    // จำกัดขนาด base64 (~2MB)
+    if (isDataUrl && url.length > 2_800_000)
+      return res.status(413).json({ error: 'รูปใหญ่เกินไป (สูงสุด ~2MB)' });
+    await authPool.query('UPDATE users SET avatar = ? WHERE id = ?', [url, req.user.user_id]);
+    await userLog(req, 'เปลี่ยนรูปโปรไฟล์');
+    res.json({ ok: true, avatar: url });
+  } catch (e) { console.error('[users/me/avatar]', e.message); res.status(500).json({ error: 'server_error' }); }
+});
+
+/* ---- admin: เปลี่ยนรูปโปรไฟล์ให้ user อื่น ---- */
+router.patch('/:id/avatar', async (req, res) => {
+  if (!guardAdmin(req, res)) return;
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id) return res.status(400).json({ error: 'bad_id' });
+    const url = String((req.body || {}).avatar || '').trim();
+    if (!url) return res.status(400).json({ error: 'กรุณาใส่ URL รูปหรือ base64 data URL' });
+    const isDataUrl = /^data:image\/(png|jpe?g|gif|webp);base64,/.test(url);
+    const isHttpUrl = /^https?:\/\/.+/.test(url);
+    if (!isDataUrl && !isHttpUrl)
+      return res.status(400).json({ error: 'ต้องเป็น URL (https://...) หรือ base64 data URL (data:image/...;base64,...)' });
+    if (isDataUrl && url.length > 2_800_000)
+      return res.status(413).json({ error: 'รูปใหญ่เกินไป (สูงสุด ~2MB)' });
+    const [t] = await authPool.query('SELECT id, name FROM users WHERE id = ?', [id]);
+    if (!t.length) return res.status(404).json({ error: 'ไม่พบผู้ใช้' });
+    await authPool.query('UPDATE users SET avatar = ? WHERE id = ?', [url, id]);
+    await userLog(req, `เปลี่ยนรูปโปรไฟล์ให้ <b>${esc(t[0].name)}</b>`);
+    res.json({ ok: true, avatar: url });
+  } catch (e) { console.error('[users/avatar]', e.message); res.status(500).json({ error: 'server_error' }); }
+});
+
+/* ---- self: ตัวตนปัจจุบัน (สดจาก auth DB ผ่าน middleware) ---- */
 router.get('/me', (req, res) => {
   const u = req.user;
-  res.json({ id: 'u' + u.user_id, authId: u.user_id, name: u.name, email: u.email, role: u.role });
+  res.json({ id: 'u' + u.user_id, authId: u.user_id, name: u.name, email: u.email, role: u.role, avatar: u.avatar });
 });
 
 /* ---- admin: รายชื่อผู้ใช้ ---- */
@@ -57,7 +98,7 @@ router.get('/', async (req, res) => {
   if (!guardAdmin(req, res)) return;
   try {
     const [rows] = await authPool.query(
-      'SELECT id, email, name, phone, role, status, last_login_at, created_at FROM users ORDER BY id');
+      'SELECT id, email, name, phone, role, status, avatar, last_login_at, created_at FROM users ORDER BY id');
     res.json(rows.map(shape));
   } catch (e) { console.error('[users/list]', e.message); res.status(500).json({ error: 'server_error' }); }
 });
@@ -97,7 +138,7 @@ router.patch('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!id) return res.status(400).json({ error: 'bad_id' });
-    const [t] = await authPool.query('SELECT id, email, name, role, status FROM users WHERE id = ?', [id]);
+    const [t] = await authPool.query('SELECT id, email, name, role, status, avatar FROM users WHERE id = ?', [id]);
     if (!t.length) return res.status(404).json({ error: 'ไม่พบผู้ใช้' });
     const target = t[0];
     const self = target.id === req.user.user_id;
@@ -118,6 +159,7 @@ router.patch('/:id', async (req, res) => {
       if (em !== target.email) { sets.push('email = ?'); vals.push(em); changes.push('อีเมล'); }
     }
     if (b.phone !== undefined) { sets.push('phone = ?'); vals.push(b.phone ? String(b.phone).trim() : null); changes.push('เบอร์'); }
+    if (b.avatar !== undefined) { sets.push('avatar = ?'); vals.push(b.avatar ? String(b.avatar).trim() : null); changes.push('รูปโปรไฟล์'); }
     if (b.role != null && b.role !== target.role) {
       if (!VALID_ROLES.includes(b.role)) return res.status(400).json({ error: 'สิทธิ์ไม่ถูกต้อง' });
       if (self) return res.status(400).json({ error: 'เปลี่ยนสิทธิ์ของตัวเองไม่ได้ — ให้ Super Admin คนอื่นช่วย' });
