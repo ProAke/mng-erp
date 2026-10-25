@@ -42,7 +42,9 @@ app.use('/api', auth.middleware, api);
 /* ---------- static SPA ---------- */
 const root = path.join(__dirname, 'public');
 // no-cache ทุกไฟล์ — ป้องกัน browser cache ไฟล์เก่า (เดปลอยแล้วยังใช้ app.js เก่า)
-const noCache = (_req, res) => {
+// setHeaders signature = (res, path, stat) — res คืออาร์กูเมนต์แรกเท่านั้น
+// (เคย rename _res→res จนพังเพราะชื่อให้กับ path ของ send)
+const noCache = (res, _path, _stat) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');

@@ -1,7 +1,13 @@
 // lib/stores/app.ts
 // Application data store — ข้อมูลจาก /api/bootstrap (one round-trip)
+//
+// ⚠️ selector ต้องคืนค่าที่ referentially stable เสมอ
+// ถ้าเขียน `s.data?.projects ?? []` จะได้ array ใหม่ทุกครั้งที่เรียก
+// → zustand v5 เห็นว่า state เปลี่ยนทุก render → React error #185 (infinite loop)
+// วิธีแก่: เก็บ array ว่างไว้เป็นค่าคงที่ + ใช้ useShallow สำหรับ selector ที่คืน array
 
 import { create } from 'zustand'
+import { useShallow } from 'zustand/react/shallow'
 import { api, type Bootstrap } from '@/lib/api/client'
 
 interface AppState {
@@ -43,10 +49,14 @@ export const useApp = create<AppState>((set, get) => ({
 
 /* ---------- selectors ---------- */
 
-export const useProjects = () => useApp((s) => s.data?.projects ?? [])
-export const useTasks = () => useApp((s) => s.data?.tasks ?? [])
-export const useTeam = () => useApp((s) => s.data?.team ?? [])
-export const useClients = () => useApp((s) => s.data?.clients ?? [])
-export const useEvents = () => useApp((s) => s.data?.events ?? [])
-export const useInvoices = () => useApp((s) => s.data?.invoices ?? [])
-export const useActivity = () => useApp((s) => s.data?.activity ?? [])
+// ค่าคงที่ (stable reference) ใช้เป็นค่า default — ห้ามประกาศ `?? []` ใน selector
+const EMPTY: any[] = []
+
+// selector ที่คืน array ต้องครอบด้วย useShallow ไม่งั้นได้ reference ใหม่ทุกครั้บ
+export const useProjects = () => useApp(useShallow((s) => s.data?.projects ?? EMPTY))
+export const useTasks = () => useApp(useShallow((s) => s.data?.tasks ?? EMPTY))
+export const useTeam = () => useApp(useShallow((s) => s.data?.team ?? EMPTY))
+export const useClients = () => useApp(useShallow((s) => s.data?.clients ?? EMPTY))
+export const useEvents = () => useApp(useShallow((s) => s.data?.events ?? EMPTY))
+export const useInvoices = () => useApp(useShallow((s) => s.data?.invoices ?? EMPTY))
+export const useActivity = () => useApp(useShallow((s) => s.data?.activity ?? EMPTY))
