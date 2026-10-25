@@ -130,8 +130,8 @@ export default function ClientsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">ลูกค้า (CRM) · {clients.length} ราย</h1>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <h1 className="text-2xl font-bold text-ink">ลูกค้า (CRM) · {clients.length} ราย</h1>
+          <p className="text-sm text-muted mt-0.5">
             บริหารข้อมูลติดต่อลูกค้า ประวัติโครงการ และมูลค่ารายรับสะสมรายองค์กร
           </p>
         </div>
@@ -139,7 +139,7 @@ export default function ClientsPage() {
         <button
           type="button"
           onClick={openCreate}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 px-3.5 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-violet hover:bg-violet-2 px-3.5 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
         >
           <Plus className="w-4 h-4" /> เพิ่มลูกค้าใหม่
         </button>
@@ -147,12 +147,12 @@ export default function ClientsPage() {
 
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+        <Search className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="ค้นหาชื่อบริษัท, ผู้ติดต่อ, เบอร์โทร, อีเมล…"
-          className="w-full rounded-xl bg-slate-900 border border-slate-800 pl-9 pr-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+          className="w-full rounded-xl bg-card border border-line pl-9 pr-3 py-2 text-sm text-ink placeholder-muted focus:outline-none focus:border-violet"
         />
       </div>
 
@@ -172,7 +172,7 @@ export default function ClientsPage() {
           return (
             <div
               key={c.id}
-              className="rounded-xl border border-slate-800 bg-slate-900 p-5 flex flex-col justify-between gap-4"
+              className="rounded-xl border border-line bg-card p-5 flex flex-col justify-between gap-4"
             >
               <div>
                 <div className="flex items-start justify-between gap-3">
@@ -184,57 +184,57 @@ export default function ClientsPage() {
                       {initials(c.short || c.name)}
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-white truncate">{c.name}</h3>
-                      <div className="text-xs text-slate-500">ลูกค้าตั้งแต่ {fmtDateThai(c.since)}</div>
+                      <h3 className="font-semibold text-ink truncate">{c.name}</h3>
+                      <div className="text-xs text-muted">ลูกค้าตั้งแต่ {fmtDateThai(c.since)}</div>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => openEdit(c)}
-                    className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+                    className="rounded-lg p-1.5 text-muted hover:bg-tint-1 hover:text-ink cursor-pointer"
                     title="แก้ไขลูกค้า"
                   >
                     <Edit3 className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="mt-4 space-y-1.5 text-xs text-slate-300">
+                <div className="mt-4 space-y-1.5 text-xs text-ink-2">
                   {c.contact && (
                     <div className="flex items-center gap-2">
-                      <User className="w-3.5 h-3.5 text-slate-500 shrink-0" /> {c.contact}
+                      <User className="w-3.5 h-3.5 text-muted shrink-0" /> {c.contact}
                     </div>
                   )}
                   {c.phone && (
                     <div className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" /> {c.phone}
+                      <Phone className="w-3.5 h-3.5 text-muted shrink-0" /> {c.phone}
                     </div>
                   )}
                   {c.email && (
                     <div className="flex items-center gap-2 truncate">
-                      <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" /> {c.email}
+                      <Mail className="w-3.5 h-3.5 text-muted shrink-0" /> {c.email}
                     </div>
                   )}
                   {c.addr && (
-                    <div className="flex items-start gap-2 text-slate-400">
-                      <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-2 text-muted">
+                      <MapPin className="w-3.5 h-3.5 text-muted shrink-0 mt-0.5" />
                       <span className="line-clamp-2">{c.addr}</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-800 text-xs">
+              <div className="grid grid-cols-3 gap-2 pt-3 border-t border-line text-xs">
                 <div>
-                  <div className="text-slate-500">โปรเจกต์</div>
-                  <div className="font-bold text-white mt-0.5">{projCount}</div>
+                  <div className="text-muted">โปรเจกต์</div>
+                  <div className="font-bold text-ink mt-0.5">{projCount}</div>
                 </div>
                 <div>
-                  <div className="text-slate-500">ชำระแล้ว</div>
-                  <div className="font-semibold text-emerald-300 mt-0.5 tabular-nums">{money(paidRevenue)}</div>
+                  <div className="text-muted">ชำระแล้ว</div>
+                  <div className="font-semibold text-mint mt-0.5 tabular-nums">{money(paidRevenue)}</div>
                 </div>
                 <div>
-                  <div className="text-slate-500">รอรับชำระ</div>
-                  <div className="font-semibold text-amber-300 mt-0.5 tabular-nums">{money(pendingRevenue)}</div>
+                  <div className="text-muted">รอรับชำระ</div>
+                  <div className="font-semibold text-violet mt-0.5 tabular-nums">{money(pendingRevenue)}</div>
                 </div>
               </div>
             </div>
@@ -242,7 +242,7 @@ export default function ClientsPage() {
         })}
 
         {filtered.length === 0 && (
-          <div className="col-span-full py-12 text-center text-sm text-slate-500">ไม่พบข้อมูลลูกค้า</div>
+          <div className="col-span-full py-12 text-center text-sm text-muted">ไม่พบข้อมูลลูกค้า</div>
         )}
       </div>
 
@@ -256,81 +256,81 @@ export default function ClientsPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
-              <label className="block text-xs text-slate-300 mb-1">ชื่อบริษัท / องค์กร *</label>
+              <label className="block text-xs text-ink-2 mb-1">ชื่อบริษัท / องค์กร *</label>
               <input
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="บริษัท ตัวอย่าง จำกัด"
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ชื่อย่อ</label>
+              <label className="block text-xs text-ink-2 mb-1">ชื่อย่อ</label>
               <input
                 value={form.short}
                 onChange={(e) => setForm({ ...form, short: e.target.value })}
                 placeholder="EXM"
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ชื่อผู้ติดต่อ</label>
+              <label className="block text-xs text-ink-2 mb-1">ชื่อผู้ติดต่อ</label>
               <input
                 value={form.contact}
                 onChange={(e) => setForm({ ...form, contact: e.target.value })}
                 placeholder="คุณสมชาย ใจดี"
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">เบอร์โทรศัพท์</label>
+              <label className="block text-xs text-ink-2 mb-1">เบอร์โทรศัพท์</label>
               <input
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 placeholder="02-xxx-xxxx"
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">อีเมล</label>
+              <label className="block text-xs text-ink-2 mb-1">อีเมล</label>
               <input
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 placeholder="contact@company.co.th"
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">วันที่เริ่มเป็นลูกค้า</label>
+              <label className="block text-xs text-ink-2 mb-1">วันที่เริ่มเป็นลูกค้า</label>
               <input
                 type="date"
                 value={form.since}
                 onChange={(e) => setForm({ ...form, since: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1">ที่อยู่สำหรับออกใบกำกับภาษี</label>
+            <label className="block text-xs text-ink-2 mb-1">ที่อยู่สำหรับออกใบกำกับภาษี</label>
             <textarea
               rows={2}
               value={form.addr}
               onChange={(e) => setForm({ ...form, addr: e.target.value })}
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1.5">สีป้ายองค์กร</label>
+            <label className="block text-xs text-ink-2 mb-1.5">สีป้ายองค์กร</label>
             <div className="flex flex-wrap gap-2">
               {TEAM_COLORS.map((col) => (
                 <button
@@ -347,7 +347,7 @@ export default function ClientsPage() {
           </div>
 
           {errMsg && (
-            <div className="rounded-lg bg-rose-500/10 border border-rose-500/30 px-3 py-2 text-xs text-rose-300">
+            <div className="rounded-lg bg-red-soft border border-red/30 px-3 py-2 text-xs text-red">
               {errMsg}
             </div>
           )}
@@ -358,7 +358,7 @@ export default function ClientsPage() {
                 type="button"
                 disabled={saving}
                 onClick={() => onDelete(editing)}
-                className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300 hover:bg-rose-500/20 cursor-pointer"
+                className="inline-flex items-center gap-1 rounded-lg border border-red/30 bg-red-soft px-3 py-2 text-xs text-red hover:bg-red-soft cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" /> ลบลูกค้า
               </button>
@@ -370,14 +370,14 @@ export default function ClientsPage() {
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="rounded-lg border border-slate-700 px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 cursor-pointer"
+                className="rounded-lg border border-line-2 px-4 py-2 text-xs text-ink-2 hover:bg-tint-1 cursor-pointer"
               >
                 ยกเลิก
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+                className="rounded-lg bg-violet hover:bg-violet-2 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
               >
                 {saving ? 'กำลังบันทึก…' : 'บันทึกข้อมูล'}
               </button>

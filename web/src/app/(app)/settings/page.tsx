@@ -371,8 +371,8 @@ export default function SettingsPage() {
   return (
     <div className="max-w-5xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">ตั้งค่า & จัดการผู้ใช้งาน</h1>
-        <p className="text-sm text-slate-400 mt-0.5">
+        <h1 className="text-2xl font-bold text-ink">ตั้งค่า & จัดการผู้ใช้งาน</h1>
+        <p className="text-sm text-muted mt-0.5">
           จัดการข้อมูลส่วนตัว สิทธิ์บัญชีผู้ใช้งานในระบบ และคลังโปรเจกต์ที่เก็บถาวร
         </p>
       </div>
@@ -381,8 +381,8 @@ export default function SettingsPage() {
         <div
           className={`rounded-xl px-4 py-3 text-sm border ${
             toast.tone === 'ok'
-              ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
-              : 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+              ? 'bg-mint-soft border-mint/30 text-mint'
+              : 'bg-red-soft border-red/30 text-red'
           }`}
         >
           {toast.text}
@@ -390,14 +390,14 @@ export default function SettingsPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+      <div className="flex flex-wrap gap-2 border-b border-line pb-3">
         <button
           type="button"
           onClick={() => selectTab('profile')}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition cursor-pointer ${
             tab === 'profile'
-              ? 'bg-amber-500 text-slate-950 font-semibold'
-              : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
+              ? 'bg-violet text-white shadow-sm font-semibold'
+              : 'bg-card text-ink-2 hover:bg-tint-1'
           }`}
         >
           <User className="w-4 h-4" /> โปรไฟล์ & รหัสผ่าน
@@ -408,8 +408,8 @@ export default function SettingsPage() {
           onClick={() => selectTab('users')}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition cursor-pointer ${
             tab === 'users'
-              ? 'bg-amber-500 text-slate-950 font-semibold'
-              : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
+              ? 'bg-violet text-white shadow-sm font-semibold'
+              : 'bg-card text-ink-2 hover:bg-tint-1'
           }`}
         >
           <Users className="w-4 h-4" /> จัดการผู้ใช้ระบบ (Admin)
@@ -420,8 +420,8 @@ export default function SettingsPage() {
           onClick={() => selectTab('system')}
           className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-medium transition cursor-pointer ${
             tab === 'system'
-              ? 'bg-amber-500 text-slate-950 font-semibold'
-              : 'bg-slate-900 text-slate-300 hover:bg-slate-800'
+              ? 'bg-violet text-white shadow-sm font-semibold'
+              : 'bg-card text-ink-2 hover:bg-tint-1'
           }`}
         >
           <SettingsIcon className="w-4 h-4" /> ระบบ & คลังโปรเจกต์
@@ -432,28 +432,28 @@ export default function SettingsPage() {
       {tab === 'profile' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Avatar & Identity */}
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-5">
-            <h2 className="font-semibold text-white">ข้อมูลบัญชีและรูปโปรไฟล์</h2>
+          <section className="rounded-2xl border border-line bg-card p-6 space-y-5">
+            <h2 className="font-semibold text-ink">ข้อมูลบัญชีและรูปโปรไฟล์</h2>
 
             <div className="flex items-center gap-4">
               {user?.avatar ? (
                 <img
                   src={user.avatar}
                   alt={user.name}
-                  className="w-20 h-20 rounded-full object-cover border-2 border-amber-500/40 shrink-0"
+                  className="w-20 h-20 rounded-full object-cover border-2 border-violet/30 shrink-0"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-amber-500/20 text-amber-300 font-bold text-2xl flex items-center justify-center shrink-0">
+                <div className="w-20 h-20 rounded-full bg-violet-soft text-violet font-bold text-2xl flex items-center justify-center shrink-0">
                   {initials(user?.name)}
                 </div>
               )}
 
               <div className="min-w-0">
-                <div className="text-lg font-bold text-white truncate">{user?.name}</div>
-                <div className="text-xs text-slate-400 truncate">{user?.email}</div>
+                <div className="text-lg font-bold text-ink truncate">{user?.name}</div>
+                <div className="text-xs text-muted truncate">{user?.email}</div>
                 <span
                   className={`inline-block mt-2 text-[11px] px-2.5 py-0.5 rounded-full border ${
-                    ROLE_META[user?.role ?? '']?.badge ?? 'border-slate-700 text-slate-300'
+                    ROLE_META[user?.role ?? '']?.badge ?? 'border-line-2 text-ink-2'
                   }`}
                 >
                   {ROLE_META[user?.role ?? '']?.label ?? user?.role}
@@ -462,7 +462,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2 pt-2">
-              <label className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 px-3.5 py-2 text-xs font-semibold text-slate-950 cursor-pointer">
+              <label className="inline-flex items-center gap-1.5 rounded-lg bg-violet hover:bg-violet-2 px-3.5 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer">
                 <Upload className="w-3.5 h-3.5" />
                 {savingAvatar ? 'กำลังอัปโหลด…' : 'อัปโหลดรูปจากเครื่อง'}
                 <input
@@ -479,26 +479,26 @@ export default function SettingsPage() {
                   type="button"
                   disabled={savingAvatar}
                   onClick={onClearAvatar}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300 hover:bg-rose-500/20 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red/30 bg-red-soft px-3 py-2 text-xs text-red hover:bg-red-soft cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> ลบรูป
                 </button>
               )}
             </div>
 
-            <form onSubmit={onSaveAvatarUrl} className="space-y-2 pt-2 border-t border-slate-800">
-              <label className="block text-xs text-slate-400">หรือวางลิงก์รูปภาพโดยตรง (https://...)</label>
+            <form onSubmit={onSaveAvatarUrl} className="space-y-2 pt-2 border-t border-line">
+              <label className="block text-xs text-muted">หรือวางลิงก์รูปภาพโดยตรง (https://...)</label>
               <div className="flex gap-2">
                 <input
                   value={avatarUrl.startsWith('data:') ? '' : avatarUrl}
                   onChange={(e) => setAvatarUrl(e.target.value)}
                   placeholder="https://example.com/avatar.jpg"
-                  className="flex-1 rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-white"
+                  className="flex-1 rounded-lg bg-bg-2 border border-line px-3 py-2 text-xs text-ink"
                 />
                 <button
                   type="submit"
                   disabled={savingAvatar}
-                  className="rounded-lg border border-slate-700 hover:bg-slate-800 px-3.5 py-2 text-xs text-slate-200 cursor-pointer"
+                  className="rounded-lg border border-line-2 hover:bg-tint-1 px-3.5 py-2 text-xs text-ink cursor-pointer"
                 >
                   บันทึกลิงก์
                 </button>
@@ -507,52 +507,52 @@ export default function SettingsPage() {
           </section>
 
           {/* Change Password */}
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="font-semibold text-white mb-1">เปลี่ยนรหัสผ่านของฉัน</h2>
-            <p className="text-xs text-slate-400 mb-4">
+          <section className="rounded-2xl border border-line bg-card p-6">
+            <h2 className="font-semibold text-ink mb-1">เปลี่ยนรหัสผ่านของฉัน</h2>
+            <p className="text-xs text-muted mb-4">
               อัปเดตรหัสผ่านบัญชี {user?.email} ในฐานข้อมูลยืนยันตัวตนโดยตรง
             </p>
 
             <form onSubmit={onChangePassword} className="space-y-3.5">
               <div>
-                <label className="block text-xs text-slate-300 mb-1">รหัสผ่านปัจจุบัน *</label>
+                <label className="block text-xs text-ink-2 mb-1">รหัสผ่านปัจจุบัน *</label>
                 <input
                   type="password"
                   required
                   value={pwForm.current}
                   onChange={(e) => setPwForm({ ...pwForm, current: e.target.value })}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-slate-300 mb-1">รหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร) *</label>
+                <label className="block text-xs text-ink-2 mb-1">รหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร) *</label>
                 <input
                   type="password"
                   required
                   minLength={4}
                   value={pwForm.next}
                   onChange={(e) => setPwForm({ ...pwForm, next: e.target.value })}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-slate-300 mb-1">ยืนยันรหัสผ่านใหม่ *</label>
+                <label className="block text-xs text-ink-2 mb-1">ยืนยันรหัสผ่านใหม่ *</label>
                 <input
                   type="password"
                   required
                   minLength={4}
                   value={pwForm.confirm}
                   onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
                 />
               </div>
 
               <button
                 type="submit"
                 disabled={savingPw}
-                className="inline-flex items-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-60 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+                className="inline-flex items-center gap-2 rounded-lg bg-violet hover:bg-violet-2 disabled:opacity-60 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
               >
                 <KeyRound className="w-4 h-4" />
                 {savingPw ? 'กำลังเปลี่ยนรหัสผ่าน…' : 'บันทึกรหัสผ่านใหม่'}
@@ -564,11 +564,11 @@ export default function SettingsPage() {
 
       {/* TAB 2: ADMIN USERS */}
       {tab === 'users' && (
-        <section className="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden">
-          <div className="p-5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+        <section className="rounded-2xl border border-line bg-card overflow-hidden">
+          <div className="p-5 border-b border-line flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="font-semibold text-white">บัญชีผู้ใช้งานระบบทั้งหมด ({users.length})</h2>
-              <p className="text-xs text-slate-400">
+              <h2 className="font-semibold text-ink">บัญชีผู้ใช้งานระบบทั้งหมด ({users.length})</h2>
+              <p className="text-xs text-muted">
                 เชื่อมกับตาราง users ของ MNG Hub / ERP ใช้ล็อกอินร่วมกันทั้งระบบ
               </p>
             </div>
@@ -576,7 +576,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={openCreateUser}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 px-3.5 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-violet hover:bg-violet-2 px-3.5 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
               >
                 <Plus className="w-4 h-4" /> เพิ่มผู้ใช้ใหม่
               </button>
@@ -584,16 +584,16 @@ export default function SettingsPage() {
           </div>
 
           {!allowAdmin ? (
-            <div className="p-8 text-center text-sm text-slate-400">
-              <ShieldCheck className="w-8 h-8 text-amber-400 mx-auto mb-2" />
+            <div className="p-8 text-center text-sm text-muted">
+              <ShieldCheck className="w-8 h-8 text-violet mx-auto mb-2" />
               เฉพาะผู้ดูแลระบบ (Super Admin / Admin) เท่านั้นที่สามารถจัดการบัญชีผู้ใช้ทั้งหมดได้
             </div>
           ) : loadingUsers ? (
-            <div className="p-8 text-center text-sm text-slate-400">กำลังโหลดรายชื่อผู้ใช้…</div>
+            <div className="p-8 text-center text-sm text-muted">กำลังโหลดรายชื่อผู้ใช้…</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-950/60 text-xs text-slate-400 border-b border-slate-800">
+                <thead className="bg-bg-2 text-xs text-muted border-b border-line">
                   <tr>
                     <th className="px-4 py-3">ผู้ใช้งาน</th>
                     <th className="px-4 py-3">อีเมล</th>
@@ -603,32 +603,32 @@ export default function SettingsPage() {
                     <th className="px-4 py-3 text-right">การจัดการ</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/70">
+                <tbody className="divide-y divide-line">
                   {users.map((u) => {
-                    const rMeta = ROLE_META[u.role] ?? { label: u.role, badge: 'border-slate-700 text-slate-300' }
+                    const rMeta = ROLE_META[u.role] ?? { label: u.role, badge: 'border-line-2 text-ink-2' }
                     const active = u.status === 'active'
                     return (
-                      <tr key={u.id} className="hover:bg-slate-800/30">
+                      <tr key={u.id} className="hover:bg-tint-1/30">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
                             {u.avatar ? (
                               <img
                                 src={u.avatar}
                                 alt={u.name}
-                                className="w-8 h-8 rounded-full object-cover border border-slate-700"
+                                className="w-8 h-8 rounded-full object-cover border border-line-2"
                               />
                             ) : (
-                              <div className="w-8 h-8 rounded-full bg-slate-800 text-amber-300 text-xs font-bold flex items-center justify-center">
+                              <div className="w-8 h-8 rounded-full bg-tint-1 text-violet text-xs font-bold flex items-center justify-center">
                                 {initials(u.name)}
                               </div>
                             )}
                             <div>
-                              <div className="font-medium text-white">{u.name}</div>
-                              {u.phone && <div className="text-[11px] text-slate-500">{u.phone}</div>}
+                              <div className="font-medium text-ink">{u.name}</div>
+                              {u.phone && <div className="text-[11px] text-muted">{u.phone}</div>}
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-slate-300">{u.email}</td>
+                        <td className="px-4 py-3 text-xs text-ink-2">{u.email}</td>
                         <td className="px-4 py-3">
                           <span className={`text-xs px-2.5 py-0.5 rounded-full border ${rMeta.badge}`}>
                             {rMeta.label}
@@ -638,14 +638,14 @@ export default function SettingsPage() {
                           <span
                             className={`text-xs px-2 py-0.5 rounded-full ${
                               active
-                                ? 'bg-emerald-500/15 text-emerald-300'
-                                : 'bg-rose-500/15 text-rose-300'
+                                ? 'bg-mint-soft text-mint'
+                                : 'bg-red-soft text-red'
                             }`}
                           >
                             {active ? 'ปกติ' : 'ระงับ'}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-xs text-slate-400">
+                        <td className="px-4 py-3 text-xs text-muted">
                           {u.last_login_at ? String(u.last_login_at).slice(0, 16).replace('T', ' ') : '—'}
                         </td>
                         <td className="px-4 py-3 text-right">
@@ -653,7 +653,7 @@ export default function SettingsPage() {
                             <button
                               type="button"
                               onClick={() => openEditUser(u)}
-                              className="rounded-lg border border-slate-700 px-2.5 py-1 text-xs text-slate-200 hover:bg-slate-800 cursor-pointer"
+                              className="rounded-lg border border-line-2 px-2.5 py-1 text-xs text-ink hover:bg-tint-1 cursor-pointer"
                             >
                               <Edit3 className="w-3.5 h-3.5 inline mr-1" /> แก้ไข
                             </button>
@@ -663,7 +663,7 @@ export default function SettingsPage() {
                                 setResetTarget(u)
                                 setResetPw('')
                               }}
-                              className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300 hover:bg-amber-500/20 cursor-pointer"
+                              className="rounded-lg border border-violet/30 bg-violet-soft px-2.5 py-1 text-xs text-violet hover:bg-violet-soft cursor-pointer"
                             >
                               <KeyRound className="w-3.5 h-3.5 inline mr-1" /> รีเซ็ตPW
                             </button>
@@ -673,8 +673,8 @@ export default function SettingsPage() {
                                 onClick={() => onToggleSuspend(u)}
                                 className={`rounded-lg border px-2.5 py-1 text-xs cursor-pointer ${
                                   active
-                                    ? 'border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20'
-                                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
+                                    ? 'border-red/30 bg-red-soft text-red hover:bg-red-soft'
+                                    : 'border-mint/30 bg-mint-soft text-mint hover:bg-mint-soft'
                                 }`}
                               >
                                 {active ? (
@@ -704,148 +704,148 @@ export default function SettingsPage() {
       {tab === 'system' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* System Preferences */}
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4">
-            <h2 className="font-semibold text-white">การตั้งค่าองค์กร, เวลางาน HR & AI Workforce</h2>
+          <section className="rounded-2xl border border-line bg-card p-6 space-y-4">
+            <h2 className="font-semibold text-ink">การตั้งค่าองค์กร, เวลางาน HR & AI Workforce</h2>
             <form onSubmit={onSavePrefs} className="space-y-4">
               <div>
-                <label className="block text-xs text-slate-300 mb-1">ชื่อองค์กร</label>
+                <label className="block text-xs text-ink-2 mb-1">ชื่อองค์กร</label>
                 <input
                   value={prefs.orgName}
                   onChange={(e) => setPrefs({ ...prefs, orgName: e.target.value })}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-slate-300 mb-1">แถบประกาศบริษัท (แสดงด้านบนทุกหน้า)</label>
+                <label className="block text-xs text-ink-2 mb-1">แถบประกาศบริษัท (แสดงด้านบนทุกหน้า)</label>
                 <input
                   value={prefs.announce}
                   onChange={(e) => setPrefs({ ...prefs, announce: e.target.value })}
                   placeholder="เช่น ประชุม All-Hands ทุกวันจันทร์ 10:00 น."
-                  className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-white"
+                  className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-xs text-ink"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-slate-300 mb-1">เวลาเข้างานมาตรฐาน</label>
+                  <label className="block text-xs text-ink-2 mb-1">เวลาเข้างานมาตรฐาน</label>
                   <input
                     type="time"
                     value={prefs.workStart}
                     onChange={(e) => setPrefs({ ...prefs, workStart: e.target.value })}
-                    className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-white"
+                    className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-xs text-ink"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-300 mb-1">เวลาเลิกงานมาตรฐาน</label>
+                  <label className="block text-xs text-ink-2 mb-1">เวลาเลิกงานมาตรฐาน</label>
                   <input
                     type="time"
                     value={prefs.workEnd}
                     onChange={(e) => setPrefs({ ...prefs, workEnd: e.target.value })}
-                    className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-white"
+                    className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-xs text-ink"
                   />
                 </div>
               </div>
 
-              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 space-y-2.5">
-                <div className="text-xs font-medium text-slate-300">พิกัดออฟฟิศสำหรับระบบ Check-in (GPS)</div>
+              <div className="rounded-xl border border-line bg-bg-2 p-3 space-y-2.5">
+                <div className="text-xs font-medium text-ink-2">พิกัดออฟฟิศสำหรับระบบ Check-in (GPS)</div>
                 <input
                   value={prefs.officeName}
                   onChange={(e) => setPrefs({ ...prefs, officeName: e.target.value })}
                   placeholder="ชื่อสาขา/ออฟฟิศ"
-                  className="w-full rounded-lg bg-slate-950 border border-slate-800 px-2.5 py-1.5 text-xs text-white"
+                  className="w-full rounded-lg bg-bg-2 border border-line px-2.5 py-1.5 text-xs text-ink"
                 />
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <label className="block text-[10px] text-slate-500">Latitude</label>
+                    <label className="block text-[10px] text-muted">Latitude</label>
                     <input
                       type="number"
                       step="0.0001"
                       value={prefs.officeLat}
                       onChange={(e) => setPrefs({ ...prefs, officeLat: Number(e.target.value) })}
-                      className="w-full rounded bg-slate-950 border border-slate-800 px-2 py-1 text-xs text-white"
+                      className="w-full rounded bg-bg-2 border border-line px-2 py-1 text-xs text-ink"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500">Longitude</label>
+                    <label className="block text-[10px] text-muted">Longitude</label>
                     <input
                       type="number"
                       step="0.0001"
                       value={prefs.officeLng}
                       onChange={(e) => setPrefs({ ...prefs, officeLng: Number(e.target.value) })}
-                      className="w-full rounded bg-slate-950 border border-slate-800 px-2 py-1 text-xs text-white"
+                      className="w-full rounded bg-bg-2 border border-line px-2 py-1 text-xs text-ink"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] text-slate-500">รัศมี (เมตร)</label>
+                    <label className="block text-[10px] text-muted">รัศมี (เมตร)</label>
                     <input
                       type="number"
                       min={50}
                       value={prefs.officeRadius}
                       onChange={(e) => setPrefs({ ...prefs, officeRadius: Number(e.target.value) })}
-                      className="w-full rounded bg-slate-950 border border-slate-800 px-2 py-1 text-xs text-white"
+                      className="w-full rounded bg-bg-2 border border-line px-2 py-1 text-xs text-ink"
                     />
                   </div>
                 </div>
               </div>
 
-              <label className="flex items-center justify-between text-xs text-violet-300 cursor-pointer">
+              <label className="flex items-center justify-between text-xs text-violet cursor-pointer">
                 <span>🤖 เปิดใช้งานระบบ AI Workforce ทั้งองค์กร</span>
                 <input
                   type="checkbox"
                   checked={prefs.aiEnabled}
                   onChange={(e) => setPrefs({ ...prefs, aiEnabled: e.target.checked })}
-                  className="accent-violet-500"
+                  className="accent-violet"
                 />
               </label>
 
-              <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
+              <label className="flex items-center justify-between text-xs text-ink-2 cursor-pointer">
                 <span>แจ้งเตือนงานใกล้ครบกำหนด (ภายใน 3 วัน)</span>
                 <input
                   type="checkbox"
                   checked={prefs.notifyDueSoon}
                   onChange={(e) => setPrefs({ ...prefs, notifyDueSoon: e.target.checked })}
-                  className="accent-amber-500"
+                  className="accent-violet"
                 />
               </label>
 
-              <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
+              <label className="flex items-center justify-between text-xs text-ink-2 cursor-pointer">
                 <span>แจ้งเตือนใบแจ้งหนี้เกินกำหนดชำระ</span>
                 <input
                   type="checkbox"
                   checked={prefs.notifyOverdueInvoice}
                   onChange={(e) => setPrefs({ ...prefs, notifyOverdueInvoice: e.target.checked })}
-                  className="accent-amber-500"
+                  className="accent-violet"
                 />
               </label>
 
-              <label className="flex items-center justify-between text-xs text-slate-300 cursor-pointer">
+              <label className="flex items-center justify-between text-xs text-ink-2 cursor-pointer">
                 <span>สรุปผลงานประจำสัปดาห์บนแดชบอร์ด</span>
                 <input
                   type="checkbox"
                   checked={prefs.weeklyDigest}
                   onChange={(e) => setPrefs({ ...prefs, weeklyDigest: e.target.checked })}
-                  className="accent-amber-500"
+                  className="accent-violet"
                 />
               </label>
 
               <button
                 type="submit"
                 disabled={savingPrefs}
-                className="rounded-lg bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+                className="rounded-lg bg-violet hover:bg-violet-2 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
               >
                 {savingPrefs ? 'กำลังบันทึก…' : 'บันทึกการตั้งค่า'}
               </button>
             </form>
 
             {/* Google Drive & Backup */}
-            <div className="pt-4 border-t border-slate-800 space-y-3">
+            <div className="pt-4 border-t border-line space-y-3">
               <div className="flex items-center justify-between">
                 <div className="text-xs">
-                  <div className="font-semibold text-white flex items-center gap-1.5">
-                    <Cloud className="w-4 h-4 text-sky-400" /> การจัดเก็บรูปภาพ Rich Text (Google Drive)
+                  <div className="font-semibold text-ink flex items-center gap-1.5">
+                    <Cloud className="w-4 h-4 text-blue-2" /> การจัดเก็บรูปภาพ Rich Text (Google Drive)
                   </div>
-                  <div className="text-slate-400 mt-0.5">
+                  <div className="text-muted mt-0.5">
                     {driveStatus?.connected
                       ? 'เชื่อมต่อ Google Drive พร้อมใช้งานแล้ว'
                       : driveStatus?.configured
@@ -857,7 +857,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={onConnectDrive}
-                    className="rounded-lg border border-amber-500/40 px-3 py-1.5 text-xs text-amber-300 hover:bg-amber-500/10 cursor-pointer"
+                    className="rounded-lg border border-violet/30 px-3 py-1.5 text-xs text-violet hover:bg-violet-soft cursor-pointer"
                   >
                     เชื่อมต่อ
                   </button>
@@ -873,43 +873,43 @@ export default function SettingsPage() {
                     'application/json;charset=utf-8'
                   )
                 }
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3.5 py-2 text-xs text-slate-200 hover:bg-slate-800 cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line-2 px-3.5 py-2 text-xs text-ink hover:bg-tint-1 cursor-pointer"
               >
-                <Download className="w-3.5 h-3.5 text-emerald-400" /> ดาวน์โหลดข้อมูลสำรองทั้งระบบ (JSON)
+                <Download className="w-3.5 h-3.5 text-mint" /> ดาวน์โหลดข้อมูลสำรองทั้งระบบ (JSON)
               </button>
             </div>
           </section>
 
           {/* Archived Projects Vault */}
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4">
+          <section className="rounded-2xl border border-line bg-card p-6 space-y-4">
             <div>
-              <h2 className="font-semibold text-white">คลังโปรเจกต์ที่เก็บถาวร ({archived.length})</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <h2 className="font-semibold text-ink">คลังโปรเจกต์ที่เก็บถาวร ({archived.length})</h2>
+              <p className="text-xs text-muted mt-0.5">
                 โปรเจกต์ที่ถูกซ่อนออกจากหน้าหลัก สามารถกดกู้คืนพร้อมงานทั้งหมดได้ตลอดเวลา
               </p>
             </div>
 
             {!allowManage ? (
-              <p className="text-xs text-slate-500 py-6 text-center">เฉพาะ Admin / Manager ที่เข้าถึงคลังโปรเจกต์ได้</p>
+              <p className="text-xs text-muted py-6 text-center">เฉพาะ Admin / Manager ที่เข้าถึงคลังโปรเจกต์ได้</p>
             ) : archived.length === 0 ? (
-              <p className="text-xs text-slate-500 py-8 text-center">ไม่มีโปรเจกต์ในคลังเก็บถาวร</p>
+              <p className="text-xs text-muted py-8 text-center">ไม่มีโปรเจกต์ในคลังเก็บถาวร</p>
             ) : (
               <div className="space-y-2.5">
                 {archived.map((ap) => (
                   <div
                     key={ap.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3"
+                    className="flex items-center justify-between gap-3 rounded-xl border border-line bg-bg-2 px-4 py-3"
                   >
                     <div className="min-w-0">
-                      <div className="text-sm font-medium text-white truncate">{ap.name}</div>
-                      <div className="text-xs text-slate-400">
+                      <div className="text-sm font-medium text-ink truncate">{ap.name}</div>
+                      <div className="text-xs text-muted">
                         {ap.client || 'Internal'} · งานที่ซ่อนอยู่ {ap.tasks} ชิ้น
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => onRestoreProject(ap)}
-                      className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-3 py-1.5 text-xs text-emerald-300 shrink-0 cursor-pointer"
+                      className="inline-flex items-center gap-1 rounded-lg bg-mint-soft hover:bg-mint-soft border border-mint/30 px-3 py-1.5 text-xs text-mint shrink-0 cursor-pointer"
                     >
                       <RotateCcw className="w-3.5 h-3.5" /> กู้คืน
                     </button>
@@ -930,43 +930,43 @@ export default function SettingsPage() {
       >
         <form onSubmit={onSaveUser} className="space-y-4">
           <div>
-            <label className="block text-xs text-slate-300 mb-1">ชื่อ-นามสกุล *</label>
+            <label className="block text-xs text-ink-2 mb-1">ชื่อ-นามสกุล *</label>
             <input
               required
               value={userForm.name}
               onChange={(e) => setUserForm({ ...userForm, name: e.target.value })}
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">อีเมล *</label>
+              <label className="block text-xs text-ink-2 mb-1">อีเมล *</label>
               <input
                 type="email"
                 required
                 value={userForm.email}
                 onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">เบอร์โทร</label>
+              <label className="block text-xs text-ink-2 mb-1">เบอร์โทร</label>
               <input
                 value={userForm.phone}
                 onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ระดับสิทธิ์ (Role)</label>
+              <label className="block text-xs text-ink-2 mb-1">ระดับสิทธิ์ (Role)</label>
               <select
                 value={userForm.role}
                 onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               >
                 {Object.entries(ROLE_META).map(([k, v]) => (
                   <option key={k} value={k}>
@@ -978,11 +978,11 @@ export default function SettingsPage() {
 
             {editingUser ? (
               <div>
-                <label className="block text-xs text-slate-300 mb-1">สถานะบัญชี</label>
+                <label className="block text-xs text-ink-2 mb-1">สถานะบัญชี</label>
                 <select
                   value={userForm.status}
                   onChange={(e) => setUserForm({ ...userForm, status: e.target.value })}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
                 >
                   <option value="active">ใช้งานปกติ (active)</option>
                   <option value="suspended">ระงับชั่วคราว (suspended)</option>
@@ -990,14 +990,14 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div>
-                <label className="block text-xs text-slate-300 mb-1">รหัสผ่านเริ่มต้น *</label>
+                <label className="block text-xs text-ink-2 mb-1">รหัสผ่านเริ่มต้น *</label>
                 <input
                   type="password"
                   required
                   minLength={4}
                   value={userForm.password}
                   onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
                 />
               </div>
             )}
@@ -1007,14 +1007,14 @@ export default function SettingsPage() {
             <button
               type="button"
               onClick={() => setUserModalOpen(false)}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 cursor-pointer"
+              className="rounded-lg border border-line-2 px-4 py-2 text-xs text-ink-2 hover:bg-tint-1 cursor-pointer"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
               disabled={savingUser}
-              className="rounded-lg bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+              className="rounded-lg bg-violet hover:bg-violet-2 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
             >
               {savingUser ? 'กำลังบันทึก…' : 'บันทึกข้อมูล'}
             </button>
@@ -1032,28 +1032,28 @@ export default function SettingsPage() {
       >
         <form onSubmit={onResetUserPassword} className="space-y-4">
           <div>
-            <label className="block text-xs text-slate-300 mb-1">รหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร) *</label>
+            <label className="block text-xs text-ink-2 mb-1">รหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร) *</label>
             <input
               type="password"
               required
               minLength={4}
               value={resetPw}
               onChange={(e) => setResetPw(e.target.value)}
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
           <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setResetTarget(null)}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 cursor-pointer"
+              className="rounded-lg border border-line-2 px-4 py-2 text-xs text-ink-2 hover:bg-tint-1 cursor-pointer"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
               disabled={savingUser}
-              className="rounded-lg bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+              className="rounded-lg bg-violet hover:bg-violet-2 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
             >
               ยืนยันรีเซ็ตรหัสผ่าน
             </button>

@@ -92,32 +92,32 @@ export function resolveClientName(project: Pick<Project, 'client' | 'clientName'
 }
 
 export const TASK_STATUS_META: Record<string, { label: string; badge: string; dot: string }> = {
-  todo:   { label: 'รอดำเนินการ', badge: 'bg-slate-800 text-slate-300 border-slate-700', dot: '#94a3b8' },
-  doing:  { label: 'กำลังทำ',     badge: 'bg-sky-500/15 text-sky-300 border-sky-500/30', dot: '#38bdf8' },
-  review: { label: 'ตรวจแก้',     badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30', dot: '#fbbf24' },
-  done:   { label: 'เสร็จแล้ว',   badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', dot: '#34d399' },
+  todo:   { label: 'รอดำเนินการ', badge: 'bg-tint-2 text-ink-2 border-line-2', dot: '#8a8fb1' },
+  doing:  { label: 'กำลังทำ',     badge: 'bg-blue-soft text-blue-2 border-blue/30', dot: '#3ba7ff' },
+  review: { label: 'ตรวจแก้',     badge: 'bg-yellow-soft text-amber-700 border-amber/30', dot: '#ffb020' },
+  done:   { label: 'เสร็จแล้ว',   badge: 'bg-mint-soft text-mint border-mint/30', dot: '#22c793' },
 }
 
 export const TASK_PRIO_META: Record<string, { label: string; badge: string; color: string }> = {
-  urgent: { label: 'ด่วนมาก', badge: 'bg-rose-500/15 text-rose-300 border-rose-500/30', color: '#fb7185' },
-  high:   { label: 'สูง',     badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30', color: '#fbbf24' },
-  med:    { label: 'ปกติ',    badge: 'bg-sky-500/15 text-sky-300 border-sky-500/30', color: '#38bdf8' },
-  low:    { label: 'ต่ำ',     badge: 'bg-slate-800 text-slate-400 border-slate-700', color: '#94a3b8' },
+  urgent: { label: 'ด่วนมาก', badge: 'bg-red-soft text-red border-red/25', color: '#ff5c7a' },
+  high:   { label: 'สูง',     badge: 'bg-yellow-soft text-amber-700 border-amber/30', color: '#ffb020' },
+  med:    { label: 'ปกติ',    badge: 'bg-blue-soft text-blue-2 border-blue/25', color: '#3ba7ff' },
+  low:    { label: 'ต่ำ',     badge: 'bg-tint-2 text-muted border-line-2', color: '#8a8fb1' },
 }
 
 export const INVOICE_STATUS_META: Record<string, { label: string; badge: string }> = {
-  paid:    { label: 'ชำระแล้ว',     badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-  pending: { label: 'รอชำระ',       badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
-  overdue: { label: 'เกินกำหนด',     badge: 'bg-rose-500/15 text-rose-300 border-rose-500/30' },
-  draft:   { label: 'ฉบับร่าง',      badge: 'bg-slate-800 text-slate-300 border-slate-700' },
+  paid:    { label: 'ชำระแล้ว',     badge: 'bg-mint-soft text-mint border-mint/25' },
+  pending: { label: 'รอชำระ',       badge: 'bg-yellow-soft text-amber-700 border-amber/30' },
+  overdue: { label: 'เกินกำหนด',     badge: 'bg-red-soft text-red border-red/25' },
+  draft:   { label: 'ฉบับร่าง',      badge: 'bg-tint-2 text-ink-2 border-line-2' },
 }
 
 export const ROLE_META: Record<string, { label: string; badge: string }> = {
-  super_admin: { label: 'Super Admin',  badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
-  admin:       { label: 'ผู้ดูแลระบบ',  badge: 'bg-purple-500/15 text-purple-300 border-purple-500/30' },
-  manager:     { label: 'ผู้จัดการ',    badge: 'bg-sky-500/15 text-sky-300 border-sky-500/30' },
-  staff:       { label: 'ทีมงาน',      badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-  viewer:      { label: 'ผู้ชมอย่างเดียว', badge: 'bg-slate-800 text-slate-300 border-slate-700' },
+  super_admin: { label: 'Super Admin',  badge: 'bg-violet-soft text-violet border-violet/25' },
+  admin:       { label: 'ผู้ดูแลระบบ',  badge: 'bg-pink-soft text-pink border-pink/25' },
+  manager:     { label: 'ผู้จัดการ',    badge: 'bg-blue-soft text-blue-2 border-blue/25' },
+  staff:       { label: 'ทีมงาน',      badge: 'bg-mint-soft text-mint border-mint/25' },
+  viewer:      { label: 'ผู้ชมอย่างเดียว', badge: 'bg-tint-2 text-ink-2 border-line-2' },
 }
 
 export const DEFAULT_EVENT_CATS: Record<string, { label: string; color: string }> = {
@@ -130,17 +130,17 @@ export const DEFAULT_EVENT_CATS: Record<string, { label: string; color: string }
 }
 
 export const PRESENCE_META: Record<string, { label: string; dot: string; badge: string; icon: string }> = {
-  online:  { label: 'ออนไลน์',      dot: '#34d399', badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', icon: '🟢' },
-  working: { label: 'กำลังทำงาน',    dot: '#38bdf8', badge: 'bg-sky-500/15 text-sky-300 border-sky-500/30',             icon: '💻' },
-  focus:   { label: 'โฟกัสห้ามรบกวน', dot: '#c084fc', badge: 'bg-purple-500/15 text-purple-300 border-purple-500/30',   icon: '🎧' },
-  away:    { label: 'พัก / ไม่อยู่',  dot: '#94a3b8', badge: 'bg-slate-800 text-slate-400 border-slate-700',             icon: '🌙' },
+  online:  { label: 'ออนไลน์',      dot: '#22c793', badge: 'bg-mint-soft text-mint border-mint/25',       icon: '🟢' },
+  working: { label: 'กำลังทำงาน',    dot: '#3ba7ff', badge: 'bg-blue-soft text-blue-2 border-blue/25',     icon: '💻' },
+  focus:   { label: 'โฟกัสห้ามรบกวน', dot: '#6c5ce7', badge: 'bg-violet-soft text-violet border-violet/25', icon: '🎧' },
+  away:    { label: 'พัก / ไม่อยู่',  dot: '#8a8fb1', badge: 'bg-tint-2 text-muted border-line-2',          icon: '🌙' },
 }
 
 export const LEAVE_TYPE_META: Record<string, { label: string; badge: string }> = {
-  annual:   { label: 'ลาพักร้อน', badge: 'bg-sky-500/15 text-sky-300 border-sky-500/30' },
-  sick:     { label: 'ลาป่วย',   badge: 'bg-rose-500/15 text-rose-300 border-rose-500/30' },
-  personal: { label: 'ลากิจ',    badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
-  wfh:      { label: 'Work From Home', badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
+  annual:   { label: 'ลาพักร้อน', badge: 'bg-blue-soft text-blue-2 border-blue/25' },
+  sick:     { label: 'ลาป่วย',   badge: 'bg-red-soft text-red border-red/25' },
+  personal: { label: 'ลากิจ',    badge: 'bg-yellow-soft text-amber-700 border-amber/30' },
+  wfh:      { label: 'Work From Home', badge: 'bg-mint-soft text-mint border-mint/25' },
 }
 
 export const TEAM_COLORS = [

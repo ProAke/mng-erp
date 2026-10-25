@@ -5,7 +5,7 @@
     "server"
   ],
   "scripts": {
-    "lint": "eslint . --ext .js,.ts",
+    "lint": "eslint . --ext .js",
     "test": "vitest run",
     "test:watch": "vitest run --watch",
     "test:coverage": "vitest run --coverage",
@@ -15,7 +15,9 @@
     "seed": "cd server && node seed.js",
     "seed:test": "cd server && node seed.js",
     "dev:server": "cd server && node index.js",
-    "dev:web": "cd web && npm run dev"
+    "dev:web": "cd web && npm run dev",
+    "verify": "bash scripts/verify.sh",
+    "deploy:local": "bash scripts/deploy-local.sh"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

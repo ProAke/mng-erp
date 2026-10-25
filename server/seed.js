@@ -2,8 +2,6 @@
    - Creates ERP module data (team, clients, invoices, events, activity)
    - Enriches the REAL projects/tasks with erp_* metadata (additive only)
    - Guarded by erp_settings seedVersion — safe to run repeatedly         */
-const { workPool } = require('./db');
-
 const SEED_VERSION = 4;
 
 const TEAM_ENRICH = {
@@ -351,3 +349,5 @@ if (require.main === module) {
   run().catch(e => { console.error(e); process.exit(1); });
 }
 module.exports = { seed };
+
+/* smoke */

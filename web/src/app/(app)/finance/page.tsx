@@ -207,8 +207,8 @@ export default function FinancePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">ใบแจ้งหนี้ & การเงิน</h1>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <h1 className="text-2xl font-bold text-ink">ใบแจ้งหนี้ & การเงิน</h1>
+          <p className="text-sm text-muted mt-0.5">
             ติดตามการวางบิล ภาษีมูลค่าเพิ่ม 7% และสถานะการรับชำระเงินของ MNG Groups
           </p>
         </div>
@@ -216,14 +216,14 @@ export default function FinancePage() {
           <button
             type="button"
             onClick={exportCsv}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 px-3.5 py-2 text-xs text-slate-200 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line-2 bg-card hover:bg-tint-1 px-3.5 py-2 text-xs text-ink cursor-pointer"
           >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-400" /> ส่งออก CSV
+            <FileSpreadsheet className="w-4 h-4 text-mint" /> ส่งออก CSV
           </button>
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 px-3.5 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-violet hover:bg-violet-2 px-3.5 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
           >
             <Plus className="w-4 h-4" /> ออกใบแจ้งหนี้ใหม่
           </button>
@@ -232,66 +232,66 @@ export default function FinancePage() {
 
       {/* 4 Financial KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 flex items-start justify-between">
+        <div className="rounded-xl border border-line bg-card p-5 flex items-start justify-between">
           <div>
-            <div className="text-xs text-slate-400">รับชำระแล้ว (รวม VAT)</div>
-            <div className="text-2xl font-bold text-emerald-300 mt-1 tabular-nums">{money(summary.paidAmt)}</div>
-            <div className="text-xs text-slate-500 mt-1">{summary.paidCnt} ใบ</div>
+            <div className="text-xs text-muted">รับชำระแล้ว (รวม VAT)</div>
+            <div className="text-2xl font-bold text-mint mt-1 tabular-nums">{money(summary.paidAmt)}</div>
+            <div className="text-xs text-muted mt-1">{summary.paidCnt} ใบ</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-emerald-500/15 text-emerald-300">
+          <div className="p-2.5 rounded-lg bg-mint-soft text-mint">
             <Wallet className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 flex items-start justify-between">
+        <div className="rounded-xl border border-line bg-card p-5 flex items-start justify-between">
           <div>
-            <div className="text-xs text-slate-400">รอรับชำระ</div>
-            <div className="text-2xl font-bold text-amber-300 mt-1 tabular-nums">{money(summary.pendingAmt)}</div>
-            <div className="text-xs text-slate-500 mt-1">{summary.pendingCnt} ใบ</div>
+            <div className="text-xs text-muted">รอรับชำระ</div>
+            <div className="text-2xl font-bold text-violet mt-1 tabular-nums">{money(summary.pendingAmt)}</div>
+            <div className="text-xs text-muted mt-1">{summary.pendingCnt} ใบ</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-amber-500/15 text-amber-300">
+          <div className="p-2.5 rounded-lg bg-violet-soft text-violet">
             <Clock className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 flex items-start justify-between">
+        <div className="rounded-xl border border-line bg-card p-5 flex items-start justify-between">
           <div>
-            <div className="text-xs text-slate-400">เกินกำหนดชำระ</div>
-            <div className="text-2xl font-bold text-rose-400 mt-1 tabular-nums">{money(summary.overdueAmt)}</div>
-            <div className="text-xs text-slate-500 mt-1">{summary.overdueCnt} ใบ</div>
+            <div className="text-xs text-muted">เกินกำหนดชำระ</div>
+            <div className="text-2xl font-bold text-red mt-1 tabular-nums">{money(summary.overdueAmt)}</div>
+            <div className="text-xs text-muted mt-1">{summary.overdueCnt} ใบ</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-rose-500/15 text-rose-300">
+          <div className="p-2.5 rounded-lg bg-red-soft text-red">
             <AlertOctagon className="w-5 h-5" />
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-5 flex items-start justify-between">
+        <div className="rounded-xl border border-line bg-card p-5 flex items-start justify-between">
           <div>
-            <div className="text-xs text-slate-400">ฉบับร่าง / เตรียมวางบิล</div>
-            <div className="text-2xl font-bold text-slate-200 mt-1 tabular-nums">{money(summary.draftAmt)}</div>
-            <div className="text-xs text-slate-500 mt-1">{summary.draftCnt} ใบ</div>
+            <div className="text-xs text-muted">ฉบับร่าง / เตรียมวางบิล</div>
+            <div className="text-2xl font-bold text-ink mt-1 tabular-nums">{money(summary.draftAmt)}</div>
+            <div className="text-xs text-muted mt-1">{summary.draftCnt} ใบ</div>
           </div>
-          <div className="p-2.5 rounded-lg bg-slate-800 text-slate-300">
+          <div className="p-2.5 rounded-lg bg-tint-1 text-ink-2">
             <FileSpreadsheet className="w-5 h-5" />
           </div>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 bg-slate-900 border border-slate-800 rounded-xl p-3.5">
+      <div className="flex flex-col sm:flex-row gap-3 bg-card border border-line rounded-xl p-3.5">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="ค้นหาเลขที่ INV, ชื่อรายการ, ลูกค้า…"
-            className="w-full rounded-lg bg-slate-950 border border-slate-800 pl-9 pr-3 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+            className="w-full rounded-lg bg-bg-2 border border-line pl-9 pr-3 py-1.5 text-sm text-ink placeholder-muted focus:outline-none focus:border-violet"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-lg bg-slate-950 border border-slate-800 px-3 py-1.5 text-sm text-slate-200"
+          className="rounded-lg bg-bg-2 border border-line px-3 py-1.5 text-sm text-ink"
         >
           <option value="">ทุกสถานะ</option>
           {Object.entries(INVOICE_STATUS_META).map(([k, v]) => (
@@ -303,9 +303,9 @@ export default function FinancePage() {
       </div>
 
       {/* Invoice Table */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900 overflow-x-auto">
+      <div className="rounded-xl border border-line bg-card overflow-x-auto">
         <table className="w-full text-sm text-left">
-          <thead className="bg-slate-950/60 text-xs text-slate-400 border-b border-slate-800">
+          <thead className="bg-bg-2 text-xs text-muted border-b border-line">
             <tr>
               <th className="px-4 py-3">เลขที่</th>
               <th className="px-4 py-3">ลูกค้า</th>
@@ -317,7 +317,7 @@ export default function FinancePage() {
               <th className="px-4 py-3 text-right">จัดการ</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800/70">
+          <tbody className="divide-y divide-line">
             {filtered.map((inv) => {
               const client = clients.find((c) => c.id === inv.client)
               const st = INVOICE_STATUS_META[inv.status] ?? INVOICE_STATUS_META.draft
@@ -325,16 +325,16 @@ export default function FinancePage() {
                 <tr
                   key={inv.id}
                   onClick={() => setSelected(inv)}
-                  className="hover:bg-slate-800/40 cursor-pointer"
+                  className="hover:bg-tint-1/40 cursor-pointer"
                 >
-                  <td className="px-4 py-3 font-mono text-xs text-amber-300">{inv.no}</td>
-                  <td className="px-4 py-3 text-xs text-slate-200">{client?.name ?? '—'}</td>
-                  <td className="px-4 py-3 font-medium text-white">{inv.title}</td>
-                  <td className="px-4 py-3 text-right text-xs text-slate-300 tabular-nums">{money(inv.amount)}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">
+                  <td className="px-4 py-3 font-mono text-xs text-violet">{inv.no}</td>
+                  <td className="px-4 py-3 text-xs text-ink">{client?.name ?? '—'}</td>
+                  <td className="px-4 py-3 font-medium text-ink">{inv.title}</td>
+                  <td className="px-4 py-3 text-right text-xs text-ink-2 tabular-nums">{money(inv.amount)}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-ink tabular-nums">
                     {money(inv.amount + inv.vat)}
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-400">{fmtDateThai(inv.due)}</td>
+                  <td className="px-4 py-3 text-xs text-muted">{fmtDateThai(inv.due)}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2.5 py-0.5 rounded-full border ${st.badge}`}>{st.label}</span>
                   </td>
@@ -344,7 +344,7 @@ export default function FinancePage() {
                         type="button"
                         disabled={saving}
                         onClick={() => onPay(inv)}
-                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 px-2.5 py-1 text-xs text-emerald-300 cursor-pointer"
+                        className="inline-flex items-center gap-1 rounded-lg bg-mint-soft hover:bg-mint-soft border border-mint/30 px-2.5 py-1 text-xs text-mint cursor-pointer"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" /> รับชำระ
                       </button>
@@ -355,7 +355,7 @@ export default function FinancePage() {
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={8} className="px-4 py-10 text-center text-muted">
                   ไม่พบใบแจ้งหนี้
                 </td>
               </tr>
@@ -365,9 +365,9 @@ export default function FinancePage() {
       </div>
 
       {/* Monthly Revenue Chart */}
-      <section className="rounded-xl border border-slate-800 bg-slate-900 p-5">
-        <h2 className="font-semibold text-white mb-1">กราฟรายรับรายเดือนที่รับชำระแล้ว (พันบาท)</h2>
-        <p className="text-xs text-slate-400 mb-4">คำนวณสดจากใบแจ้งหนี้สถานะชำระแล้วในปี 2569</p>
+      <section className="rounded-xl border border-line bg-card p-5">
+        <h2 className="font-semibold text-ink mb-1">กราฟรายรับรายเดือนที่รับชำระแล้ว (พันบาท)</h2>
+        <p className="text-xs text-muted mb-4">คำนวณสดจากใบแจ้งหนี้สถานะชำระแล้วในปี 2569</p>
         <BarChart
           labels={trend?.months ?? MONTHS_SHORT_TH}
           values={trend?.revenue ?? Array(12).fill(0)}
@@ -386,27 +386,27 @@ export default function FinancePage() {
       >
         {selected && (
           <div className="space-y-5">
-            <div className="flex flex-wrap items-start justify-between gap-4 rounded-xl bg-slate-950/60 border border-slate-800 p-4 text-xs">
+            <div className="flex flex-wrap items-start justify-between gap-4 rounded-xl bg-bg-2 border border-line p-4 text-xs">
               <div>
-                <div className="text-slate-500">ลูกค้า</div>
-                <div className="text-sm font-semibold text-white mt-0.5">
+                <div className="text-muted">ลูกค้า</div>
+                <div className="text-sm font-semibold text-ink mt-0.5">
                   {clients.find((c) => c.id === selected.client)?.name ?? 'ไม่ระบุ'}
                 </div>
-                <div className="text-slate-400 mt-1">
+                <div className="text-muted mt-1">
                   {clients.find((c) => c.id === selected.client)?.addr ?? ''}
                 </div>
               </div>
               <div className="text-right space-y-1">
-                <div>วันที่ออก: <strong className="text-slate-200">{fmtDateThai(selected.issue)}</strong></div>
-                <div>ครบกำหนด: <strong className="text-slate-200">{fmtDateThai(selected.due)}</strong></div>
+                <div>วันที่ออก: <strong className="text-ink">{fmtDateThai(selected.issue)}</strong></div>
+                <div>ครบกำหนด: <strong className="text-ink">{fmtDateThai(selected.due)}</strong></div>
                 {selected.paid && (
-                  <div className="text-emerald-400">ชำระเมื่อ: {fmtDateThai(selected.paid)}</div>
+                  <div className="text-mint">ชำระเมื่อ: {fmtDateThai(selected.paid)}</div>
                 )}
               </div>
             </div>
 
-            <table className="w-full text-xs border border-slate-800 rounded-lg overflow-hidden">
-              <thead className="bg-slate-950 text-slate-400">
+            <table className="w-full text-xs border border-line rounded-lg overflow-hidden">
+              <thead className="bg-bg-2 text-muted">
                 <tr>
                   <th className="px-3 py-2 text-left">รายการ</th>
                   <th className="px-3 py-2 text-right">จำนวน</th>
@@ -414,13 +414,13 @@ export default function FinancePage() {
                   <th className="px-3 py-2 text-right">รวม</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-line">
                 {(selected.items || []).map((it: LineItem, idx: number) => (
                   <tr key={idx}>
-                    <td className="px-3 py-2 text-slate-200">{it.d}</td>
-                    <td className="px-3 py-2 text-right text-slate-300">{it.q}</td>
-                    <td className="px-3 py-2 text-right text-slate-300">{money(it.p)}</td>
-                    <td className="px-3 py-2 text-right text-white font-medium">
+                    <td className="px-3 py-2 text-ink">{it.d}</td>
+                    <td className="px-3 py-2 text-right text-ink-2">{it.q}</td>
+                    <td className="px-3 py-2 text-right text-ink-2">{money(it.p)}</td>
+                    <td className="px-3 py-2 text-right text-ink font-medium">
                       {money((Number(it.q) || 0) * (Number(it.p) || 0))}
                     </td>
                   </tr>
@@ -430,27 +430,27 @@ export default function FinancePage() {
 
             <div className="flex justify-end">
               <div className="w-64 space-y-1.5 text-xs">
-                <div className="flex justify-between text-slate-400">
+                <div className="flex justify-between text-muted">
                   <span>รวมก่อนภาษี</span>
                   <span>{money(selected.amount)}</span>
                 </div>
-                <div className="flex justify-between text-slate-400">
+                <div className="flex justify-between text-muted">
                   <span>ภาษีมูลค่าเพิ่ม (VAT 7%)</span>
                   <span>{money(selected.vat)}</span>
                 </div>
-                <div className="flex justify-between text-base font-bold text-amber-300 pt-2 border-t border-slate-800">
+                <div className="flex justify-between text-base font-bold text-violet pt-2 border-t border-line">
                   <span>ยอดชำระสุทธิ</span>
                   <span>{money(selected.amount + selected.vat)}</span>
                 </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-line">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-200 hover:bg-slate-800 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-line-2 px-3 py-2 text-xs text-ink hover:bg-tint-1 cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" /> พิมพ์ / PDF
                 </button>
@@ -461,7 +461,7 @@ export default function FinancePage() {
                     setSelected(null)
                     openEdit(cur)
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-200 hover:bg-slate-800 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-line-2 px-3 py-2 text-xs text-ink hover:bg-tint-1 cursor-pointer"
                 >
                   <Edit3 className="w-3.5 h-3.5" /> แก้ไข
                 </button>
@@ -470,7 +470,7 @@ export default function FinancePage() {
                     type="button"
                     disabled={saving}
                     onClick={() => onDelete(selected)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300 hover:bg-rose-500/20 cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red/30 bg-red-soft px-3 py-2 text-xs text-red hover:bg-red-soft cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" /> ลบ
                   </button>
@@ -482,7 +482,7 @@ export default function FinancePage() {
                   type="button"
                   disabled={saving}
                   onClick={() => onPay(selected)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-mint hover:opacity-90 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4" /> บันทึกรับชำระเงินแล้ว
                 </button>
@@ -502,11 +502,11 @@ export default function FinancePage() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ลูกค้า</label>
+              <label className="block text-xs text-ink-2 mb-1">ลูกค้า</label>
               <select
                 value={form.client}
                 onChange={(e) => setForm({ ...form, client: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               >
                 <option value="">— เลือกลูกค้า —</option>
                 {clients.map((c) => (
@@ -517,11 +517,11 @@ export default function FinancePage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">สถานะ</label>
+              <label className="block text-xs text-ink-2 mb-1">สถานะ</label>
               <select
                 value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               >
                 {Object.entries(INVOICE_STATUS_META).map(([k, v]) => (
                   <option key={k} value={k}>
@@ -533,33 +533,33 @@ export default function FinancePage() {
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1">หัวข้อใบแจ้งหนี้ *</label>
+            <label className="block text-xs text-ink-2 mb-1">หัวข้อใบแจ้งหนี้ *</label>
             <input
               required
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="เช่น งวดงานที่ 2 — พัฒนาระบบหลังบ้านและ API"
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">วันที่ออก</label>
+              <label className="block text-xs text-ink-2 mb-1">วันที่ออก</label>
               <input
                 type="date"
                 value={form.issue}
                 onChange={(e) => setForm({ ...form, issue: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">วันครบกำหนดชำระ</label>
+              <label className="block text-xs text-ink-2 mb-1">วันครบกำหนดชำระ</label>
               <input
                 type="date"
                 value={form.due}
                 onChange={(e) => setForm({ ...form, due: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
@@ -567,13 +567,13 @@ export default function FinancePage() {
           {/* Line Items */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-slate-300">รายการค่าบริการ</span>
+              <span className="text-xs font-medium text-ink-2">รายการค่าบริการ</span>
               <button
                 type="button"
                 onClick={() =>
                   setForm({ ...form, items: [...form.items, { d: '', q: 1, p: 0 }] })
                 }
-                className="text-xs text-amber-400 hover:text-amber-300 cursor-pointer"
+                className="text-xs text-violet hover:text-violet cursor-pointer"
               >
                 + เพิ่มรายการย่อย
               </button>
@@ -589,7 +589,7 @@ export default function FinancePage() {
                     next[idx] = { ...next[idx], d: e.target.value }
                     setForm({ ...form, items: next })
                   }}
-                  className="col-span-6 rounded-lg bg-slate-950 border border-slate-800 px-3 py-1.5 text-xs text-white"
+                  className="col-span-6 rounded-lg bg-bg-2 border border-line px-3 py-1.5 text-xs text-ink"
                 />
                 <input
                   type="number"
@@ -600,7 +600,7 @@ export default function FinancePage() {
                     next[idx] = { ...next[idx], q: Number(e.target.value) }
                     setForm({ ...form, items: next })
                   }}
-                  className="col-span-2 rounded-lg bg-slate-950 border border-slate-800 px-2 py-1.5 text-xs text-white text-right"
+                  className="col-span-2 rounded-lg bg-bg-2 border border-line px-2 py-1.5 text-xs text-ink text-right"
                 />
                 <input
                   type="number"
@@ -611,7 +611,7 @@ export default function FinancePage() {
                     next[idx] = { ...next[idx], p: Number(e.target.value) }
                     setForm({ ...form, items: next })
                   }}
-                  className="col-span-3 rounded-lg bg-slate-950 border border-slate-800 px-2 py-1.5 text-xs text-white text-right"
+                  className="col-span-3 rounded-lg bg-bg-2 border border-line px-2 py-1.5 text-xs text-ink text-right"
                 />
                 <button
                   type="button"
@@ -619,7 +619,7 @@ export default function FinancePage() {
                   onClick={() =>
                     setForm({ ...form, items: form.items.filter((_, i) => i !== idx) })
                   }
-                  className="col-span-1 text-slate-500 hover:text-rose-400 disabled:opacity-30 flex justify-center cursor-pointer"
+                  className="col-span-1 text-muted hover:text-red disabled:opacity-30 flex justify-center cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -627,23 +627,23 @@ export default function FinancePage() {
             ))}
           </div>
 
-          <div className="rounded-xl bg-slate-950 border border-slate-800 p-3.5 text-xs space-y-1">
-            <div className="flex justify-between text-slate-400">
+          <div className="rounded-xl bg-bg-2 border border-line p-3.5 text-xs space-y-1">
+            <div className="flex justify-between text-muted">
               <span>ยอดรวมก่อนภาษี</span>
               <span>{money(subtotal)}</span>
             </div>
-            <div className="flex justify-between text-slate-400">
+            <div className="flex justify-between text-muted">
               <span>VAT 7%</span>
               <span>{money(vatAmount)}</span>
             </div>
-            <div className="flex justify-between text-sm font-bold text-amber-300 pt-1 border-t border-slate-800">
+            <div className="flex justify-between text-sm font-bold text-violet pt-1 border-t border-line">
               <span>รวมสุทธิทั้งสิ้น</span>
               <span>{money(subtotal + vatAmount)}</span>
             </div>
           </div>
 
           {errMsg && (
-            <div className="rounded-lg bg-rose-500/10 border border-rose-500/30 px-3 py-2 text-xs text-rose-300">
+            <div className="rounded-lg bg-red-soft border border-red/30 px-3 py-2 text-xs text-red">
               {errMsg}
             </div>
           )}
@@ -652,14 +652,14 @@ export default function FinancePage() {
             <button
               type="button"
               onClick={() => setFormOpen(false)}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 cursor-pointer"
+              className="rounded-lg border border-line-2 px-4 py-2 text-xs text-ink-2 hover:bg-tint-1 cursor-pointer"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+              className="rounded-lg bg-violet hover:bg-violet-2 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
             >
               {saving ? 'กำลังบันทึก…' : editing ? 'บันทึกการแก้ไข' : 'ออกใบแจ้งหนี้'}
             </button>

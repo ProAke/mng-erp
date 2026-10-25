@@ -157,7 +157,7 @@ export default function DashboardPage() {
       val: projects.length,
       sub: `งานเปิดอยู่รวม ${stats.open} งาน`,
       icon: FolderKanban,
-      color: 'text-amber-300 bg-amber-500/15',
+      color: 'text-violet bg-violet-soft',
       href: '/projects',
     },
     {
@@ -165,7 +165,7 @@ export default function DashboardPage() {
       val: tasks.length ? `${Math.round((stats.done / tasks.length) * 100)}%` : '0%',
       sub: `เสร็จแล้ว ${stats.done} จาก ${tasks.length} งาน`,
       icon: CheckCircle2,
-      color: 'text-emerald-300 bg-emerald-500/15',
+      color: 'text-mint bg-mint-soft',
       href: '/tasks',
     },
     {
@@ -173,7 +173,7 @@ export default function DashboardPage() {
       val: `${stats.overdue} / ${stats.blockedCount}`,
       sub: `ครบกำหนดใน 7 วันอีก ${stats.dueSoon} งาน`,
       icon: AlertTriangle,
-      color: 'text-rose-300 bg-rose-500/15',
+      color: 'text-red bg-red-soft',
       href: '/tasks',
     },
     {
@@ -181,7 +181,7 @@ export default function DashboardPage() {
       val: `${stats.activeAi}/${aiAgents.length}`,
       sub: `${stats.tokensToday.toLocaleString()} tokens วันนี้ · รายรับ ${moneyK(stats.paidTotal)}`,
       icon: Bot,
-      color: 'text-violet-300 bg-violet-500/15',
+      color: 'text-violet bg-violet-soft',
       href: '/ai',
     },
   ]
@@ -191,27 +191,27 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">สวัสดี, {user?.name ?? 'ผู้ใช้งาน'} 👋</h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <h1 className="text-2xl font-bold text-ink">สวัสดี, {user?.name ?? 'ผู้ใช้งาน'} 👋</h1>
+          <p className="text-sm text-muted mt-1">
             ศูนย์ปฏิบัติการ MNG Agency OS — ปฏิทิน · งาน · ทีมงาน & AI Workforce แบบเรียลไทม์
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/ai"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3.5 py-2 text-xs font-medium text-violet-200 hover:bg-violet-500/20 transition"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-violet/30 bg-violet-soft px-3.5 py-2 text-xs font-medium text-violet hover:bg-violet-soft transition"
           >
-            <Bot className="w-4 h-4 text-violet-400" /> AI Workforce
+            <Bot className="w-4 h-4 text-violet" /> AI Workforce
           </Link>
           <Link
             href="/calendar"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900 px-3.5 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800 transition"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-card px-3.5 py-2 text-xs font-medium text-ink hover:bg-tint-1 transition"
           >
-            <CalendarIcon className="w-4 h-4 text-amber-400" /> ปฏิทินงาน
+            <CalendarIcon className="w-4 h-4 text-violet" /> ปฏิทินงาน
           </Link>
           <Link
             href="/tasks"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 px-3.5 py-2 text-xs font-semibold text-slate-950 transition"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-violet hover:bg-violet-2 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition"
           >
             <Plus className="w-4 h-4" /> สร้างงานใหม่
           </Link>
@@ -226,12 +226,12 @@ export default function DashboardPage() {
             <Link
               key={k.label}
               href={k.href}
-              className="group bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-xl p-5 flex items-start justify-between transition"
+              className="group bg-card border border-line hover:border-line-2 rounded-xl p-5 flex items-start justify-between transition"
             >
               <div>
-                <div className="text-xs text-slate-400">{k.label}</div>
-                <div className="text-2xl font-bold text-white mt-1.5 tabular-nums">{k.val}</div>
-                <div className="text-xs text-slate-500 mt-1">{k.sub}</div>
+                <div className="text-xs text-muted">{k.label}</div>
+                <div className="text-2xl font-bold text-ink mt-1.5 tabular-nums">{k.val}</div>
+                <div className="text-xs text-muted mt-1">{k.sub}</div>
               </div>
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${k.color}`}>
                 <Icon className="w-5 h-5" />
@@ -242,10 +242,10 @@ export default function DashboardPage() {
       </div>
 
       {/* 7-Day Agency Week Strip */}
-      <section className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+      <section className="rounded-xl border border-line bg-card p-4">
         <div className="flex items-center justify-between mb-3">
-          <div className="text-xs font-semibold text-slate-300">ภาพรวมตารางงาน 7 วันข้างหน้า</div>
-          <Link href="/calendar" className="text-xs text-amber-400 hover:text-amber-300">
+          <div className="text-xs font-semibold text-ink-2">ภาพรวมตารางงาน 7 วันข้างหน้า</div>
+          <Link href="/calendar" className="text-xs text-violet hover:text-violet">
             ดูปฏิทินเต็ม →
           </Link>
         </div>
@@ -256,21 +256,21 @@ export default function DashboardPage() {
               href="/calendar"
               className={`rounded-xl border p-3 transition ${
                 d.isToday
-                  ? 'border-amber-500/60 bg-amber-500/10'
-                  : 'border-slate-800 bg-slate-950/60 hover:border-slate-700'
+                  ? 'border-violet/30 bg-violet-soft'
+                  : 'border-line bg-bg-2 hover:border-line-2'
               }`}
             >
               <div className="flex items-center justify-between text-xs">
-                <span className={d.isToday ? 'text-amber-300 font-bold' : 'text-slate-400'}>
+                <span className={d.isToday ? 'text-violet font-bold' : 'text-muted'}>
                   {d.isToday ? 'วันนี้' : d.dow}
                 </span>
-                <span className="text-sm font-bold text-white tabular-nums">{d.dayNum}</span>
+                <span className="text-sm font-bold text-ink tabular-nums">{d.dayNum}</span>
               </div>
               <div className="mt-2 flex items-center gap-2 text-[11px]">
-                <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-sky-300">
+                <span className="rounded bg-blue-soft px-1.5 py-0.5 text-blue-2">
                   นัด {d.events}
                 </span>
-                <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-amber-300">
+                <span className="rounded bg-violet-soft px-1.5 py-0.5 text-violet">
                   ส่งงาน {d.due}
                 </span>
               </div>
@@ -281,13 +281,13 @@ export default function DashboardPage() {
 
       {/* Live Team Presence & AI Workforce Snapshot */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <section className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <section className="lg:col-span-7 bg-card border border-line rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-semibold text-white">สถานะสด & ภาระงานทีม (Team Live Load)</h2>
-              <p className="text-xs text-slate-400">ชั่วโมงงานคงเหลือเทียบความจุรายสัปดาห์ของสมาชิกแต่ละคน</p>
+              <h2 className="font-semibold text-ink">สถานะสด & ภาระงานทีม (Team Live Load)</h2>
+              <p className="text-xs text-muted">ชั่วโมงงานคงเหลือเทียบความจุรายสัปดาห์ของสมาชิกแต่ละคน</p>
             </div>
-            <Link href="/team" className="text-xs text-amber-400 hover:text-amber-300">
+            <Link href="/team" className="text-xs text-violet hover:text-violet">
               จัดการทีม →
             </Link>
           </div>
@@ -310,22 +310,22 @@ export default function DashboardPage() {
                       {initials(m.name)}
                     </div>
                     <span
-                      className="w-2.5 h-2.5 rounded-full border-2 border-slate-900 absolute -bottom-0.5 -right-0.5"
+                      className="w-2.5 h-2.5 rounded-full border-2 border-card absolute -bottom-0.5 -right-0.5"
                       style={{ backgroundColor: pMeta.dot }}
                       title={pMeta.label}
                     />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="font-medium text-white truncate">
+                      <span className="font-medium text-ink truncate">
                         {m.nickname ? `${m.nickname} · ${m.name}` : m.name}
-                        <span className="ml-2 text-[11px] text-slate-500">{pMeta.label}</span>
+                        <span className="ml-2 text-[11px] text-muted">{pMeta.label}</span>
                       </span>
-                      <span className="text-slate-300 tabular-nums shrink-0">
+                      <span className="text-ink-2 tabular-nums shrink-0">
                         {m.load ?? 0}/{m.capacity ?? 40} ชม. ({loadPct}%)
                       </span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
+                    <div className="h-1.5 w-full rounded-full bg-tint-1 overflow-hidden">
                       <div
                         className="h-full rounded-full"
                         style={{ width: `${loadPct}%`, backgroundColor: barColor }}
@@ -338,14 +338,14 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        <section className="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+        <section className="lg:col-span-5 bg-card border border-line rounded-xl p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-violet-400" />
-                <h2 className="font-semibold text-white">AI Workforce ล่าสุด</h2>
+                <Sparkles className="w-4 h-4 text-violet" />
+                <h2 className="font-semibold text-ink">AI Workforce ล่าสุด</h2>
               </div>
-              <Link href="/ai" className="text-xs text-violet-300 hover:text-violet-200">
+              <Link href="/ai" className="text-xs text-violet hover:text-violet">
                 สั่งงาน AI →
               </Link>
             </div>
@@ -357,8 +357,8 @@ export default function DashboardPage() {
                   href="/ai"
                   className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs ${
                     ag.paused
-                      ? 'border-slate-800 bg-slate-950 text-slate-500'
-                      : 'border-violet-500/30 bg-violet-500/10 text-violet-200'
+                      ? 'border-line bg-bg-2 text-muted'
+                      : 'border-violet/30 bg-violet-soft text-violet'
                   }`}
                 >
                   <span
@@ -366,7 +366,7 @@ export default function DashboardPage() {
                     style={{ backgroundColor: ag.paused ? '#64748b' : ag.color }}
                   />
                   <span className="font-semibold">{ag.name}</span>
-                  <span className="text-[10px] text-slate-400">{ag.successRate ?? 98}%</span>
+                  <span className="text-[10px] text-muted">{ag.successRate ?? 98}%</span>
                 </Link>
               ))}
             </div>
@@ -377,24 +377,24 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={r.id}
-                    className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2 text-xs"
+                    className="rounded-lg border border-line bg-bg-2 px-3 py-2 text-xs"
                   >
-                    <div className="flex items-center justify-between text-slate-300">
-                      <span className="font-semibold text-violet-300">
+                    <div className="flex items-center justify-between text-ink-2">
+                      <span className="font-semibold text-violet">
                         🤖 {ag?.name ?? r.agentId} · {r.action}
                       </span>
-                      <span className="text-[10px] text-slate-500">{r.tokens} tok</span>
+                      <span className="text-[10px] text-muted">{r.tokens} tok</span>
                     </div>
-                    <div className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{r.detail}</div>
+                    <div className="text-[11px] text-muted line-clamp-1 mt-0.5">{r.detail}</div>
                   </div>
                 )
               })}
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+          <div className="mt-4 pt-3 border-t border-line flex items-center justify-between text-xs text-muted">
             <span>รายรับที่เก็บแล้ว / ค้างรับ</span>
-            <Link href="/finance" className="font-semibold text-emerald-300 hover:underline inline-flex items-center gap-1">
+            <Link href="/finance" className="font-semibold text-mint hover:underline inline-flex items-center gap-1">
               <Wallet className="w-3.5 h-3.5" /> {moneyK(stats.paidTotal)} / {moneyK(stats.pendingTotal)}
             </Link>
           </div>
@@ -403,18 +403,18 @@ export default function DashboardPage() {
 
       {/* Trend + Status Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <section className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <section className="lg:col-span-2 bg-card border border-line rounded-xl p-5">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div>
-              <h2 className="font-semibold text-white">แนวโน้มผลงานรายเดือน (ปี 2569)</h2>
-              <p className="text-xs text-slate-400">เปรียบเทียบปริมาณงานที่สร้าง-ปิดงาน และรายรับรายเดือน</p>
+              <h2 className="font-semibold text-ink">แนวโน้มผลงานรายเดือน (ปี 2569)</h2>
+              <p className="text-xs text-muted">เปรียบเทียบปริมาณงานที่สร้าง-ปิดงาน และรายรับรายเดือน</p>
             </div>
-            <div className="inline-flex rounded-lg bg-slate-950 p-1 border border-slate-800 text-xs">
+            <div className="inline-flex rounded-lg bg-bg-2 p-1 border border-line text-xs">
               <button
                 type="button"
                 onClick={() => setTrendMode('work')}
                 className={`px-3 py-1 rounded-md transition cursor-pointer ${
-                  trendMode === 'work' ? 'bg-amber-500 text-slate-950 font-semibold' : 'text-slate-400 hover:text-white'
+                  trendMode === 'work' ? 'bg-violet text-white shadow-sm font-semibold' : 'text-muted hover:text-ink'
                 }`}
               >
                 ปริมาณงาน
@@ -423,7 +423,7 @@ export default function DashboardPage() {
                 type="button"
                 onClick={() => setTrendMode('revenue')}
                 className={`px-3 py-1 rounded-md transition cursor-pointer ${
-                  trendMode === 'revenue' ? 'bg-amber-500 text-slate-950 font-semibold' : 'text-slate-400 hover:text-white'
+                  trendMode === 'revenue' ? 'bg-violet text-white shadow-sm font-semibold' : 'text-muted hover:text-ink'
                 }`}
               >
                 รายรับ (พันบาท)
@@ -449,11 +449,11 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+        <section className="bg-card border border-line rounded-xl p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-white">สัดส่วนสถานะงาน</h2>
-              <Link href="/reports" className="text-xs text-amber-400 hover:text-amber-300 inline-flex items-center gap-1">
+              <h2 className="font-semibold text-ink">สัดส่วนสถานะงาน</h2>
+              <Link href="/reports" className="text-xs text-violet hover:text-violet inline-flex items-center gap-1">
                 รายงานเต็ม <ArrowUpRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -463,9 +463,9 @@ export default function DashboardPage() {
               centerSub="งานทั้งหมด"
             />
           </div>
-          <div className="mt-5 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+          <div className="mt-5 pt-4 border-t border-line flex items-center justify-between text-xs text-muted">
             <span>งบประมาณโปรเจกต์รวม</span>
-            <span className="font-semibold text-white">
+            <span className="font-semibold text-ink">
               {money(projects.reduce((s, p) => s + p.budget, 0))}
             </span>
           </div>
@@ -474,10 +474,10 @@ export default function DashboardPage() {
 
       {/* Featured Projects + Urgent Tasks */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <section className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <section className="lg:col-span-2 bg-card border border-line rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-white">โปรเจกต์หลักที่กำลังดำเนินการ</h2>
-            <Link href="/projects" className="text-xs text-amber-400 hover:text-amber-300 inline-flex items-center gap-1">
+            <h2 className="font-semibold text-ink">โปรเจกต์หลักที่กำลังดำเนินการ</h2>
+            <Link href="/projects" className="text-xs text-violet hover:text-violet inline-flex items-center gap-1">
               ดูทั้งหมด ({projects.length}) <ArrowUpRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -491,38 +491,38 @@ export default function DashboardPage() {
                 <Link
                   key={p.id}
                   href={`/projects/detail?id=${p.id}`}
-                  className="rounded-xl border border-slate-800 bg-slate-950/50 hover:border-amber-500/40 p-4 transition block"
+                  className="rounded-xl border border-line bg-bg-2 hover:border-violet/40 p-4 transition block"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         {p.code && (
-                          <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono text-amber-300">
+                          <span className="rounded bg-tint-1 px-1.5 py-0.5 text-[10px] font-mono text-violet">
                             {p.code}
                           </span>
                         )}
-                        <div className="text-sm font-semibold text-white truncate">
+                        <div className="text-sm font-semibold text-ink truncate">
                           <span className="mr-1">{p.icon}</span>
                           {p.name}
                         </div>
                       </div>
-                      <div className="text-xs text-slate-400 truncate mt-0.5">{clientLabel}</div>
+                      <div className="text-xs text-muted truncate mt-0.5">{clientLabel}</div>
                     </div>
-                    <span className="text-xs font-semibold text-amber-300 shrink-0 tabular-nums">{p.progress}%</span>
+                    <span className="text-xs font-semibold text-violet shrink-0 tabular-nums">{p.progress}%</span>
                   </div>
 
-                  <div className="mt-3 h-1.5 w-full rounded-full bg-slate-800 overflow-hidden">
+                  <div className="mt-3 h-1.5 w-full rounded-full bg-tint-1 overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${p.progress}%`, backgroundColor: p.color || '#f59e0b' }}
                     />
                   </div>
 
-                  <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400">
+                  <div className="mt-3 flex items-center justify-between text-[11px] text-muted">
                     <span>
                       งานค้าง {p.open}/{p.taskCount}
                       {dl !== null && (
-                        <span className={`ml-2 ${dl < 0 ? 'text-rose-400' : 'text-slate-500'}`}>
+                        <span className={`ml-2 ${dl < 0 ? 'text-red' : 'text-muted'}`}>
                           · {dl < 0 ? `เกิน ${Math.abs(dl)}ว.` : `อีก ${dl}ว.`}
                         </span>
                       )}
@@ -535,15 +535,15 @@ export default function DashboardPage() {
               )
             })}
             {projects.length === 0 && (
-              <p className="text-sm text-slate-500 col-span-2 py-6 text-center">ยังไม่มีโปรเจกต์ในระบบ</p>
+              <p className="text-sm text-muted col-span-2 py-6 text-center">ยังไม่มีโปรเจกต์ในระบบ</p>
             )}
           </div>
         </section>
 
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <section className="bg-card border border-line rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-white">งานด่วน / ติดบล็อก</h2>
-            <Link href="/tasks" className="text-xs text-amber-400 hover:text-amber-300">
+            <h2 className="font-semibold text-ink">งานด่วน / ติดบล็อก</h2>
+            <Link href="/tasks" className="text-xs text-violet hover:text-violet">
               บอร์ดงาน →
             </Link>
           </div>
@@ -556,18 +556,18 @@ export default function DashboardPage() {
                 <Link
                   key={t.id}
                   href={`/tasks?q=${encodeURIComponent(t.code)}`}
-                  className="block rounded-lg border border-slate-800/90 bg-slate-950/50 hover:border-slate-700 p-3 transition"
+                  className="block rounded-lg border border-line bg-bg-2 hover:border-line-2 p-3 transition"
                 >
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-mono text-slate-400">{t.code}</span>
+                      <span className="text-[11px] font-mono text-muted">{t.code}</span>
                       {t.blocked && (
-                        <span className="inline-flex items-center gap-0.5 rounded bg-rose-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-rose-300">
+                        <span className="inline-flex items-center gap-0.5 rounded bg-red-soft px-1.5 py-0.5 text-[10px] font-semibold text-red">
                           <Ban className="w-2.5 h-2.5" /> ติดบล็อก
                         </span>
                       )}
                       {t.aiGenerated && (
-                        <span className="rounded bg-violet-500/20 px-1.5 py-0.5 text-[10px] text-violet-300">
+                        <span className="rounded bg-violet-soft px-1.5 py-0.5 text-[10px] text-violet">
                           ✨ AI
                         </span>
                       )}
@@ -576,9 +576,9 @@ export default function DashboardPage() {
                       {prio.label}
                     </span>
                   </div>
-                  <div className="text-sm font-medium text-white line-clamp-1">{t.title}</div>
+                  <div className="text-sm font-medium text-ink line-clamp-1">{t.title}</div>
                   <div className="mt-2 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400 truncate">
+                    <span className="text-muted truncate">
                       {assignee
                         ? `${assignee.kind === 'ai' ? '🤖 ' : ''}${assignee.nickname || assignee.name.split(' ')[0]}`
                         : 'ยังไม่มอบหมาย'}
@@ -586,10 +586,10 @@ export default function DashboardPage() {
                     <span
                       className={
                         rel.tone === 'danger'
-                          ? 'text-rose-400 font-medium'
+                          ? 'text-red font-medium'
                           : rel.tone === 'warn'
-                          ? 'text-amber-300'
-                          : 'text-slate-400'
+                          ? 'text-violet'
+                          : 'text-muted'
                       }
                     >
                       {rel.text}
@@ -599,7 +599,7 @@ export default function DashboardPage() {
               )
             })}
             {urgentTasks.length === 0 && (
-              <p className="text-sm text-slate-500 py-6 text-center">ยอดเยี่ยม! ไม่มีงานค้างเร่งด่วน</p>
+              <p className="text-sm text-muted py-6 text-center">ยอดเยี่ยม! ไม่มีงานค้างเร่งด่วน</p>
             )}
           </div>
         </section>
@@ -607,10 +607,10 @@ export default function DashboardPage() {
 
       {/* Upcoming Schedule + Recent Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <section className="bg-card border border-line rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-white">กำหนดการและนัดหมายถัดไป</h2>
-            <Link href="/calendar" className="text-xs text-amber-400 hover:text-amber-300">
+            <h2 className="font-semibold text-ink">กำหนดการและนัดหมายถัดไป</h2>
+            <Link href="/calendar" className="text-xs text-violet hover:text-violet">
               เปิดปฏิทิน →
             </Link>
           </div>
@@ -620,12 +620,12 @@ export default function DashboardPage() {
               return (
                 <div
                   key={ev.id}
-                  className="flex items-center gap-3 rounded-lg border border-slate-800/80 bg-slate-950/40 px-3.5 py-2.5"
+                  className="flex items-center gap-3 rounded-lg border border-line bg-bg-2 px-3.5 py-2.5"
                 >
                   <span className="w-1.5 h-9 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-white truncate">{ev.title}</div>
-                    <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                    <div className="text-sm font-medium text-ink truncate">{ev.title}</div>
+                    <div className="text-xs text-muted flex items-center gap-2 mt-0.5">
                       <span>{fmtDateThai(ev.date)}</span>
                       <span>·</span>
                       <span>{ev.allday ? 'ทั้งวัน' : `${ev.start ?? ''} - ${ev.end ?? ''}`}</span>
@@ -647,15 +647,15 @@ export default function DashboardPage() {
               )
             })}
             {upcomingEvents.length === 0 && (
-              <p className="text-sm text-slate-500 py-6 text-center">ยังไม่มีกำหนดการเร็วๆ นี้</p>
+              <p className="text-sm text-muted py-6 text-center">ยังไม่มีกำหนดการเร็วๆ นี้</p>
             )}
           </div>
         </section>
 
-        <section className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+        <section className="bg-card border border-line rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-white">ความเคลื่อนไหวล่าสุดในระบบ</h2>
-            <Clock className="w-4 h-4 text-slate-500" />
+            <h2 className="font-semibold text-ink">ความเคลื่อนไหวล่าสุดในระบบ</h2>
+            <Clock className="w-4 h-4 text-muted" />
           </div>
           <ul className="space-y-2.5 text-sm max-h-72 overflow-y-auto pr-1">
             {activity
@@ -665,7 +665,7 @@ export default function DashboardPage() {
               .map((a, i) => {
                 const actor = team.find((m) => m.id === a.u)
                 return (
-                  <li key={i} className="flex items-start gap-3 py-1.5 border-b border-slate-800/60 last:border-0">
+                  <li key={i} className="flex items-start gap-3 py-1.5 border-b border-line last:border-0">
                     <div
                       className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold text-white shrink-0 mt-0.5"
                       style={{ backgroundColor: actor?.color ?? '#475569' }}
@@ -673,8 +673,8 @@ export default function DashboardPage() {
                       {actor?.kind === 'ai' ? '🤖' : initials(actor?.name ?? 'M')}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs text-slate-200">{stripHtml(a.text)}</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
+                      <div className="text-xs text-ink">{stripHtml(a.text)}</div>
+                      <div className="text-[11px] text-muted mt-0.5">
                         {actor?.name ? `${actor.nickname || actor.name.split(' ')[0]} · ` : ''}
                         {a.at}
                       </div>
@@ -683,7 +683,7 @@ export default function DashboardPage() {
                 )
               })}
             {activity.length === 0 && (
-              <li className="text-slate-500 text-sm py-6 text-center">ยังไม่มีความเคลื่อนไหว</li>
+              <li className="text-muted text-sm py-6 text-center">ยังไม่มีความเคลื่อนไหว</li>
             )}
           </ul>
         </section>

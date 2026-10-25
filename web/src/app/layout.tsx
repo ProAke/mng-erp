@@ -3,8 +3,8 @@ import { Providers } from '@/lib/providers'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'MNG ERP — Work Tracking Management',
-  description: 'ระบบบริหารจัดการงานและโปรเจกต์แบบครบวงจร สำหรับ MNG Groups',
+  title: 'MNG ERP — ปฏิทิน · งาน · AI Workforce',
+  description: 'ระบบบริหารจัดการงาน โปรเจกต์ และ AI Workforce สำหรับ MNG Groups',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full bg-slate-950 text-slate-200">
+      <body className="min-h-full bg-background text-foreground font-sans">
         <Providers>{children}</Providers>
       </body>
     </html>

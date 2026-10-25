@@ -1,106 +1,110 @@
 'use client'
 
-import { useEffect, useState, FormEvent } from 'react'
-import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
+import { useState, FormEvent } from 'react'
 import { api, ApiError } from '@/lib/api/client'
 import { useAuth } from '@/lib/stores/auth'
 
 export default function LoginPage() {
-  const router = useRouter()
-  const { setSession, isAuthenticated, bootstrapped, bootstrap } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    bootstrap()
-  }, [bootstrap])
-
-  useEffect(() => {
-    if (bootstrapped && isAuthenticated) {
-      router.replace('/dashboard/')
-    }
-  }, [bootstrapped, isAuthenticated, router])
-
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setLoading(true)
     try {
-      const res = await api.auth.login(email.trim(), password)
-      setSession(res.token, {
-        id: res.user.id,
-        authId: res.user.authId,
-        email: res.user.email,
-        name: res.user.name,
-        role: res.user.role,
-        avatar: res.user.avatar ?? null,
-      })
-      router.replace('/dashboard/')
+      const res = await api.login(email.trim(), password)
+      useAuth.getState().login(
+        {
+          id: res.user.id,
+          authId: res.user.authId ?? res.user.user_id,
+          name: res.user.name,
+          email: res.user.email,
+          role: res.user.role,
+          avatar: res.user.avatar ?? null,
+        },
+        res.token
+      )
+      window.location.href = '/dashboard/'
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองอีกครั้ง')
+      if (err instanceof ApiError) {
+        setError(err.message)
+      } else {
+        setError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่')
+      }
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-4">
-      <div className="w-full max-w-md bg-slate-900/85 backdrop-blur border border-slate-800 rounded-2xl p-8 shadow-2xl">
+    <main className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 font-bold text-2xl mb-4 shadow-lg shadow-amber-500/20">
+          <div
+            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl text-white font-bold text-xl mb-4 shadow-soft"
+            style={{ background: 'var(--grad-violet)' }}
+          >
             M
           </div>
-          <h1 className="text-2xl font-bold text-white">MNG ERP</h1>
-          <p className="text-sm text-slate-400 mt-1">ระบบบริหารจัดการงานและโปรเจกต์ — MNG Groups</p>
+          <h1 className="text-2xl font-semibold text-ink">MNG ERP</h1>
+          <p className="text-sm text-muted mt-1">เข้าสู่ระบบเพื่อจัดการโปรเจกต์ งาน และ AI Workforce</p>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form
+          onSubmit={onSubmit}
+          className="bg-card border border-line rounded-2xl p-6 space-y-4 shadow-soft"
+        >
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">อีเมล</label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@mng.co.th"
-                className="w-full pl-10 pr-3.5 py-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
-              />
-            </div>
+            <label htmlFor="email" className="block text-sm text-ink-2 mb-1.5">
+              อีเมล
+            </label>
+            <input
+              id="email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg bg-bg-2 border border-line-2 px-3 py-2.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-violet/40 focus:border-violet"
+              placeholder="you@company.com"
+            />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">รหัสผ่าน</label>
+            <label htmlFor="password" className="block text-sm text-ink-2 mb-1.5">
+              รหัสผ่าน
+            </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
+                id="password"
                 type={showPw ? 'text' : 'password'}
-                required
                 autoComplete="current-password"
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg bg-bg-2 border border-line-2 px-3 py-2.5 pr-11 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-violet/40 focus:border-violet"
                 placeholder="••••••••"
-                className="w-full pl-10 pr-10 py-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
               />
               <button
                 type="button"
                 onClick={() => setShowPw((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                tabIndex={-1}
+                aria-label={showPw ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink text-xs cursor-pointer"
               >
-                {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPw ? 'ซ่อน' : 'แสดง'}
               </button>
             </div>
           </div>
 
           {error && (
-            <div className="rounded-lg bg-rose-500/10 border border-rose-500/30 px-3.5 py-2.5 text-sm text-rose-300">
+            <div
+              role="alert"
+              className="rounded-lg bg-red-soft border border-red/20 px-3 py-2.5 text-sm text-red"
+            >
               {error}
             </div>
           )}
@@ -108,16 +112,17 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-60 text-slate-950 font-semibold transition shadow-lg shadow-amber-500/20 cursor-pointer"
+            className="w-full rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 text-sm transition-opacity shadow-soft cursor-pointer"
+            style={{ background: 'var(--grad-violet)' }}
           >
-            {loading ? 'กำลังตรวจสอบ…' : 'เข้าสู่ระบบ'}
+            {loading ? 'กำลังเข้าสู่ระบบ…' : 'เข้าสู่ระบบ'}
           </button>
         </form>
 
-        <p className="text-center text-xs text-slate-500 mt-6">
-          © 2026 MNG Groups · เชื่อมฐานข้อมูลจริง MariaDB
+        <p className="text-center text-xs text-muted mt-6">
+          MNG ERP · ปฏิทิน · งาน · AI Workforce
         </p>
       </div>
-    </div>
+    </main>
   )
 }

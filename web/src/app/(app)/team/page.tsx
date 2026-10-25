@@ -141,8 +141,8 @@ export default function TeamPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">ทีมงาน & สถานะสด ({humans.length} คน)</h1>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <h1 className="text-2xl font-bold text-ink">ทีมงาน & สถานะสด ({humans.length} คน)</h1>
+          <p className="text-sm text-muted mt-0.5">
             แสดงชื่อเล่น ทักษะ สถานะการทำงานสด และภาระงานคงเหลือรายสัปดาห์
           </p>
         </div>
@@ -150,15 +150,15 @@ export default function TeamPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/ai"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3.5 py-2 text-xs font-medium text-violet-200 hover:bg-violet-500/20"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-violet/30 bg-violet-soft px-3.5 py-2 text-xs font-medium text-violet hover:bg-violet-soft"
           >
-            <Bot className="w-4 h-4 text-violet-400" /> AI Workforce ({aiAgents.length})
+            <Bot className="w-4 h-4 text-violet" /> AI Workforce ({aiAgents.length})
           </Link>
           {allowManage && (
             <button
               type="button"
               onClick={openCreate}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 px-3.5 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-violet hover:bg-violet-2 px-3.5 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4" /> เพิ่มสมาชิกทีม
             </button>
@@ -176,7 +176,7 @@ export default function TeamPage() {
           return (
             <div
               key={m.id}
-              className="rounded-xl border border-slate-800 bg-slate-900 p-5 flex flex-col justify-between gap-4"
+              className="rounded-xl border border-line bg-card p-5 flex flex-col justify-between gap-4"
             >
               <div>
                 <div className="flex items-start justify-between gap-3">
@@ -186,7 +186,7 @@ export default function TeamPage() {
                         <img
                           src={m.avatar}
                           alt={m.name}
-                          className="w-12 h-12 rounded-full object-cover border border-slate-700"
+                          className="w-12 h-12 rounded-full object-cover border border-line-2"
                         />
                       ) : (
                         <div
@@ -197,16 +197,16 @@ export default function TeamPage() {
                         </div>
                       )}
                       <span
-                        className="w-3.5 h-3.5 rounded-full border-2 border-slate-900 absolute -bottom-0.5 -right-0.5"
+                        className="w-3.5 h-3.5 rounded-full border-2 border-card absolute -bottom-0.5 -right-0.5"
                         style={{ backgroundColor: pMeta.dot }}
                         title={pMeta.label}
                       />
                     </div>
                     <div className="min-w-0">
-                      <div className="font-semibold text-white truncate">
+                      <div className="font-semibold text-ink truncate">
                         {m.nickname ? `${m.nickname} · ${m.name}` : m.name}
                       </div>
-                      <div className="text-xs text-slate-400 truncate">{m.role}</div>
+                      <div className="text-xs text-muted truncate">{m.role}</div>
                       <div className="flex flex-wrap items-center gap-1.5 mt-1">
                         <span className={`text-[10px] px-2 py-0.5 rounded-full border ${pMeta.badge}`}>
                           {pMeta.label}
@@ -226,7 +226,7 @@ export default function TeamPage() {
                     <button
                       type="button"
                       onClick={() => openEdit(m)}
-                      className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+                      className="rounded-lg p-1.5 text-muted hover:bg-tint-1 hover:text-ink cursor-pointer"
                       title="แก้ไขสมาชิก"
                     >
                       <Edit3 className="w-4 h-4" />
@@ -240,7 +240,7 @@ export default function TeamPage() {
                     {(m.skills || []).map((sk) => (
                       <span
                         key={sk}
-                        className="rounded-md bg-slate-950 border border-slate-800 px-2 py-0.5 text-[10px] text-slate-300"
+                        className="rounded-md bg-bg-2 border border-line px-2 py-0.5 text-[10px] text-ink-2"
                       >
                         {sk}
                       </span>
@@ -248,28 +248,28 @@ export default function TeamPage() {
                   </div>
                 )}
 
-                <div className="mt-3 space-y-1 text-xs text-slate-400">
+                <div className="mt-3 space-y-1 text-xs text-muted">
                   {m.email && (
                     <div className="flex items-center gap-2 truncate">
-                      <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" /> {m.email}
+                      <Mail className="w-3.5 h-3.5 text-muted shrink-0" /> {m.email}
                     </div>
                   )}
                   {m.phone && (
                     <div className="flex items-center gap-2">
-                      <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" /> {m.phone}
+                      <Phone className="w-3.5 h-3.5 text-muted shrink-0" /> {m.phone}
                     </div>
                   )}
                 </div>
 
                 {/* Workload Meter */}
-                <div className="mt-4 pt-3 border-t border-slate-800">
+                <div className="mt-4 pt-3 border-t border-line">
                   <div className="flex items-center justify-between text-xs mb-1.5">
-                    <span className="text-slate-400">
+                    <span className="text-muted">
                       ภาระงานคงเหลือ ({m.hoursLeft}/{m.cap} ชม.)
                     </span>
-                    <span className="font-semibold text-white tabular-nums">{m.loadPct}%</span>
+                    <span className="font-semibold text-ink tabular-nums">{m.loadPct}%</span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden">
+                  <div className="h-2 w-full rounded-full bg-tint-1 overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all"
                       style={{ width: `${m.loadPct}%`, backgroundColor: barColor }}
@@ -278,14 +278,14 @@ export default function TeamPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
-                <span className="text-slate-400">
-                  ถืออยู่ <strong className="text-white">{m.openCount}</strong> · เสร็จแล้ว{' '}
-                  <strong className="text-emerald-300">{m.doneCount}</strong>
+              <div className="flex items-center justify-between pt-2 border-t border-line text-xs">
+                <span className="text-muted">
+                  ถืออยู่ <strong className="text-ink">{m.openCount}</strong> · เสร็จแล้ว{' '}
+                  <strong className="text-mint">{m.doneCount}</strong>
                 </span>
                 <Link
                   href={`/tasks?assignee=${m.id}`}
-                  className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 font-medium"
+                  className="inline-flex items-center gap-1 text-violet hover:text-violet font-medium"
                 >
                   <CheckSquare className="w-3.5 h-3.5" /> ดูงาน
                 </Link>
@@ -306,41 +306,41 @@ export default function TeamPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
-              <label className="block text-xs text-slate-300 mb-1">ชื่อ-นามสกุล *</label>
+              <label className="block text-xs text-ink-2 mb-1">ชื่อ-นามสกุล *</label>
               <input
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ชื่อเล่น (Nickname)</label>
+              <label className="block text-xs text-ink-2 mb-1">ชื่อเล่น (Nickname)</label>
               <input
                 value={form.nickname}
                 onChange={(e) => setForm({ ...form, nickname: e.target.value })}
                 placeholder="เช่น เอก, นัท"
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ตำแหน่งในทีม</label>
+              <label className="block text-xs text-ink-2 mb-1">ตำแหน่งในทีม</label>
               <input
                 value={form.role}
                 onChange={(e) => setForm({ ...form, role: e.target.value })}
                 placeholder="Senior UX/UI"
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">สถานะสด</label>
+              <label className="block text-xs text-ink-2 mb-1">สถานะสด</label>
               <select
                 value={form.state}
                 onChange={(e) => setForm({ ...form, state: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               >
                 {Object.entries(PRESENCE_META).map(([k, v]) => (
                   <option key={k} value={k}>
@@ -350,57 +350,57 @@ export default function TeamPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ความจุ/สัปดาห์ (ชม.)</label>
+              <label className="block text-xs text-ink-2 mb-1">ความจุ/สัปดาห์ (ชม.)</label>
               <input
                 type="number"
                 min={8}
                 max={80}
                 value={form.capacity}
                 onChange={(e) => setForm({ ...form, capacity: Number(e.target.value) })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">อีเมล (เชื่อมบัญชี Login อัตโนมัติ)</label>
+              <label className="block text-xs text-ink-2 mb-1">อีเมล (เชื่อมบัญชี Login อัตโนมัติ)</label>
               <input
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 placeholder="name@mng.co.th"
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">เบอร์โทรศัพท์</label>
+              <label className="block text-xs text-ink-2 mb-1">เบอร์โทรศัพท์</label>
               <input
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 placeholder="08x-xxx-xxxx"
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1">ทักษะความเชี่ยวชาญ (คั่นด้วย ,)</label>
+            <label className="block text-xs text-ink-2 mb-1">ทักษะความเชี่ยวชาญ (คั่นด้วย ,)</label>
             <input
               value={form.skillsText}
               onChange={(e) => setForm({ ...form, skillsText: e.target.value })}
               placeholder="Next.js, Figma, SEO, Strategy"
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
 
           {allowAdmin && editing?.authUserId && (
             <div>
-              <label className="block text-xs text-slate-300 mb-1">สิทธิ์การเข้าถึงระบบ (System Role)</label>
+              <label className="block text-xs text-ink-2 mb-1">สิทธิ์การเข้าถึงระบบ (System Role)</label>
               <select
                 value={form.authRole}
                 onChange={(e) => setForm({ ...form, authRole: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               >
                 {Object.entries(ROLE_META).map(([k, v]) => (
                   <option key={k} value={k}>
@@ -412,7 +412,7 @@ export default function TeamPage() {
           )}
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1.5">สีประจำตัว</label>
+            <label className="block text-xs text-ink-2 mb-1.5">สีประจำตัว</label>
             <div className="flex flex-wrap gap-2">
               {TEAM_COLORS.map((c) => (
                 <button
@@ -429,7 +429,7 @@ export default function TeamPage() {
           </div>
 
           {errMsg && (
-            <div className="rounded-lg bg-rose-500/10 border border-rose-500/30 px-3 py-2 text-xs text-rose-300">
+            <div className="rounded-lg bg-red-soft border border-red/30 px-3 py-2 text-xs text-red">
               {errMsg}
             </div>
           )}
@@ -440,7 +440,7 @@ export default function TeamPage() {
                 type="button"
                 disabled={saving}
                 onClick={() => onRemove(editing)}
-                className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300 hover:bg-rose-500/20 cursor-pointer"
+                className="inline-flex items-center gap-1 rounded-lg border border-red/30 bg-red-soft px-3 py-2 text-xs text-red hover:bg-red-soft cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" /> ลบออกจากทีม
               </button>
@@ -452,14 +452,14 @@ export default function TeamPage() {
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="rounded-lg border border-slate-700 px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 cursor-pointer"
+                className="rounded-lg border border-line-2 px-4 py-2 text-xs text-ink-2 hover:bg-tint-1 cursor-pointer"
               >
                 ยกเลิก
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+                className="rounded-lg bg-violet hover:bg-violet-2 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
               >
                 {saving ? 'กำลังบันทึก…' : 'บันทึกข้อมูล'}
               </button>

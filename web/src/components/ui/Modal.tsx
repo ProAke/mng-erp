@@ -35,22 +35,22 @@ export function Modal({ open, onClose, title, subtitle, maxWidth = 'lg', childre
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 backdrop-blur-xs p-4 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className={`w-full ${WIDTH_CLASS[maxWidth]} rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl my-auto overflow-hidden`}
+        className={`w-full ${WIDTH_CLASS[maxWidth]} rounded-2xl border border-line bg-card shadow-lg my-auto overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-800 px-6 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-line px-6 py-4">
           <div>
-            <h3 className="text-lg font-semibold text-white">{title}</h3>
-            {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+            <h3 className="text-lg font-semibold text-ink">{title}</h3>
+            {subtitle && <p className="text-xs text-muted mt-0.5">{subtitle}</p>}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition"
+            className="rounded-lg p-1.5 text-muted hover:bg-tint-1 hover:text-ink transition"
             aria-label="ปิดหน้าต่าง"
           >
             <X className="w-4 h-4" />
@@ -60,7 +60,7 @@ export function Modal({ open, onClose, title, subtitle, maxWidth = 'lg', childre
         <div className="max-h-[75vh] overflow-y-auto px-6 py-5">{children}</div>
 
         {footer && (
-          <div className="flex items-center justify-end gap-2 border-t border-slate-800 bg-slate-950/40 px-6 py-3.5">
+          <div className="flex items-center justify-end gap-2 border-t border-line bg-tint-1 px-6 py-3.5">
             {footer}
           </div>
         )}

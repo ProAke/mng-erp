@@ -180,8 +180,8 @@ export default function HrAttendancePage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">ลงเวลาเข้า-ออกงาน & ระบบใบลา (HR Attendance)</h1>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <h1 className="text-2xl font-bold text-ink">ลงเวลาเข้า-ออกงาน & ระบบใบลา (HR Attendance)</h1>
+          <p className="text-sm text-muted mt-0.5">
             เวลางานมาตรฐาน {workStart} – {workEnd} น. · ออฟฟิศ: {office.name || 'MNG HQ'} (รัศมี {office.radius ?? 250} ม.)
           </p>
         </div>
@@ -189,7 +189,7 @@ export default function HrAttendancePage() {
         <button
           type="button"
           onClick={() => setLeaveOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 px-3.5 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-violet hover:bg-violet-2 px-3.5 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
         >
           <Plus className="w-4 h-4" /> ยื่นใบลา / ขอ WFH
         </button>
@@ -199,8 +199,8 @@ export default function HrAttendancePage() {
         <div
           className={`rounded-xl border px-4 py-3 text-xs ${
             banner.tone === 'ok'
-              ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-200'
-              : 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+              ? 'bg-mint-soft border-mint/30 text-mint'
+              : 'bg-red-soft border-red/30 text-red'
           }`}
         >
           {banner.text}
@@ -209,14 +209,14 @@ export default function HrAttendancePage() {
 
       {/* Top Grid: My Clock-in Card + Today's Team Board */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <section className="lg:col-span-5 rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-4">
+        <section className="lg:col-span-5 rounded-2xl border border-line bg-card p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-semibold text-white">บันทึกเวลาทำงานวันนี้</h2>
-              <p className="text-xs text-slate-400">{fmtDateThai(today, true)}</p>
+              <h2 className="font-semibold text-ink">บันทึกเวลาทำงานวันนี้</h2>
+              <p className="text-xs text-muted">{fmtDateThai(today, true)}</p>
             </div>
             {myTodayCheckin && (
-              <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-3 py-1 text-xs font-semibold text-emerald-300">
+              <span className="rounded-full bg-mint-soft border border-mint/30 px-3 py-1 text-xs font-semibold text-mint">
                 เข้างาน {myTodayCheckin.clockIn}
                 {myTodayCheckin.clockOut ? ` · ออก ${myTodayCheckin.clockOut}` : ''}
               </span>
@@ -238,8 +238,8 @@ export default function HrAttendancePage() {
                 onClick={() => setMode(key)}
                 className={`flex flex-col items-center gap-1 rounded-xl border p-3 transition cursor-pointer ${
                   mode === key
-                    ? 'border-amber-500 bg-amber-500/15 text-amber-200 font-semibold'
-                    : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:text-white'
+                    ? 'border-violet bg-violet-soft text-violet font-semibold'
+                    : 'border-line bg-bg-2 text-muted hover:text-ink'
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -253,16 +253,16 @@ export default function HrAttendancePage() {
               type="button"
               onClick={grabGps}
               disabled={locLoading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-950 hover:bg-slate-800 px-3 py-2 text-xs text-slate-200 cursor-pointer shrink-0"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line-2 bg-bg-2 hover:bg-tint-1 px-3 py-2 text-xs text-ink cursor-pointer shrink-0"
             >
-              <MapPin className="w-3.5 h-3.5 text-sky-400" />
+              <MapPin className="w-3.5 h-3.5 text-blue-2" />
               {locLoading ? 'กำลังหาพิกัด…' : coords ? 'อัปเดตพิกัดแล้ว' : 'แนบพิกัด GPS'}
             </button>
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="หมายเหตุ (เช่น ไปหาลูกค้า SGI ช่วงเช้า)..."
-              className="flex-1 rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-xs text-white placeholder-slate-500"
+              className="flex-1 rounded-lg bg-bg-2 border border-line px-3 py-2 text-xs text-ink placeholder-muted"
             />
           </div>
 
@@ -271,7 +271,7 @@ export default function HrAttendancePage() {
               type="button"
               disabled={busy}
               onClick={onClockIn}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 py-3 text-xs font-bold text-slate-950 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-mint hover:opacity-90 disabled:opacity-50 py-3 text-xs font-bold text-white shadow-sm cursor-pointer"
             >
               <LogIn className="w-4 h-4" />
               {myTodayCheckin ? 'อัปเดตเวลาเข้างาน' : 'ลงเวลาเข้างาน (Check-in)'}
@@ -281,7 +281,7 @@ export default function HrAttendancePage() {
               type="button"
               disabled={busy || !myTodayCheckin}
               onClick={onClockOut}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/15 hover:bg-rose-500/25 disabled:opacity-40 py-3 text-xs font-semibold text-rose-200 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-red/30 bg-red-soft hover:bg-red-soft disabled:opacity-40 py-3 text-xs font-semibold text-red cursor-pointer"
             >
               <LogOut className="w-4 h-4" /> ลงเวลาเลิกงาน (Check-out)
             </button>
@@ -289,11 +289,11 @@ export default function HrAttendancePage() {
         </section>
 
         {/* Today's Team Check-in Board */}
-        <section className="lg:col-span-7 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+        <section className="lg:col-span-7 rounded-2xl border border-line bg-card p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-semibold text-white">สถานะการเข้างานของทีมวันนี้</h2>
-              <p className="text-xs text-slate-400">
+              <h2 className="font-semibold text-ink">สถานะการเข้างานของทีมวันนี้</h2>
+              <p className="text-xs text-muted">
                 ลงเวลาแล้ว {todayCheckins.length} จาก {humans.length} คน
               </p>
             </div>
@@ -305,7 +305,7 @@ export default function HrAttendancePage() {
               return (
                 <div
                   key={m.id}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-line bg-bg-2 p-3"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div
@@ -315,10 +315,10 @@ export default function HrAttendancePage() {
                       {initials(m.name)}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-semibold text-white truncate">
+                      <div className="text-xs font-semibold text-ink truncate">
                         {m.nickname ? `${m.nickname} (${m.name})` : m.name}
                       </div>
-                      <div className="text-[11px] text-slate-400 truncate">
+                      <div className="text-[11px] text-muted truncate">
                         {rec
                           ? `${rec.mode === 'wfh' ? '🏠 WFH' : rec.mode === 'onsite' ? '🚗 นอกสถานที่' : '🏢 ออฟฟิศ'}${
                               rec.distanceM != null ? ` · ${rec.distanceM}m` : ''
@@ -330,15 +330,15 @@ export default function HrAttendancePage() {
 
                   {rec ? (
                     <div className="text-right shrink-0">
-                      <div className="text-xs font-bold text-emerald-300 tabular-nums">
+                      <div className="text-xs font-bold text-mint tabular-nums">
                         {rec.clockIn} {rec.clockOut ? `→ ${rec.clockOut}` : ''}
                       </div>
                       {(rec.lateMin ?? 0) > 0 && (
-                        <div className="text-[10px] text-amber-400">สาย {rec.lateMin} น.</div>
+                        <div className="text-[10px] text-violet">สาย {rec.lateMin} น.</div>
                       )}
                     </div>
                   ) : (
-                    <span className="text-[11px] text-slate-500">—</span>
+                    <span className="text-[11px] text-muted">—</span>
                   )}
                 </div>
               )
@@ -348,11 +348,11 @@ export default function HrAttendancePage() {
       </div>
 
       {/* Leave Requests Table */}
-      <section className="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+      <section className="rounded-2xl border border-line bg-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-line flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-white">รายการใบลาและขอปฏิบัติงาน WFH ({leaves.length})</h2>
-            <p className="text-xs text-slate-400">
+            <h2 className="font-semibold text-ink">รายการใบลาและขอปฏิบัติงาน WFH ({leaves.length})</h2>
+            <p className="text-xs text-muted">
               เมื่อผู้จัดการกดอนุมัติ ระบบจะปักวันลาลงในปฏิทินรวมของทีมให้อัตโนมัติ
             </p>
           </div>
@@ -360,7 +360,7 @@ export default function HrAttendancePage() {
 
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-slate-950/60 text-xs text-slate-400 border-b border-slate-800">
+            <thead className="bg-bg-2 text-xs text-muted border-b border-line">
               <tr>
                 <th className="px-4 py-3">พนักงาน</th>
                 <th className="px-4 py-3">ประเภท</th>
@@ -371,13 +371,13 @@ export default function HrAttendancePage() {
                 <th className="px-4 py-3 text-right">จัดการ</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/70">
+            <tbody className="divide-y divide-line">
               {leaves.map((lv) => {
                 const m = humans.find((h) => h.id === lv.teamId)
                 const meta = LEAVE_TYPE_META[lv.leaveType] ?? LEAVE_TYPE_META.annual
                 return (
-                  <tr key={lv.id} className="hover:bg-slate-800/30">
-                    <td className="px-4 py-3 font-medium text-white">
+                  <tr key={lv.id} className="hover:bg-tint-1/30">
+                    <td className="px-4 py-3 font-medium text-ink">
                       {m?.nickname ? `${m.nickname} (${m.name})` : m?.name ?? lv.teamId}
                     </td>
                     <td className="px-4 py-3">
@@ -385,21 +385,21 @@ export default function HrAttendancePage() {
                         {meta.label}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-300">
+                    <td className="px-4 py-3 text-xs text-ink-2">
                       {fmtDateThai(lv.startDate)} – {fmtDateThai(lv.endDate)}
                     </td>
-                    <td className="px-4 py-3 text-right text-xs font-semibold text-white tabular-nums">
+                    <td className="px-4 py-3 text-right text-xs font-semibold text-ink tabular-nums">
                       {lv.days} วัน
                     </td>
-                    <td className="px-4 py-3 text-xs text-slate-300 max-w-xs truncate">{lv.reason || '—'}</td>
+                    <td className="px-4 py-3 text-xs text-ink-2 max-w-xs truncate">{lv.reason || '—'}</td>
                     <td className="px-4 py-3">
                       <span
                         className={`text-xs px-2.5 py-0.5 rounded-full ${
                           lv.status === 'approved'
-                            ? 'bg-emerald-500/15 text-emerald-300'
+                            ? 'bg-mint-soft text-mint'
                             : lv.status === 'rejected'
-                            ? 'bg-rose-500/15 text-rose-300'
-                            : 'bg-amber-500/15 text-amber-300'
+                            ? 'bg-red-soft text-red'
+                            : 'bg-violet-soft text-violet'
                         }`}
                       >
                         {lv.status === 'approved'
@@ -416,14 +416,14 @@ export default function HrAttendancePage() {
                             <button
                               type="button"
                               onClick={() => onDecideLeave(lv.id, 'approved')}
-                              className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 text-xs text-emerald-300 hover:bg-emerald-500/25 cursor-pointer"
+                              className="inline-flex items-center gap-1 rounded-lg bg-mint-soft border border-mint/30 px-2.5 py-1 text-xs text-mint hover:bg-mint-soft cursor-pointer"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" /> อนุมัติ
                             </button>
                             <button
                               type="button"
                               onClick={() => onDecideLeave(lv.id, 'rejected')}
-                              className="inline-flex items-center gap-1 rounded-lg bg-rose-500/15 border border-rose-500/30 px-2.5 py-1 text-xs text-rose-300 hover:bg-rose-500/25 cursor-pointer"
+                              className="inline-flex items-center gap-1 rounded-lg bg-red-soft border border-red/30 px-2.5 py-1 text-xs text-red hover:bg-red-soft cursor-pointer"
                             >
                               <XCircle className="w-3.5 h-3.5" /> ปฏิเสธ
                             </button>
@@ -432,7 +432,7 @@ export default function HrAttendancePage() {
                         <button
                           type="button"
                           onClick={() => onCancelLeave(lv.id)}
-                          className="p-1 text-slate-500 hover:text-rose-400 cursor-pointer"
+                          className="p-1 text-muted hover:text-red cursor-pointer"
                           title="ลบรายการ"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -444,7 +444,7 @@ export default function HrAttendancePage() {
               })}
               {leaves.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-10 text-center text-muted">
                     ยังไม่มีรายการใบลาในระบบ
                   </td>
                 </tr>
@@ -458,11 +458,11 @@ export default function HrAttendancePage() {
       <Modal open={leaveOpen} onClose={() => setLeaveOpen(false)} title="ยื่นใบลา / ขอปฏิบัติงาน WFH" maxWidth="md">
         <form onSubmit={onSubmitLeave} className="space-y-4">
           <div>
-            <label className="block text-xs text-slate-300 mb-1">ประเภทการลา</label>
+            <label className="block text-xs text-ink-2 mb-1">ประเภทการลา</label>
             <select
               value={leaveForm.leaveType}
               onChange={(e) => setLeaveForm({ ...leaveForm, leaveType: e.target.value })}
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             >
               {Object.entries(LEAVE_TYPE_META).map(([k, v]) => (
                 <option key={k} value={k}>
@@ -474,36 +474,36 @@ export default function HrAttendancePage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ตั้งแต่วันที่ *</label>
+              <label className="block text-xs text-ink-2 mb-1">ตั้งแต่วันที่ *</label>
               <input
                 type="date"
                 required
                 value={leaveForm.startDate}
                 onChange={(e) => setLeaveForm({ ...leaveForm, startDate: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ถึงวันที่ *</label>
+              <label className="block text-xs text-ink-2 mb-1">ถึงวันที่ *</label>
               <input
                 type="date"
                 required
                 min={leaveForm.startDate}
                 value={leaveForm.endDate}
                 onChange={(e) => setLeaveForm({ ...leaveForm, endDate: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1">เหตุผล / รายละเอียดการส่งต่องาน</label>
+            <label className="block text-xs text-ink-2 mb-1">เหตุผล / รายละเอียดการส่งต่องาน</label>
             <textarea
               rows={3}
               value={leaveForm.reason}
               onChange={(e) => setLeaveForm({ ...leaveForm, reason: e.target.value })}
               placeholder="ระบุเหตุผลหรือผู้ที่ฝากดูงานแทน..."
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
 
@@ -511,14 +511,14 @@ export default function HrAttendancePage() {
             <button
               type="button"
               onClick={() => setLeaveOpen(false)}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-xs text-slate-300 cursor-pointer"
+              className="rounded-lg border border-line-2 px-4 py-2 text-xs text-ink-2 cursor-pointer"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="rounded-lg bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+              className="rounded-lg bg-violet hover:bg-violet-2 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
             >
               ส่งคำขออนุมัติ
             </button>

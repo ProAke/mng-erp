@@ -50,7 +50,7 @@ function resolveRedirectUri(creds, origin) {
     if (matching) return matching;
   }
   if (list[0] && (!origin || !list[0].includes('localhost'))) return list[0];
-  return `${origin || 'http://localhost:8080'}/api/drive/callback`;
+  return `${origin || 'http://localhost:4050'}/api/drive/callback`;
 }
 
 function getOAuth2Client(origin) {

@@ -148,8 +148,8 @@ export default function RoomsBookingPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">จองห้องประชุม สตูดิโอ & อุปกรณ์ส่วนกลาง</h1>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <h1 className="text-2xl font-bold text-ink">จองห้องประชุม สตูดิโอ & อุปกรณ์ส่วนกลาง</h1>
+          <p className="text-sm text-muted mt-0.5">
             ระบบตรวจสอบเวลาชนกันอัตโนมัติ พร้อมซิงก์ตารางจองขึ้นปฏิทินรวมของบริษัททันที
           </p>
         </div>
@@ -159,7 +159,7 @@ export default function RoomsBookingPage() {
             <button
               type="button"
               onClick={() => setRoomModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 px-3.5 py-2 text-xs text-slate-200 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line-2 bg-card hover:bg-tint-1 px-3.5 py-2 text-xs text-ink cursor-pointer"
             >
               <Plus className="w-4 h-4" /> เพิ่มห้อง/อุปกรณ์
             </button>
@@ -167,7 +167,7 @@ export default function RoomsBookingPage() {
           <button
             type="button"
             onClick={() => openBookingModal()}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 px-3.5 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-violet hover:bg-violet-2 px-3.5 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
           >
             <CalendarIcon className="w-4 h-4" /> จองห้อง / อุปกรณ์
           </button>
@@ -184,7 +184,7 @@ export default function RoomsBookingPage() {
           return (
             <div
               key={rm.id}
-              className="rounded-2xl border border-slate-800 bg-slate-900 p-5 flex flex-col justify-between gap-4"
+              className="rounded-2xl border border-line bg-card p-5 flex flex-col justify-between gap-4"
             >
               <div>
                 <div className="flex items-start justify-between gap-2">
@@ -196,16 +196,16 @@ export default function RoomsBookingPage() {
                       <Icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-sm font-semibold text-white leading-snug">{rm.name}</div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-sm font-semibold text-ink leading-snug">{rm.name}</div>
+                      <div className="text-[11px] text-muted">
                         {kMeta.label} {rm.floor ? `· ${rm.floor}` : ''}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-3 flex items-center gap-2 text-xs text-slate-300">
-                  <Users className="w-3.5 h-3.5 text-slate-500" />
+                <div className="mt-3 flex items-center gap-2 text-xs text-ink-2">
+                  <Users className="w-3.5 h-3.5 text-muted" />
                   รองรับ {rm.capacity} ที่นั่ง/ชุด
                 </div>
 
@@ -213,7 +213,7 @@ export default function RoomsBookingPage() {
                   {(rm.equipment || []).map((eq) => (
                     <span
                       key={eq}
-                      className="rounded-md bg-slate-950 border border-slate-800 px-2 py-0.5 text-[11px] text-slate-300"
+                      className="rounded-md bg-bg-2 border border-line px-2 py-0.5 text-[11px] text-ink-2"
                     >
                       {eq}
                     </span>
@@ -221,17 +221,17 @@ export default function RoomsBookingPage() {
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
-                <span className="text-xs text-slate-400">
+              <div className="pt-3 border-t border-line flex items-center justify-between">
+                <span className="text-xs text-muted">
                   จองวันนี้:{' '}
-                  <strong className={rmBookings.length ? 'text-amber-300' : 'text-emerald-300'}>
+                  <strong className={rmBookings.length ? 'text-violet' : 'text-mint'}>
                     {rmBookings.length ? `${rmBookings.length} ช่วงเวลา` : 'ว่างทั้งวัน'}
                   </strong>
                 </span>
                 <button
                   type="button"
                   onClick={() => openBookingModal(rm)}
-                  className="rounded-lg bg-slate-800 hover:bg-amber-500 hover:text-slate-950 px-3 py-1.5 text-xs font-medium text-white transition cursor-pointer"
+                  className="rounded-lg bg-tint-1 hover:bg-violet hover:text-white px-3 py-1.5 text-xs font-medium text-ink transition cursor-pointer"
                 >
                   จองเลย
                 </button>
@@ -242,37 +242,37 @@ export default function RoomsBookingPage() {
       </div>
 
       {/* Bookings Schedule by Date */}
-      <section className="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden">
-        <div className="p-5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
+      <section className="rounded-2xl border border-line bg-card overflow-hidden">
+        <div className="p-5 border-b border-line flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="font-semibold text-white">ตารางการจองประจำวันที่ {fmtDateThai(selectedDate, true)}</h2>
-            <p className="text-xs text-slate-400">แสดงรายการจองทั้งหมดของวันที่เลือก</p>
+            <h2 className="font-semibold text-ink">ตารางการจองประจำวันที่ {fmtDateThai(selectedDate, true)}</h2>
+            <p className="text-xs text-muted">แสดงรายการจองทั้งหมดของวันที่เลือก</p>
           </div>
           <div className="flex items-center gap-2">
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="rounded-lg bg-slate-950 border border-slate-800 px-3 py-1.5 text-xs text-white"
+              className="rounded-lg bg-bg-2 border border-line px-3 py-1.5 text-xs text-ink"
             />
             <button
               type="button"
               onClick={() => setSelectedDate(todayStr())}
-              className="rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 cursor-pointer"
+              className="rounded-lg border border-line-2 px-3 py-1.5 text-xs text-ink-2 hover:bg-tint-1 cursor-pointer"
             >
               วันนี้
             </button>
           </div>
         </div>
 
-        <div className="divide-y divide-slate-800/70">
+        <div className="divide-y divide-line">
           {dayBookings.map((bk) => {
             const rm = rooms.find((r) => r.id === bk.roomId)
             const booker = humans.find((h) => h.id === bk.teamId)
             return (
               <div
                 key={bk.id}
-                className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-800/30"
+                className="px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-tint-1/30"
               >
                 <div className="flex items-start gap-3">
                   <span
@@ -280,24 +280,24 @@ export default function RoomsBookingPage() {
                     style={{ backgroundColor: rm?.color ?? '#3BA7FF' }}
                   />
                   <div>
-                    <div className="font-semibold text-white text-sm">{bk.title}</div>
-                    <div className="text-xs text-slate-400 mt-0.5 flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 text-amber-300 font-medium">
+                    <div className="font-semibold text-ink text-sm">{bk.title}</div>
+                    <div className="text-xs text-muted mt-0.5 flex flex-wrap items-center gap-2">
+                      <span className="inline-flex items-center gap-1 text-violet font-medium">
                         <Clock className="w-3.5 h-3.5" /> {bk.startTime} – {bk.endTime}
                       </span>
                       <span>·</span>
-                      <span className="text-slate-200">{rm?.name ?? bk.roomId}</span>
+                      <span className="text-ink">{rm?.name ?? bk.roomId}</span>
                       <span>·</span>
                       <span>ผู้จอง: {booker?.nickname ?? booker?.name ?? bk.teamId}</span>
                     </div>
-                    {bk.note && <p className="text-xs text-slate-400 mt-1">{bk.note}</p>}
+                    {bk.note && <p className="text-xs text-muted mt-1">{bk.note}</p>}
                   </div>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => onCancelBooking(bk.id, bk.title)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-1.5 text-xs text-rose-300 hover:bg-rose-500/20 self-end sm:self-center cursor-pointer"
+                  className="inline-flex items-center gap-1 rounded-lg border border-red/30 bg-red-soft px-3 py-1.5 text-xs text-red hover:bg-red-soft self-end sm:self-center cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" /> ยกเลิกการจอง
                 </button>
@@ -306,7 +306,7 @@ export default function RoomsBookingPage() {
           })}
 
           {dayBookings.length === 0 && (
-            <div className="py-12 text-center text-sm text-slate-500">
+            <div className="py-12 text-center text-sm text-muted">
               ยังไม่มีรายการจองในวันที่ {fmtDateThai(selectedDate)} — ทุกห้องและอุปกรณ์พร้อมใช้งาน
             </div>
           )}
@@ -323,12 +323,12 @@ export default function RoomsBookingPage() {
       >
         <form onSubmit={onSubmitBooking} className="space-y-4">
           <div>
-            <label className="block text-xs text-slate-300 mb-1">เลือกห้องหรืออุปกรณ์ *</label>
+            <label className="block text-xs text-ink-2 mb-1">เลือกห้องหรืออุปกรณ์ *</label>
             <select
               required
               value={bookForm.roomId}
               onChange={(e) => setBookForm({ ...bookForm, roomId: e.target.value })}
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             >
               {rooms.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -339,51 +339,51 @@ export default function RoomsBookingPage() {
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1">หัวข้อการใช้งาน / การประชุม *</label>
+            <label className="block text-xs text-ink-2 mb-1">หัวข้อการใช้งาน / การประชุม *</label>
             <input
               required
               value={bookForm.title}
               onChange={(e) => setBookForm({ ...bookForm, title: e.target.value })}
               placeholder="เช่น ประชุม Kickoff โปรเจกต์ลูกค้าใหม่"
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">วันที่ *</label>
+              <label className="block text-xs text-ink-2 mb-1">วันที่ *</label>
               <input
                 type="date"
                 required
                 value={bookForm.date}
                 onChange={(e) => setBookForm({ ...bookForm, date: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">เวลาเริ่ม *</label>
+              <label className="block text-xs text-ink-2 mb-1">เวลาเริ่ม *</label>
               <input
                 type="time"
                 required
                 value={bookForm.startTime}
                 onChange={(e) => setBookForm({ ...bookForm, startTime: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">เวลาสิ้นสุด *</label>
+              <label className="block text-xs text-ink-2 mb-1">เวลาสิ้นสุด *</label>
               <input
                 type="time"
                 required
                 value={bookForm.endTime}
                 onChange={(e) => setBookForm({ ...bookForm, endTime: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1.5">ผู้เข้าร่วม</label>
+            <label className="block text-xs text-ink-2 mb-1.5">ผู้เข้าร่วม</label>
             <div className="flex flex-wrap gap-1.5">
               {humans.map((h) => {
                 const active = bookForm.attendees.includes(h.id)
@@ -401,8 +401,8 @@ export default function RoomsBookingPage() {
                     }
                     className={`rounded-full px-2.5 py-1 text-xs border cursor-pointer ${
                       active
-                        ? 'border-amber-500 bg-amber-500/20 text-amber-200'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
+                        ? 'border-violet bg-violet-soft text-violet'
+                        : 'border-line bg-bg-2 text-muted hover:text-ink'
                     }`}
                   >
                     {h.nickname || h.name}
@@ -413,17 +413,17 @@ export default function RoomsBookingPage() {
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1">หมายเหตุเพิ่มเติม</label>
+            <label className="block text-xs text-ink-2 mb-1">หมายเหตุเพิ่มเติม</label>
             <input
               value={bookForm.note}
               onChange={(e) => setBookForm({ ...bookForm, note: e.target.value })}
               placeholder="เช่น ขอเตรียมสายแปลง HDMI และน้ำดื่มรับรองลูกค้า 4 ท่าน"
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
 
           {errMsg && (
-            <div className="rounded-lg bg-rose-500/15 border border-rose-500/30 px-3 py-2 text-xs text-rose-300">
+            <div className="rounded-lg bg-red-soft border border-red/30 px-3 py-2 text-xs text-red">
               {errMsg}
             </div>
           )}
@@ -432,14 +432,14 @@ export default function RoomsBookingPage() {
             <button
               type="button"
               onClick={() => setBookOpen(false)}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-xs text-slate-300 cursor-pointer"
+              className="rounded-lg border border-line-2 px-4 py-2 text-xs text-ink-2 cursor-pointer"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+              className="rounded-lg bg-violet hover:bg-violet-2 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
             >
               {saving ? 'กำลังตรวจสอบเวลา…' : 'ยืนยันการจอง'}
             </button>
@@ -451,23 +451,23 @@ export default function RoomsBookingPage() {
       <Modal open={roomModalOpen} onClose={() => setRoomModalOpen(false)} title="เพิ่มห้องประชุม / อุปกรณ์ส่วนกลาง" maxWidth="md">
         <form onSubmit={onSubmitRoom} className="space-y-4">
           <div>
-            <label className="block text-xs text-slate-300 mb-1">ชื่อห้องหรืออุปกรณ์ *</label>
+            <label className="block text-xs text-ink-2 mb-1">ชื่อห้องหรืออุปกรณ์ *</label>
             <input
               required
               value={roomForm.name}
               onChange={(e) => setRoomForm({ ...roomForm, name: e.target.value })}
               placeholder="เช่น ห้องประชุมเล็ก B"
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ประเภท</label>
+              <label className="block text-xs text-ink-2 mb-1">ประเภท</label>
               <select
                 value={roomForm.kind}
                 onChange={(e) => setRoomForm({ ...roomForm, kind: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               >
                 <option value="room">ห้องประชุม</option>
                 <option value="studio">สตูดิโอ</option>
@@ -475,31 +475,31 @@ export default function RoomsBookingPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ความจุ</label>
+              <label className="block text-xs text-ink-2 mb-1">ความจุ</label>
               <input
                 type="number"
                 min={1}
                 value={roomForm.capacity}
                 onChange={(e) => setRoomForm({ ...roomForm, capacity: Number(e.target.value) })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ชั้น/จุดเก็บ</label>
+              <label className="block text-xs text-ink-2 mb-1">ชั้น/จุดเก็บ</label>
               <input
                 value={roomForm.floor}
                 onChange={(e) => setRoomForm({ ...roomForm, floor: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1">อุปกรณ์ภายใน (คั่นด้วย ,)</label>
+            <label className="block text-xs text-ink-2 mb-1">อุปกรณ์ภายใน (คั่นด้วย ,)</label>
             <input
               value={roomForm.equipmentText}
               onChange={(e) => setRoomForm({ ...roomForm, equipmentText: e.target.value })}
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
 
@@ -507,14 +507,14 @@ export default function RoomsBookingPage() {
             <button
               type="button"
               onClick={() => setRoomModalOpen(false)}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-xs text-slate-300 cursor-pointer"
+              className="rounded-lg border border-line-2 px-4 py-2 text-xs text-ink-2 cursor-pointer"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+              className="rounded-lg bg-violet hover:bg-violet-2 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
             >
               บันทึก
             </button>

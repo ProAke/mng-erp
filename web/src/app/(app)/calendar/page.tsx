@@ -282,7 +282,7 @@ export default function CalendarPage() {
     <div
       className={
         fullscreen
-          ? 'fixed inset-0 z-50 bg-slate-950 p-4 sm:p-6 overflow-y-auto'
+          ? 'fixed inset-0 z-50 bg-bg-2 p-4 sm:p-6 overflow-y-auto'
           : 'space-y-5'
       }
     >
@@ -292,29 +292,29 @@ export default function CalendarPage() {
           <button
             type="button"
             onClick={() => stepCursor(-1)}
-            className="rounded-lg border border-slate-800 bg-slate-900 p-2 text-slate-300 hover:bg-slate-800 cursor-pointer"
+            className="rounded-lg border border-line bg-card p-2 text-ink-2 hover:bg-tint-1 cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             type="button"
             onClick={() => setCursor(todayStr())}
-            className="rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-800 cursor-pointer"
+            className="rounded-lg border border-line bg-card px-3 py-1.5 text-xs font-medium text-ink hover:bg-tint-1 cursor-pointer"
           >
             วันนี้
           </button>
           <button
             type="button"
             onClick={() => stepCursor(1)}
-            className="rounded-lg border border-slate-800 bg-slate-900 p-2 text-slate-300 hover:bg-slate-800 cursor-pointer"
+            className="rounded-lg border border-line bg-card p-2 text-ink-2 hover:bg-tint-1 cursor-pointer"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
-          <h1 className="text-xl font-bold text-white ml-2">{titleLabel}</h1>
+          <h1 className="text-xl font-bold text-ink ml-2">{titleLabel}</h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="inline-flex rounded-lg border border-slate-800 bg-slate-900 p-1 text-xs">
+          <div className="inline-flex rounded-lg border border-line bg-card p-1 text-xs">
             {(
               [
                 ['month', 'เดือน'],
@@ -328,7 +328,7 @@ export default function CalendarPage() {
                 type="button"
                 onClick={() => setView(k)}
                 className={`px-3 py-1 rounded-md transition cursor-pointer ${
-                  view === k ? 'bg-amber-500 text-slate-950 font-semibold' : 'text-slate-300 hover:text-white'
+                  view === k ? 'bg-violet text-white shadow-sm font-semibold' : 'text-ink-2 hover:text-ink'
                 }`}
               >
                 {label}
@@ -339,7 +339,7 @@ export default function CalendarPage() {
           <button
             type="button"
             onClick={() => setFullscreen((v) => !v)}
-            className="rounded-lg border border-slate-800 bg-slate-900 p-2 text-slate-300 hover:bg-slate-800 cursor-pointer"
+            className="rounded-lg border border-line bg-card p-2 text-ink-2 hover:bg-tint-1 cursor-pointer"
             title={fullscreen ? 'ออกจากโหมดเต็มจอ' : 'ขยายเต็มจอ'}
           >
             {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -348,7 +348,7 @@ export default function CalendarPage() {
           <button
             type="button"
             onClick={() => openNewModal()}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 px-3.5 py-2 text-xs font-semibold text-slate-950 transition cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-violet hover:bg-violet-2 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition cursor-pointer"
           >
             <Plus className="w-4 h-4" /> เพิ่มกิจกรรม
           </button>
@@ -356,7 +356,7 @@ export default function CalendarPage() {
       </div>
 
       {banner && (
-        <div className="rounded-lg bg-emerald-500/15 border border-emerald-500/30 px-4 py-2 text-xs text-emerald-300">
+        <div className="rounded-lg bg-mint-soft border border-mint/30 px-4 py-2 text-xs text-mint">
           {banner}
         </div>
       )}
@@ -366,11 +366,11 @@ export default function CalendarPage() {
         {/* Left Rail */}
         <div className="space-y-4">
           {/* Mini Month Picker */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-            <div className="text-xs font-semibold text-slate-300 mb-2">
+          <div className="rounded-xl border border-line bg-card p-4">
+            <div className="text-xs font-semibold text-ink-2 mb-2">
               {MONTHS_FULL_TH[cursorDate.getMonth()]} {cursorDate.getFullYear() + 543}
             </div>
-            <div className="grid grid-cols-7 text-center text-[10px] text-slate-500 mb-1">
+            <div className="grid grid-cols-7 text-center text-[10px] text-muted mb-1">
               {DOW_SHORT_TH.map((d) => (
                 <div key={d}>{d}</div>
               ))}
@@ -387,17 +387,17 @@ export default function CalendarPage() {
                     onClick={() => setCursor(cell.iso)}
                     className={`py-1.5 rounded-md relative transition cursor-pointer ${
                       isSelected
-                        ? 'bg-amber-500 text-slate-950 font-bold'
+                        ? 'bg-violet text-white shadow-sm font-bold'
                         : isToday
-                        ? 'border border-amber-500/50 text-amber-300'
+                        ? 'border border-violet/30 text-violet'
                         : cell.inMonth
-                        ? 'text-slate-200 hover:bg-slate-800'
-                        : 'text-slate-600'
+                        ? 'text-ink hover:bg-tint-1'
+                        : 'text-muted'
                     }`}
                   >
                     {cell.day}
                     {hasItems && !isSelected && (
-                      <span className="w-1 h-1 rounded-full bg-amber-400 absolute bottom-0.5 left-1/2 -translate-x-1/2" />
+                      <span className="w-1 h-1 rounded-full bg-violet absolute bottom-0.5 left-1/2 -translate-x-1/2" />
                     )}
                   </button>
                 )
@@ -406,18 +406,18 @@ export default function CalendarPage() {
           </div>
 
           {/* Category Filters */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-2.5">
-            <div className="text-xs font-semibold text-slate-300">ตัวกรองหมวดหมู่</div>
+          <div className="rounded-xl border border-line bg-card p-4 space-y-2.5">
+            <div className="text-xs font-semibold text-ink-2">ตัวกรองหมวดหมู่</div>
             {Object.entries(cats).map(([key, c]) => {
               const checked = !hiddenCats[key]
               return (
-                <label key={key} className="flex items-center justify-between gap-2 text-xs text-slate-300 cursor-pointer">
+                <label key={key} className="flex items-center justify-between gap-2 text-xs text-ink-2 cursor-pointer">
                   <span className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={checked}
                       onChange={() => setHiddenCats((prev) => ({ ...prev, [key]: !prev[key] }))}
-                      className="rounded border-slate-700 bg-slate-950 accent-amber-500"
+                      className="rounded border-line-2 bg-bg-2 accent-violet"
                     />
                     <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: c.color }} />
                     {c.label}
@@ -425,23 +425,23 @@ export default function CalendarPage() {
                 </label>
               )
             })}
-            <div className="pt-2 border-t border-slate-800">
-              <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+            <div className="pt-2 border-t border-line">
+              <label className="flex items-center gap-2 text-xs text-ink-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={showTaskDeadlines}
                   onChange={(e) => setShowTaskDeadlines(e.target.checked)}
-                  className="rounded border-slate-700 bg-slate-950 accent-amber-500"
+                  className="rounded border-line-2 bg-bg-2 accent-violet"
                 />
-                <CheckSquare className="w-3.5 h-3.5 text-sky-400" />
+                <CheckSquare className="w-3.5 h-3.5 text-blue-2" />
                 แสดงเดดไลน์งานที่ยังไม่เสร็จ
               </label>
             </div>
           </div>
 
           {/* Upcoming Mini List */}
-          <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-            <div className="text-xs font-semibold text-slate-300 mb-3">รายการถัดไป</div>
+          <div className="rounded-xl border border-line bg-card p-4">
+            <div className="text-xs font-semibold text-ink-2 mb-3">รายการถัดไป</div>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {entries
                 .filter((e) => e.date >= today)
@@ -454,10 +454,10 @@ export default function CalendarPage() {
                       if (e.rawEvent) openEditModal(e.rawEvent)
                       else setCursor(e.date)
                     }}
-                    className="w-full text-left rounded-lg bg-slate-950/60 hover:bg-slate-800/70 px-3 py-2 border border-slate-800/80 transition cursor-pointer"
+                    className="w-full text-left rounded-lg bg-bg-2 hover:bg-tint-1/70 px-3 py-2 border border-line transition cursor-pointer"
                   >
-                    <div className="text-xs font-medium text-white truncate">{e.title}</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
+                    <div className="text-xs font-medium text-ink truncate">{e.title}</div>
+                    <div className="text-[11px] text-muted mt-0.5">
                       {fmtDateThai(e.date)} {e.start ? `· ${e.start}` : ''}
                     </div>
                   </button>
@@ -467,10 +467,10 @@ export default function CalendarPage() {
         </div>
 
         {/* Right Calendar Canvas */}
-        <div className="xl:col-span-3 rounded-xl border border-slate-800 bg-slate-900 overflow-hidden">
+        <div className="xl:col-span-3 rounded-xl border border-line bg-card overflow-hidden">
           {view === 'month' && (
             <div>
-              <div className="grid grid-cols-7 border-b border-slate-800 bg-slate-950/50 text-center text-xs font-medium text-slate-400 py-2.5">
+              <div className="grid grid-cols-7 border-b border-line bg-bg-2 text-center text-xs font-medium text-muted py-2.5">
                 {DOW_SHORT_TH.map((d) => (
                   <div key={d}>{d}</div>
                 ))}
@@ -485,8 +485,8 @@ export default function CalendarPage() {
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => onDropDate(cell.iso)}
                       onDoubleClick={() => openNewModal(cell.iso)}
-                      className={`min-h-28 border-b border-r border-slate-800/70 p-1.5 transition ${
-                        cell.inMonth ? 'bg-slate-900' : 'bg-slate-950/50 text-slate-600'
+                      className={`min-h-28 border-b border-r border-line p-1.5 transition ${
+                        cell.inMonth ? 'bg-card' : 'bg-bg-2 text-muted'
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
@@ -495,10 +495,10 @@ export default function CalendarPage() {
                           onClick={() => openNewModal(cell.iso)}
                           className={`w-6 h-6 rounded-full text-xs flex items-center justify-center cursor-pointer ${
                             isToday
-                              ? 'bg-amber-500 text-slate-950 font-bold'
+                              ? 'bg-violet text-white shadow-sm font-bold'
                               : cell.inMonth
-                              ? 'text-slate-300 hover:bg-slate-800'
-                              : 'text-slate-600'
+                              ? 'text-ink-2 hover:bg-tint-1'
+                              : 'text-muted'
                           }`}
                           title="คลิกเพื่อเพิ่มกิจกรรมในวันนี้"
                         >
@@ -535,7 +535,7 @@ export default function CalendarPage() {
                               setCursor(cell.iso)
                               setView('day')
                             }}
-                            className="text-[10px] text-slate-400 hover:text-amber-300 pl-1"
+                            className="text-[10px] text-muted hover:text-violet pl-1"
                           >
                             +{list.length - 4} รายการเพิ่มเติม
                           </button>
@@ -551,19 +551,19 @@ export default function CalendarPage() {
           {view === 'week' && (
             <div className="overflow-x-auto">
               <div className="min-w-[720px]">
-                <div className="grid grid-cols-8 border-b border-slate-800 bg-slate-950/60">
-                  <div className="p-2 text-[11px] text-slate-500 text-center">เวลา</div>
+                <div className="grid grid-cols-8 border-b border-line bg-bg-2">
+                  <div className="p-2 text-[11px] text-muted text-center">เวลา</div>
                   {weekDays.map((wd) => (
                     <div
                       key={wd.iso}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={() => onDropDate(wd.iso)}
-                      className={`p-2 text-center border-l border-slate-800 ${
-                        wd.iso === today ? 'bg-amber-500/10' : ''
+                      className={`p-2 text-center border-l border-line ${
+                        wd.iso === today ? 'bg-violet-soft' : ''
                       }`}
                     >
-                      <div className="text-[11px] text-slate-400">{wd.dow}</div>
-                      <div className={`text-sm font-semibold ${wd.iso === today ? 'text-amber-300' : 'text-white'}`}>
+                      <div className="text-[11px] text-muted">{wd.dow}</div>
+                      <div className={`text-sm font-semibold ${wd.iso === today ? 'text-violet' : 'text-ink'}`}>
                         {wd.day}
                       </div>
                       {/* All-day pills */}
@@ -588,8 +588,8 @@ export default function CalendarPage() {
                 </div>
 
                 {HOURS.map((h) => (
-                  <div key={h} className="grid grid-cols-8 border-b border-slate-800/60 min-h-12">
-                    <div className="text-[11px] text-slate-500 text-right pr-2 pt-1">
+                  <div key={h} className="grid grid-cols-8 border-b border-line min-h-12">
+                    <div className="text-[11px] text-muted text-right pr-2 pt-1">
                       {String(h).padStart(2, '0')}:00
                     </div>
                     {weekDays.map((wd) => {
@@ -602,7 +602,7 @@ export default function CalendarPage() {
                           onClick={() => openNewModal(wd.iso, h)}
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={() => onDropDate(wd.iso)}
-                          className="border-l border-slate-800/60 p-1 hover:bg-slate-800/30 cursor-pointer space-y-1"
+                          className="border-l border-line p-1 hover:bg-tint-1/30 cursor-pointer space-y-1"
                         >
                           {slotItems.map((it) => (
                             <div
@@ -638,30 +638,30 @@ export default function CalendarPage() {
           {view === 'day' && (
             <div className="p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="font-semibold text-white">ตารางประจำวันที่ {fmtDateThai(cursor, true)}</h2>
+                <h2 className="font-semibold text-ink">ตารางประจำวันที่ {fmtDateThai(cursor, true)}</h2>
                 <button
                   type="button"
                   onClick={() => openNewModal(cursor)}
-                  className="text-xs text-amber-400 hover:text-amber-300 cursor-pointer"
+                  className="text-xs text-violet hover:text-violet cursor-pointer"
                 >
                   + เพิ่มรายการวันนี้
                 </button>
               </div>
               {(byDate[cursor] ?? []).length === 0 ? (
-                <p className="text-sm text-slate-500 py-10 text-center">ไม่มีกิจกรรมหรือเดดไลน์ในวันนี้</p>
+                <p className="text-sm text-muted py-10 text-center">ไม่มีกิจกรรมหรือเดดไลน์ในวันนี้</p>
               ) : (
                 <div className="space-y-2.5">
                   {(byDate[cursor] ?? []).map((it) => (
                     <div
                       key={`${it.kind}-${it.id}`}
                       onClick={() => it.rawEvent && openEditModal(it.rawEvent)}
-                      className="flex items-start justify-between gap-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4 hover:border-slate-700 cursor-pointer"
+                      className="flex items-start justify-between gap-4 rounded-xl border border-line bg-bg-2 p-4 hover:border-line-2 cursor-pointer"
                     >
                       <div className="flex items-start gap-3">
                         <span className="w-2 h-10 rounded-full mt-0.5 shrink-0" style={{ backgroundColor: it.color }} />
                         <div>
-                          <div className="font-medium text-white">{it.title}</div>
-                          <div className="text-xs text-slate-400 mt-1 flex flex-wrap items-center gap-3">
+                          <div className="font-medium text-ink">{it.title}</div>
+                          <div className="text-xs text-muted mt-1 flex flex-wrap items-center gap-3">
                             <span className="inline-flex items-center gap-1">
                               <Clock className="w-3.5 h-3.5" />
                               {it.allday ? 'ทั้งวัน' : `${it.start ?? ''} - ${it.end ?? ''}`}
@@ -672,10 +672,10 @@ export default function CalendarPage() {
                               </span>
                             )}
                           </div>
-                          {it.rawEvent?.desc && <p className="text-xs text-slate-400 mt-2">{it.rawEvent.desc}</p>}
+                          {it.rawEvent?.desc && <p className="text-xs text-muted mt-2">{it.rawEvent.desc}</p>}
                         </div>
                       </div>
-                      {it.rawEvent && <Edit3 className="w-4 h-4 text-slate-500 shrink-0" />}
+                      {it.rawEvent && <Edit3 className="w-4 h-4 text-muted shrink-0" />}
                     </div>
                   ))}
                 </div>
@@ -686,29 +686,29 @@ export default function CalendarPage() {
           {view === 'agenda' && (
             <div className="p-5 space-y-4">
               {Object.keys(byDate).length === 0 ? (
-                <p className="text-sm text-slate-500 py-10 text-center">ยังไม่มีกิจกรรมในระบบ</p>
+                <p className="text-sm text-muted py-10 text-center">ยังไม่มีกิจกรรมในระบบ</p>
               ) : (
                 Object.entries(byDate)
                   .sort(([a], [b]) => a.localeCompare(b))
                   .map(([dateIso, list]) => (
                     <div key={dateIso} className="space-y-2">
-                      <div className="text-xs font-semibold text-amber-300 border-b border-slate-800 pb-1">
+                      <div className="text-xs font-semibold text-violet border-b border-line pb-1">
                         {fmtDateThai(dateIso, true)}
                       </div>
                       {list.map((it) => (
                         <div
                           key={`${it.kind}-${it.id}`}
                           onClick={() => it.rawEvent && openEditModal(it.rawEvent)}
-                          className="flex items-center justify-between gap-3 rounded-lg bg-slate-950/50 border border-slate-800/80 px-4 py-2.5 hover:border-slate-700 cursor-pointer"
+                          className="flex items-center justify-between gap-3 rounded-lg bg-bg-2 border border-line px-4 py-2.5 hover:border-line-2 cursor-pointer"
                         >
                           <div className="flex items-center gap-3 min-w-0">
                             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: it.color }} />
-                            <span className="text-xs text-slate-400 w-24 shrink-0">
+                            <span className="text-xs text-muted w-24 shrink-0">
                               {it.allday ? 'ทั้งวัน' : `${it.start ?? ''} - ${it.end ?? ''}`}
                             </span>
-                            <span className="text-sm text-white truncate">{it.title}</span>
+                            <span className="text-sm text-ink truncate">{it.title}</span>
                           </div>
-                          <span className="text-[11px] text-slate-400 shrink-0">
+                          <span className="text-[11px] text-muted shrink-0">
                             {cats[it.cat]?.label ?? it.cat}
                           </span>
                         </div>
@@ -731,23 +731,23 @@ export default function CalendarPage() {
       >
         <form onSubmit={onSaveEvent} className="space-y-4">
           <div>
-            <label className="block text-xs text-slate-300 mb-1">ชื่อกิจกรรม *</label>
+            <label className="block text-xs text-ink-2 mb-1">ชื่อกิจกรรม *</label>
             <input
               required
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
               placeholder="เช่น ประชุมสรุปแบบ UI กับลูกค้า"
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink focus:outline-none focus:border-violet"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">หมวดหมู่</label>
+              <label className="block text-xs text-ink-2 mb-1">หมวดหมู่</label>
               <select
                 value={form.cat}
                 onChange={(e) => setForm({ ...form, cat: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               >
                 {Object.entries(cats).map(([k, v]) => (
                   <option key={k} value={k}>
@@ -757,24 +757,24 @@ export default function CalendarPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">วันที่ *</label>
+              <label className="block text-xs text-ink-2 mb-1">วันที่ *</label>
               <input
                 type="date"
                 required
                 value={form.date}
                 onChange={(e) => setForm({ ...form, date: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-            <label className="inline-flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+            <label className="inline-flex items-center gap-2 text-xs text-ink-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={form.allday}
                 onChange={(e) => setForm({ ...form, allday: e.target.checked })}
-                className="accent-amber-500"
+                className="accent-violet"
               />
               ตลอดทั้งวัน
             </label>
@@ -784,14 +784,14 @@ export default function CalendarPage() {
                   type="time"
                   value={form.start}
                   onChange={(e) => setForm({ ...form, start: e.target.value })}
-                  className="rounded-lg bg-slate-950 border border-slate-800 px-3 py-1.5 text-sm text-white"
+                  className="rounded-lg bg-bg-2 border border-line px-3 py-1.5 text-sm text-ink"
                 />
-                <span className="text-slate-500">ถึง</span>
+                <span className="text-muted">ถึง</span>
                 <input
                   type="time"
                   value={form.end}
                   onChange={(e) => setForm({ ...form, end: e.target.value })}
-                  className="rounded-lg bg-slate-950 border border-slate-800 px-3 py-1.5 text-sm text-white"
+                  className="rounded-lg bg-bg-2 border border-line px-3 py-1.5 text-sm text-ink"
                 />
               </div>
             )}
@@ -799,20 +799,20 @@ export default function CalendarPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">สถานที่ / ลิงก์ประชุม</label>
+              <label className="block text-xs text-ink-2 mb-1">สถานที่ / ลิงก์ประชุม</label>
               <input
                 value={form.loc}
                 onChange={(e) => setForm({ ...form, loc: e.target.value })}
                 placeholder="เช่น Google Meet / ห้องประชุมชั้น 3"
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">เชื่อมกับโปรเจกต์</label>
+              <label className="block text-xs text-ink-2 mb-1">เชื่อมกับโปรเจกต์</label>
               <select
                 value={form.project}
                 onChange={(e) => setForm({ ...form, project: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               >
                 <option value="">— ไม่ระบุโปรเจกต์ —</option>
                 {projects.map((p) => (
@@ -825,7 +825,7 @@ export default function CalendarPage() {
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1.5">ผู้เข้าร่วม</label>
+            <label className="block text-xs text-ink-2 mb-1.5">ผู้เข้าร่วม</label>
             <div className="flex flex-wrap gap-2">
               {team.map((m) => {
                 const active = form.members.includes(m.id)
@@ -841,8 +841,8 @@ export default function CalendarPage() {
                     }
                     className={`rounded-full px-3 py-1 text-xs border transition cursor-pointer ${
                       active
-                        ? 'bg-amber-500/20 border-amber-500 text-amber-200'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                        ? 'bg-violet-soft border-violet text-violet'
+                        : 'bg-bg-2 border-line text-muted hover:text-ink'
                     }`}
                   >
                     {m.name}
@@ -853,17 +853,17 @@ export default function CalendarPage() {
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1">รายละเอียดเพิ่มเติม</label>
+            <label className="block text-xs text-ink-2 mb-1">รายละเอียดเพิ่มเติม</label>
             <textarea
               rows={3}
               value={form.desc}
               onChange={(e) => setForm({ ...form, desc: e.target.value })}
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
 
           {errMsg && (
-            <div className="rounded-lg bg-rose-500/10 border border-rose-500/30 px-3 py-2 text-xs text-rose-300">
+            <div className="rounded-lg bg-red-soft border border-red/30 px-3 py-2 text-xs text-red">
               {errMsg}
             </div>
           )}
@@ -874,7 +874,7 @@ export default function CalendarPage() {
                 type="button"
                 disabled={saving}
                 onClick={onDeleteEvent}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-300 hover:bg-rose-500/20 cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red/30 bg-red-soft px-3 py-2 text-xs font-medium text-red hover:bg-red-soft cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" /> ลบกิจกรรม
               </button>
@@ -886,14 +886,14 @@ export default function CalendarPage() {
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="rounded-lg border border-slate-700 px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 cursor-pointer"
+                className="rounded-lg border border-line-2 px-4 py-2 text-xs text-ink-2 hover:bg-tint-1 cursor-pointer"
               >
                 ยกเลิก
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-60 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+                className="rounded-lg bg-violet hover:bg-violet-2 disabled:opacity-60 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
               >
                 {saving ? 'กำลังบันทึก…' : editing ? 'บันทึกการแก้ไข' : 'สร้างกิจกรรม'}
               </button>

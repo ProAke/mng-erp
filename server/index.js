@@ -14,6 +14,15 @@ app.use(express.json({ limit: '4mb' }));
 /* tiny request log */
 app.use('/api', (req, _res, next) => { console.log(`[api] ${req.method} ${req.path}`); next(); });
 
+/* API ต้องไม่ถูก cache เด็ดขาด — มิฉะนั้น token ที่ logout แล้วอาจยังดึงข้อมูลจริงได้
+   จาก cache ของ browser โดยไม่มีการถาม server */
+app.use('/api', (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 /* ---------- public endpoints ---------- */
 app.get('/api/health', async (_req, res) => { res.json({ ok: true, ...(await healthCheck()) }); });
 
@@ -41,6 +50,9 @@ app.use('/api/drive', require('./drive-routes'));
 
 /* ---------- protected API ---------- */
 app.use('/api/users', auth.middleware, require('./users'));
+if (fs.existsSync(path.join(__dirname, 'hermes-mini', 'routes.js'))) {
+  app.use('/api/hermes-mini', auth.middleware, require('./hermes-mini/routes'));
+}
 app.use('/api', auth.middleware, workspaceApi);
 app.use('/api', auth.middleware, api);
 
@@ -51,7 +63,8 @@ app.use('/uploads', express.static(uploadsDir, { maxAge: '7d' }));
 
 /* ---------- Next.js static export (server/public) ---------- */
 const root = path.join(__dirname, 'public');
-const noCache = (res) => {
+// setHeaders signature = (res, path, stat) — res คืออาร์กูเมนต์แรกเท่านั้น
+const noCache = (res, _path, _stat) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');

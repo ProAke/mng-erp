@@ -27,10 +27,10 @@ import {
 } from '@/lib/erp-helpers'
 
 const PROJ_STATUS: Record<string, { label: string; badge: string }> = {
-  doing:  { label: 'กำลังดำเนินการ', badge: 'bg-sky-500/15 text-sky-300 border-sky-500/30' },
-  review: { label: 'ตรวจรับงาน',     badge: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
-  done:   { label: 'ส่งมอบแล้ว',     badge: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' },
-  todo:   { label: 'วางแผน',         badge: 'bg-slate-800 text-slate-300 border-slate-700' },
+  doing:  { label: 'กำลังดำเนินการ', badge: 'bg-blue-soft text-blue-2 border-blue/30' },
+  review: { label: 'ตรวจรับงาน',     badge: 'bg-violet-soft text-violet border-violet/30' },
+  done:   { label: 'ส่งมอบแล้ว',     badge: 'bg-mint-soft text-mint border-mint/30' },
+  todo:   { label: 'วางแผน',         badge: 'bg-tint-1 text-ink-2 border-line-2' },
 }
 
 export default function ProjectsPage() {
@@ -130,8 +130,8 @@ export default function ProjectsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">โปรเจกต์ทั้งหมด ({projects.length})</h1>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <h1 className="text-2xl font-bold text-ink">โปรเจกต์ทั้งหมด ({projects.length})</h1>
+          <p className="text-sm text-muted mt-0.5">
             งบประมาณรวม {money(totalBudget)} · ใช้จริงแล้ว {money(totalSpent)}
           </p>
         </div>
@@ -140,13 +140,13 @@ export default function ProjectsPage() {
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-200 transition cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line-2 bg-card hover:bg-tint-1 px-3.5 py-2 text-xs font-medium text-ink transition cursor-pointer"
           >
             <Plus className="w-4 h-4" /> สร้างด่วน
           </button>
           <Link
             href="/projects/detail"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 px-3.5 py-2 text-xs font-semibold text-slate-950 transition"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-violet hover:bg-violet-2 px-3.5 py-2 text-xs font-semibold text-white shadow-sm transition"
           >
             <FileEdit className="w-4 h-4" /> สร้างโปรเจกต์ (Rich Text)
           </Link>
@@ -154,20 +154,20 @@ export default function ProjectsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 bg-slate-900 border border-slate-800 rounded-xl p-3.5">
+      <div className="flex flex-col sm:flex-row gap-3 bg-card border border-line rounded-xl p-3.5">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="ค้นหารหัสย่อ (เช่น ERP, WEB), ชื่อโปรเจกต์, ลูกค้า…"
-            className="w-full rounded-lg bg-slate-950 border border-slate-800 pl-9 pr-3 py-1.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+            className="w-full rounded-lg bg-bg-2 border border-line pl-9 pr-3 py-1.5 text-sm text-ink placeholder-muted focus:outline-none focus:border-violet"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-lg bg-slate-950 border border-slate-800 px-3 py-1.5 text-sm text-slate-200"
+          className="rounded-lg bg-bg-2 border border-line px-3 py-1.5 text-sm text-ink"
         >
           <option value="">ทุกสถานะโปรเจกต์</option>
           {Object.entries(PROJ_STATUS).map(([k, v]) => (
@@ -191,7 +191,7 @@ export default function ProjectsPage() {
             <div
               key={p.id}
               onClick={() => setSelected(p)}
-              className="rounded-xl border border-slate-800 bg-slate-900 hover:border-amber-500/40 p-5 flex flex-col justify-between transition cursor-pointer"
+              className="rounded-xl border border-line bg-card hover:border-violet/40 p-5 flex flex-col justify-between transition cursor-pointer"
             >
               <div>
                 <div className="flex items-start justify-between gap-3">
@@ -205,13 +205,13 @@ export default function ProjectsPage() {
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
                         {p.code && (
-                          <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-amber-300 shrink-0">
+                          <span className="rounded bg-tint-1 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-violet shrink-0">
                             {p.code}
                           </span>
                         )}
-                        <h3 className="font-semibold text-white truncate">{p.name}</h3>
+                        <h3 className="font-semibold text-ink truncate">{p.name}</h3>
                       </div>
-                      <div className="text-xs text-slate-400 truncate">{clientLabel}</div>
+                      <div className="text-xs text-muted truncate">{clientLabel}</div>
                     </div>
                   </div>
                   <span className={`text-[10px] px-2 py-0.5 rounded-full border shrink-0 ${st.badge}`}>
@@ -220,15 +220,15 @@ export default function ProjectsPage() {
                 </div>
 
                 {p.desc && (
-                  <p className="text-xs text-slate-400 line-clamp-2 mt-3">{stripHtml(p.desc)}</p>
+                  <p className="text-xs text-muted line-clamp-2 mt-3">{stripHtml(p.desc)}</p>
                 )}
 
                 <div className="mt-4">
                   <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-slate-400">ความคืบหน้า</span>
-                    <span className="font-semibold text-white tabular-nums">{p.progress}%</span>
+                    <span className="text-muted">ความคืบหน้า</span>
+                    <span className="font-semibold text-ink tabular-nums">{p.progress}%</span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden">
+                  <div className="h-2 w-full rounded-full bg-tint-1 overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${p.progress}%`, backgroundColor: p.color || '#f59e0b' }}
@@ -237,10 +237,10 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-800 space-y-2">
+              <div className="mt-4 pt-3 border-t border-line space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">งบใช้จริง / งบตั้งไว้</span>
-                  <span className={overBudget ? 'text-rose-400 font-semibold' : 'text-slate-200'}>
+                  <span className="text-muted">งบใช้จริง / งบตั้งไว้</span>
+                  <span className={overBudget ? 'text-red font-semibold' : 'text-ink'}>
                     {moneyK(p.spent)} / {moneyK(p.budget)} ({spentPct}%)
                   </span>
                 </div>
@@ -252,7 +252,7 @@ export default function ProjectsPage() {
                       return (
                         <span
                           key={mid}
-                          className="w-6 h-6 rounded-full border border-slate-900 flex items-center justify-center text-[10px] font-bold text-white"
+                          className="w-6 h-6 rounded-full border border-card flex items-center justify-center text-[10px] font-bold text-white"
                           style={{ backgroundColor: m?.color ?? '#475569' }}
                           title={m?.name ?? mid}
                         >
@@ -261,11 +261,11 @@ export default function ProjectsPage() {
                       )
                     })}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <div className="flex items-center gap-2 text-xs text-muted">
                     {dl !== null && p.status !== 'done' && (
                       <span
                         className={`inline-flex items-center gap-0.5 text-[11px] ${
-                          dl < 0 ? 'text-rose-400 font-medium' : dl <= 7 ? 'text-amber-300' : 'text-slate-500'
+                          dl < 0 ? 'text-red font-medium' : dl <= 7 ? 'text-violet' : 'text-muted'
                         }`}
                       >
                         <Clock className="w-3 h-3" />
@@ -273,7 +273,7 @@ export default function ProjectsPage() {
                       </span>
                     )}
                     <span>
-                      งาน <strong className="text-white">{p.open}</strong>/{p.taskCount}
+                      งาน <strong className="text-ink">{p.open}</strong>/{p.taskCount}
                     </span>
                   </div>
                 </div>
@@ -283,7 +283,7 @@ export default function ProjectsPage() {
         })}
 
         {filtered.length === 0 && (
-          <div className="col-span-full py-12 text-center text-sm text-slate-500">
+          <div className="col-span-full py-12 text-center text-sm text-muted">
             ไม่พบโปรเจกต์ที่ตรงกับเงื่อนไขการค้นหา
           </div>
         )}
@@ -300,39 +300,39 @@ export default function ProjectsPage() {
         {selected && (
           <div className="space-y-5">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="rounded-lg bg-slate-950/60 border border-slate-800 p-3">
-                <div className="text-slate-500">ความคืบหน้า</div>
-                <div className="text-lg font-bold text-amber-300 mt-0.5">{selected.progress}%</div>
+              <div className="rounded-lg bg-bg-2 border border-line p-3">
+                <div className="text-muted">ความคืบหน้า</div>
+                <div className="text-lg font-bold text-violet mt-0.5">{selected.progress}%</div>
               </div>
-              <div className="rounded-lg bg-slate-950/60 border border-slate-800 p-3">
-                <div className="text-slate-500">งบประมาณ</div>
-                <div className="text-sm font-semibold text-white mt-1">{money(selected.budget)}</div>
+              <div className="rounded-lg bg-bg-2 border border-line p-3">
+                <div className="text-muted">งบประมาณ</div>
+                <div className="text-sm font-semibold text-ink mt-1">{money(selected.budget)}</div>
               </div>
-              <div className="rounded-lg bg-slate-950/60 border border-slate-800 p-3">
-                <div className="text-slate-500">ใช้จริงแล้ว</div>
-                <div className="text-sm font-semibold text-white mt-1">{money(selected.spent)}</div>
+              <div className="rounded-lg bg-bg-2 border border-line p-3">
+                <div className="text-muted">ใช้จริงแล้ว</div>
+                <div className="text-sm font-semibold text-ink mt-1">{money(selected.spent)}</div>
               </div>
-              <div className="rounded-lg bg-slate-950/60 border border-slate-800 p-3">
-                <div className="text-slate-500">ส่งมอบ</div>
-                <div className="text-sm font-semibold text-white mt-1">{fmtDateThai(selected.end)}</div>
+              <div className="rounded-lg bg-bg-2 border border-line p-3">
+                <div className="text-muted">ส่งมอบ</div>
+                <div className="text-sm font-semibold text-ink mt-1">{fmtDateThai(selected.end)}</div>
               </div>
             </div>
 
             {selected.desc && (
               <div
-                className="prose-erp rounded-xl bg-slate-950/60 border border-slate-800 p-4 text-sm text-slate-300"
+                className="prose-erp rounded-xl bg-bg-2 border border-line p-4 text-sm text-ink-2"
                 dangerouslySetInnerHTML={{ __html: selected.desc }}
               />
             )}
 
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-semibold text-slate-300">
+                <span className="text-xs font-semibold text-ink-2">
                   งานในโปรเจกต์นี้ ({tasks.filter((t) => t.project === selected.id).length})
                 </span>
                 <Link
                   href={`/tasks?project=${selected.id}`}
-                  className="text-xs text-amber-400 hover:text-amber-300 inline-flex items-center gap-1"
+                  className="text-xs text-violet hover:text-violet inline-flex items-center gap-1"
                 >
                   เปิดในบอร์ดงาน <ExternalLink className="w-3 h-3" />
                 </Link>
@@ -343,26 +343,26 @@ export default function ProjectsPage() {
                   .map((t) => (
                     <div
                       key={t.id}
-                      className="flex items-center justify-between rounded-lg bg-slate-950/50 border border-slate-800 px-3 py-2 text-xs"
+                      className="flex items-center justify-between rounded-lg bg-bg-2 border border-line px-3 py-2 text-xs"
                     >
-                      <span className="text-slate-200 truncate">
-                        <span className="font-mono text-slate-500 mr-2">{t.code}</span>
-                        {t.blocked && <span className="text-rose-400 mr-1">⛔</span>}
+                      <span className="text-ink truncate">
+                        <span className="font-mono text-muted mr-2">{t.code}</span>
+                        {t.blocked && <span className="text-red mr-1">⛔</span>}
                         {t.title}
                       </span>
-                      <span className="text-slate-400 shrink-0 ml-2">{t.progress}%</span>
+                      <span className="text-muted shrink-0 ml-2">{t.progress}%</span>
                     </div>
                   ))}
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-line">
               {allowManage ? (
                 <button
                   type="button"
                   disabled={saving}
                   onClick={() => onArchive(selected)}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300 hover:bg-rose-500/20 cursor-pointer"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red/30 bg-red-soft px-3 py-2 text-xs text-red hover:bg-red-soft cursor-pointer"
                 >
                   <Archive className="w-3.5 h-3.5" /> เก็บเข้าคลัง
                 </button>
@@ -373,13 +373,13 @@ export default function ProjectsPage() {
               <div className="flex items-center gap-2">
                 <Link
                   href={`/tasks?project=${selected.id}`}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3.5 py-2 text-xs text-slate-200 hover:bg-slate-800"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-line-2 px-3.5 py-2 text-xs text-ink hover:bg-tint-1"
                 >
                   <CheckSquare className="w-3.5 h-3.5" /> ดูงานทั้งหมด
                 </Link>
                 <Link
                   href={`/projects/detail?id=${selected.id}`}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 px-3.5 py-2 text-xs font-semibold text-slate-950"
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-violet hover:bg-violet-2 px-3.5 py-2 text-xs font-semibold text-white shadow-sm"
                 >
                   <FileEdit className="w-3.5 h-3.5" /> แก้ไขโปรเจกต์ / Rich Text
                 </Link>
@@ -394,42 +394,42 @@ export default function ProjectsPage() {
         <form onSubmit={onCreateQuick} className="space-y-4">
           <div className="grid grid-cols-6 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ไอคอน</label>
+              <label className="block text-xs text-ink-2 mb-1">ไอคอน</label>
               <input
                 value={form.icon}
                 onChange={(e) => setForm({ ...form, icon: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-center text-base text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-center text-base text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">รหัสย่อ</label>
+              <label className="block text-xs text-ink-2 mb-1">รหัสย่อ</label>
               <input
                 value={form.code}
                 onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
                 placeholder="CRM"
                 maxLength={10}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-2.5 py-2 text-sm font-mono uppercase text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-2.5 py-2 text-sm font-mono uppercase text-ink"
               />
             </div>
             <div className="col-span-4">
-              <label className="block text-xs text-slate-300 mb-1">ชื่อโปรเจกต์ *</label>
+              <label className="block text-xs text-ink-2 mb-1">ชื่อโปรเจกต์ *</label>
               <input
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="เช่น ระบบ CRM สำหรับองค์กร"
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ลูกค้า</label>
+              <label className="block text-xs text-ink-2 mb-1">ลูกค้า</label>
               <select
                 value={form.client}
                 onChange={(e) => setForm({ ...form, client: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               >
                 <option value="">Internal — MNG Groups</option>
                 {clients.map((c) => (
@@ -440,50 +440,50 @@ export default function ProjectsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">งบประมาณ (บาท)</label>
+              <label className="block text-xs text-ink-2 mb-1">งบประมาณ (บาท)</label>
               <input
                 type="number"
                 min={0}
                 value={form.budget}
                 onChange={(e) => setForm({ ...form, budget: Number(e.target.value) })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">วันเริ่ม</label>
+              <label className="block text-xs text-ink-2 mb-1">วันเริ่ม</label>
               <input
                 type="date"
                 value={form.start}
                 onChange={(e) => setForm({ ...form, start: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">วันส่งมอบ</label>
+              <label className="block text-xs text-ink-2 mb-1">วันส่งมอบ</label>
               <input
                 type="date"
                 value={form.end}
                 onChange={(e) => setForm({ ...form, end: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1">รายละเอียดเบื้องต้น</label>
+            <label className="block text-xs text-ink-2 mb-1">รายละเอียดเบื้องต้น</label>
             <textarea
               rows={3}
               value={form.desc}
               onChange={(e) => setForm({ ...form, desc: e.target.value })}
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
 
           {errMsg && (
-            <div className="rounded-lg bg-rose-500/10 border border-rose-500/30 px-3 py-2 text-xs text-rose-300">
+            <div className="rounded-lg bg-red-soft border border-red/30 px-3 py-2 text-xs text-red">
               {errMsg}
             </div>
           )}
@@ -492,14 +492,14 @@ export default function ProjectsPage() {
             <button
               type="button"
               onClick={() => setCreateOpen(false)}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 cursor-pointer"
+              className="rounded-lg border border-line-2 px-4 py-2 text-xs text-ink-2 hover:bg-tint-1 cursor-pointer"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+              className="rounded-lg bg-violet hover:bg-violet-2 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
             >
               {saving ? 'กำลังสร้าง…' : 'สร้างโปรเจกต์'}
             </button>

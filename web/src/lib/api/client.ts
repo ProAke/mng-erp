@@ -5,18 +5,21 @@
 
 import { z } from 'zod'
 
-const TOKEN_KEY = 'mng.token'
+const TOKEN_KEY = 'mng_token'
 
 export const tokenStore = {
   get: (): string | null => {
     if (typeof window === 'undefined') return null
-    try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
+    try { return localStorage.getItem(TOKEN_KEY) || localStorage.getItem('mng.token') } catch { return null }
   },
   set: (token: string) => {
     try { localStorage.setItem(TOKEN_KEY, token) } catch {}
   },
   clear: () => {
-    try { localStorage.removeItem(TOKEN_KEY) } catch {}
+    try {
+      localStorage.removeItem(TOKEN_KEY)
+      localStorage.removeItem('mng.token')
+    } catch {}
   },
 }
 
@@ -63,7 +66,7 @@ export const userSchema = z.object({
 
 export const loginResponseSchema = z.object({
   token: z.string(),
-  expires: z.string(),
+  expires: z.string().optional(),
   user: userSchema,
 })
 
@@ -360,6 +363,11 @@ export interface HealthInfo {
 
 export const api = {
   health: () => request<HealthInfo>('/health'),
+
+  login: (email: string, password: string) =>
+    request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }, loginResponseSchema),
+
+  logout: () => request<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
 
   auth: {
     login: (email: string, password: string) =>

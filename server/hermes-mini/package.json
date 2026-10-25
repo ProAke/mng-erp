@@ -1,0 +1,14 @@
+{
+  "name": "hermes-mini",
+  "version": "1.0.0",
+  "description": "hermes-mini: Lightweight AI Agent for MNG ERP (simulated LLM on Node.js)",
+  "main": "run.js",
+  "scripts": {
+    "start": "node run.js",
+    "dev": "node run.js",
+    "demo": "node run.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

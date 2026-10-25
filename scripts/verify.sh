@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# scripts/verify.sh — ตรวจสอบความถูกต้องก่อน commit (ตาม AGENTS.md ข้อ 1)
+# ใช้: npm run verify
+set -uo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+FAIL=0
+PASS=0
+
+ok()   { echo "  ✅ $1"; PASS=$((PASS+1)); }
+bad()  { echo "  ❌ $1"; FAIL=$((FAIL+1)); }
+
+hr()   { echo "────────────────────────────────────────────"; }
+
+echo "== 0. node arch =="
+hr
+# เช็ค process.arch (ไม่ใช่ uname -m — ใต้ Rosetta uname จะรายงาน x86_64)
+NODE_ARCH="$(node -p 'process.arch' 2>/dev/null || echo unknown)"
+NATIVE_ARCH="$(arch -arm64 uname -m 2>/dev/null || uname -m)"
+if [ "$NODE_ARCH" != "$NATIVE_ARCH" ]; then
+  bad "node arch = $NODE_ARCH แต่เครื่องคือ $NATIVE_ARCH — rollup native binary จะไม่โหลด"
+  echo "     แก้: re-exec ด้วย arch -arm64 (ดู .githooks/pre-commit)"
+else
+  ok "node arch = $NODE_ARCH (ตรงกับเครื่อง)"
+fi
+hr
+
+echo "== 1. lint =="
+hr
+if [ -x node_modules/.bin/eslint ]; then
+  if npm run lint > /tmp/verify-lint.log 2>&1; then
+    ok "eslint ผ่าน (exit 0)"
+  else
+    bad "eslint ล้มเหลว — ดู /tmp/verify-lint.log"
+    grep -E "error|Error" /tmp/verify-lint.log | head -10
+  fi
+else
+  bad "ยังไม่ได้ติดตั้ง dependencies — รัน npm ci ก่อน"
+fi
+hr
+
+echo "== 2. test =="
+hr
+if [ -x node_modules/.bin/vitest ]; then
+  # ใช้ `npm run test` (ไม่ใช่ ./node_modules/.bin/vitest ตรง) — npm resolve node
+  # และ rollup native binary ถูกต้อง ไม่พังเมื่อ PATH เปลี่ยน (เช่นใน git hook)
+  if npm run test > /tmp/verify-test.log 2>&1; then
+    ok "vitest ผ่านทั้งหมด"
+  else
+    bad "vitest ล้มเหลว — ดู /tmp/verify-test.log"
+    grep -E "×|FAIL|failed" /tmp/verify-test.log | head -10
+  fi
+else
+  bad "ไม่พบ vitest — รัน npm ci ก่อน"
+fi
+hr
+
+echo "== 3. build =="
+hr
+if [ -d web/node_modules ]; then
+  if (cd web && npm run build) > /tmp/verify-build.log 2>&1; then
+    ok "next build สำเร็จ"
+  else
+    bad "next build ล้มเหลว — ดู /tmp/verify-build.log"
+    grep -E "Error|error|failed" /tmp/verify-build.log | head -10
+  fi
+else
+  bad "web/node_modules ยังไม่มี — รัน npm ci ใน web/ ก่อน"
+fi
+hr
+
+echo ""
+echo "ผลลัพธ์: ${PASS} ผ่าน / ${FAIL} ล้มเหลว"
+if [ "$FAIL" -gt 0 ]; then
+  echo ""
+  echo "⛔ ห้าม commit — ต้องแก้ให้ผ่านทั้งหมดก่อน (AGENTS.md ข้อ 1)"
+  exit 1
+fi
+echo "✅ ผ่านทั้งหมด — ขอบาทสามารถ commit ได้"
+exit 0

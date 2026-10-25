@@ -1,7 +1,12 @@
 'use client'
 
+import dynamic from 'next/dynamic'
 import { useRef } from 'react'
-import { CKEditor } from '@ckeditor/ckeditor5-react'
+
+const CKEditor = dynamic(
+  () => import('@ckeditor/ckeditor5-react').then((m) => m.CKEditor),
+  { ssr: false, loading: () => <div className="py-4 text-sm text-muted">กำลังโหลด editor…</div> },
+)
 import {
   ClassicEditor,
   Essentials,

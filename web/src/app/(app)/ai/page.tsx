@@ -173,11 +173,11 @@ export default function AiWorkforcePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-purple-500/15 border border-purple-500/30 px-3 py-0.5 text-xs text-purple-300 mb-2">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-violet-soft border border-violet/30 px-3 py-0.5 text-xs text-violet mb-2">
             <Sparkles className="w-3.5 h-3.5" /> Hybrid Human + AI Workforce
           </div>
-          <h1 className="text-2xl font-bold text-white">AI Workforce — เอเจนต์อัจฉริยะประจำทีม</h1>
-          <p className="text-sm text-slate-400 mt-0.5">
+          <h1 className="text-2xl font-bold text-ink">AI Workforce — เอเจนต์อัจฉริยะประจำทีม</h1>
+          <p className="text-sm text-muted mt-0.5">
             เอเจนต์ลงมือช่วยแตก Subtasks อัปเดตความคืบหน้า คอมเมนต์งาน และตอบคำถามในแชทพร้อมเก็บ Log และ Token จริง
           </p>
         </div>
@@ -189,8 +189,8 @@ export default function AiWorkforcePage() {
               onClick={onToggleAll}
               className={`inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-xs font-medium cursor-pointer transition ${
                 aiEnabled
-                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
-                  : 'border-slate-700 bg-slate-900 text-slate-400 hover:text-white'
+                  ? 'border-mint/30 bg-mint-soft text-mint hover:bg-mint-soft'
+                  : 'border-line-2 bg-card text-muted hover:text-ink'
               }`}
             >
               <Power className="w-3.5 h-3.5" />
@@ -199,7 +199,7 @@ export default function AiWorkforcePage() {
             <button
               type="button"
               onClick={openCreate}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 px-3.5 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-violet hover:bg-violet-2 px-3.5 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
             >
               <Plus className="w-4 h-4" /> เพิ่มเอเจนต์ AI
             </button>
@@ -211,8 +211,8 @@ export default function AiWorkforcePage() {
         <div
           className={`rounded-xl border px-4 py-3 text-xs leading-relaxed ${
             banner.tone === 'ok'
-              ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-200'
-              : 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+              ? 'bg-mint-soft border-mint/30 text-mint'
+              : 'bg-red-soft border-red/30 text-red'
           }`}
         >
           {banner.text}
@@ -221,25 +221,25 @@ export default function AiWorkforcePage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-          <div className="text-xs text-slate-400">เอเจนต์พร้อมทำงาน</div>
-          <div className="text-2xl font-bold text-emerald-300 mt-1 tabular-nums">
-            {activeCount} <span className="text-sm font-normal text-slate-500">/ {agents.length} ตัว</span>
+        <div className="rounded-xl border border-line bg-card p-4">
+          <div className="text-xs text-muted">เอเจนต์พร้อมทำงาน</div>
+          <div className="text-2xl font-bold text-mint mt-1 tabular-nums">
+            {activeCount} <span className="text-sm font-normal text-muted">/ {agents.length} ตัว</span>
           </div>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-          <div className="text-xs text-slate-400">จำนวนการรันสะสม</div>
-          <div className="text-2xl font-bold text-white mt-1 tabular-nums">{totalRuns.toLocaleString()} runs</div>
+        <div className="rounded-xl border border-line bg-card p-4">
+          <div className="text-xs text-muted">จำนวนการรันสะสม</div>
+          <div className="text-2xl font-bold text-ink mt-1 tabular-nums">{totalRuns.toLocaleString()} runs</div>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-          <div className="text-xs text-slate-400">Tokens ที่ใช้วันนี้</div>
-          <div className="text-2xl font-bold text-amber-300 mt-1 tabular-nums">
+        <div className="rounded-xl border border-line bg-card p-4">
+          <div className="text-xs text-muted">Tokens ที่ใช้วันนี้</div>
+          <div className="text-2xl font-bold text-violet mt-1 tabular-nums">
             {Math.round(totalTokens / 1000).toLocaleString()}k
           </div>
         </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
-          <div className="text-xs text-slate-400">อัตราความสำเร็จเฉลี่ย</div>
-          <div className="text-2xl font-bold text-sky-300 mt-1 tabular-nums">{avgSuccess}%</div>
+        <div className="rounded-xl border border-line bg-card p-4">
+          <div className="text-xs text-muted">อัตราความสำเร็จเฉลี่ย</div>
+          <div className="text-2xl font-bold text-blue-2 mt-1 tabular-nums">{avgSuccess}%</div>
         </div>
       </div>
 
@@ -255,8 +255,8 @@ export default function AiWorkforcePage() {
               key={ag.id}
               className={`rounded-2xl border p-5 flex flex-col justify-between gap-4 transition ${
                 ag.paused
-                  ? 'border-slate-800/80 bg-slate-900/50 opacity-80'
-                  : 'border-slate-800 bg-slate-900 hover:border-purple-500/40'
+                  ? 'border-line bg-card shadow-card opacity-80'
+                  : 'border-line bg-card hover:border-violet/40'
               }`}
             >
               <div>
@@ -270,18 +270,18 @@ export default function AiWorkforcePage() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-base">{ag.name}</span>
+                        <span className="font-bold text-ink text-base">{ag.name}</span>
                         <span
                           className={`text-[10px] px-2 py-0.5 rounded-full border ${
                             ag.paused
-                              ? 'bg-slate-800 text-slate-400 border-slate-700'
-                              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                              ? 'bg-tint-1 text-muted border-line-2'
+                              : 'bg-mint-soft text-mint border-mint/30'
                           }`}
                         >
                           {ag.paused ? 'พักการทำงาน' : 'พร้อมทำงาน'}
                         </span>
                       </div>
-                      <div className="text-xs text-slate-400">{ag.role}</div>
+                      <div className="text-xs text-muted">{ag.role}</div>
                     </div>
                   </div>
 
@@ -290,15 +290,15 @@ export default function AiWorkforcePage() {
                       <button
                         type="button"
                         onClick={() => onTogglePause(ag)}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+                        className="rounded-lg p-1.5 text-muted hover:bg-tint-1 hover:text-ink cursor-pointer"
                         title={ag.paused ? 'เปิดการทำงาน' : 'พักการทำงาน'}
                       >
-                        {ag.paused ? <Play className="w-4 h-4 text-emerald-400" /> : <Pause className="w-4 h-4 text-amber-300" />}
+                        {ag.paused ? <Play className="w-4 h-4 text-mint" /> : <Pause className="w-4 h-4 text-violet" />}
                       </button>
                       <button
                         type="button"
                         onClick={() => openEdit(ag)}
-                        className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white cursor-pointer"
+                        className="rounded-lg p-1.5 text-muted hover:bg-tint-1 hover:text-ink cursor-pointer"
                         title="ตั้งค่าเอเจนต์"
                       >
                         <Edit3 className="w-4 h-4" />
@@ -309,31 +309,31 @@ export default function AiWorkforcePage() {
 
                 {/* Model & Skills */}
                 <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 rounded-md bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 text-[11px] text-purple-200">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-violet-soft border border-violet/30 px-2 py-0.5 text-[11px] text-violet">
                     <Cpu className="w-3 h-3" /> {ag.model || 'Claude Sonnet 4.5'}
                   </span>
                   {(ag.skills || []).map((sk) => (
-                    <span key={sk} className="rounded-md bg-slate-800 px-2 py-0.5 text-[11px] text-slate-300">
+                    <span key={sk} className="rounded-md bg-tint-1 px-2 py-0.5 text-[11px] text-ink-2">
                       {sk}
                     </span>
                   ))}
                 </div>
 
                 {/* Metrics */}
-                <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-slate-950/60 border border-slate-800/80 p-3 text-xs">
+                <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl bg-bg-2 border border-line p-3 text-xs">
                   <div>
-                    <div className="text-slate-500">Autonomy</div>
-                    <div className="font-bold text-white mt-0.5">{ag.autonomy ?? 75}%</div>
+                    <div className="text-muted">Autonomy</div>
+                    <div className="font-bold text-ink mt-0.5">{ag.autonomy ?? 75}%</div>
                   </div>
                   <div>
-                    <div className="text-slate-500">Runs / สำเร็จ</div>
-                    <div className="font-bold text-emerald-300 mt-0.5">
+                    <div className="text-muted">Runs / สำเร็จ</div>
+                    <div className="font-bold text-mint mt-0.5">
                       {ag.runs ?? 0} · {ag.successRate ?? 92}%
                     </div>
                   </div>
                   <div>
-                    <div className="text-slate-500">Tokens วันนี้</div>
-                    <div className="font-bold text-amber-300 mt-0.5">
+                    <div className="text-muted">Tokens วันนี้</div>
+                    <div className="font-bold text-violet mt-0.5">
                       {Math.round((ag.tokensToday || 0) / 1000)}k
                     </div>
                   </div>
@@ -341,15 +341,15 @@ export default function AiWorkforcePage() {
               </div>
 
               {/* Action Runner */}
-              <div className="space-y-2 pt-3 border-t border-slate-800">
-                <div className="flex items-center justify-between text-[11px] text-slate-400">
+              <div className="space-y-2 pt-3 border-t border-line">
+                <div className="flex items-center justify-between text-[11px] text-muted">
                   <span>เลือกงานให้ {ag.name} ลงมือทำ</span>
                   <span>ถืออยู่ {assignedCount} งาน</span>
                 </div>
                 <select
                   value={selectedTask}
                   onChange={(e) => setSelectedTaskByAgent({ ...selectedTaskByAgent, [ag.id]: e.target.value })}
-                  className="w-full rounded-lg bg-slate-950 border border-slate-800 px-2.5 py-1.5 text-xs text-slate-200"
+                  className="w-full rounded-lg bg-bg-2 border border-line px-2.5 py-1.5 text-xs text-ink"
                 >
                   <option value="">— วิเคราะห์ภาพรวมระบบอัตโนมัติ —</option>
                   {openTasks.map((t) => (
@@ -364,13 +364,13 @@ export default function AiWorkforcePage() {
                     value={promptByAgent[ag.id] ?? ''}
                     onChange={(e) => setPromptByAgent({ ...promptByAgent, [ag.id]: e.target.value })}
                     placeholder="คำสั่งเพิ่มเติม (ไม่บังคับ)..."
-                    className="flex-1 rounded-lg bg-slate-950 border border-slate-800 px-2.5 py-1.5 text-xs text-white placeholder-slate-500"
+                    className="flex-1 rounded-lg bg-bg-2 border border-line px-2.5 py-1.5 text-xs text-ink placeholder-muted"
                   />
                   <button
                     type="button"
                     disabled={ag.paused || isRunning}
                     onClick={() => onRunAgent(ag)}
-                    className="inline-flex items-center gap-1 rounded-lg bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 disabled:opacity-40 px-3.5 py-1.5 text-xs font-semibold text-white shrink-0 cursor-pointer"
+                    className="inline-flex items-center gap-1 rounded-lg bg-violet hover:bg-violet-2 shadow-sm disabled:opacity-40 px-3.5 py-1.5 text-xs font-semibold text-white shrink-0 cursor-pointer"
                   >
                     <Zap className="w-3.5 h-3.5" />
                     {isRunning ? 'กำลังรัน…' : 'สั่งรัน'}
@@ -383,20 +383,20 @@ export default function AiWorkforcePage() {
       </div>
 
       {/* AI Execution Logs */}
-      <section className="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+      <section className="rounded-2xl border border-line bg-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-line flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-white">บันทึกการทำงานของ AI (AI Run & Token Logs)</h2>
-            <p className="text-xs text-slate-400">ประวัติการลงมือทำงานจริง เวลาที่ใช้ และปริมาณ Tokens รายครั้ง</p>
+            <h2 className="font-semibold text-ink">บันทึกการทำงานของ AI (AI Run & Token Logs)</h2>
+            <p className="text-xs text-muted">ประวัติการลงมือทำงานจริง เวลาที่ใช้ และปริมาณ Tokens รายครั้ง</p>
           </div>
-          <span className="text-xs text-slate-400">{runs.length} รายการล่าสุด</span>
+          <span className="text-xs text-muted">{runs.length} รายการล่าสุด</span>
         </div>
 
-        <div className="divide-y divide-slate-800/70 max-h-[420px] overflow-y-auto">
+        <div className="divide-y divide-line max-h-[420px] overflow-y-auto">
           {runs.map((r) => {
             const ag = agents.find((a) => a.id === r.agentId)
             return (
-              <div key={r.id} className="px-5 py-3.5 hover:bg-slate-800/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div key={r.id} className="px-5 py-3.5 hover:bg-tint-1/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">
                   <span
                     className="w-8 h-8 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 mt-0.5"
@@ -406,16 +406,16 @@ export default function AiWorkforcePage() {
                   </span>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="font-bold text-white">{ag?.name ?? r.agentId}</span>
-                      <span className="text-purple-300 font-medium">{r.action}</span>
-                      {r.detail && <span className="text-slate-400 truncate">· {r.detail}</span>}
+                      <span className="font-bold text-ink">{ag?.name ?? r.agentId}</span>
+                      <span className="text-violet font-medium">{r.action}</span>
+                      {r.detail && <span className="text-muted truncate">· {r.detail}</span>}
                     </div>
-                    {r.output && <p className="text-xs text-slate-300 mt-1 leading-relaxed">{r.output}</p>}
+                    {r.output && <p className="text-xs text-ink-2 mt-1 leading-relaxed">{r.output}</p>}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 text-[11px] text-slate-400 shrink-0">
-                  <span className="inline-flex items-center gap-1 text-emerald-300">
+                <div className="flex items-center gap-3 text-[11px] text-muted shrink-0">
+                  <span className="inline-flex items-center gap-1 text-mint">
                     <CheckCircle2 className="w-3.5 h-3.5" /> {r.tokens.toLocaleString()} tok
                   </span>
                   <span className="inline-flex items-center gap-1">
@@ -427,7 +427,7 @@ export default function AiWorkforcePage() {
             )
           })}
           {runs.length === 0 && (
-            <div className="p-8 text-center text-sm text-slate-500">ยังไม่มีประวัติการรัน AI</div>
+            <div className="p-8 text-center text-sm text-muted">ยังไม่มีประวัติการรัน AI</div>
           )}
         </div>
       </section>
@@ -442,21 +442,21 @@ export default function AiWorkforcePage() {
         <form onSubmit={onSaveAgent} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-300 mb-1">ชื่อรหัสเอเจนต์ (Code Name) *</label>
+              <label className="block text-xs text-ink-2 mb-1">ชื่อรหัสเอเจนต์ (Code Name) *</label>
               <input
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 placeholder="เช่น ATLAS, SPARK"
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white uppercase"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink uppercase"
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-300 mb-1">โมเดล AI หลัก</label>
+              <label className="block text-xs text-ink-2 mb-1">โมเดล AI หลัก</label>
               <select
                 value={form.model}
                 onChange={(e) => setForm({ ...form, model: e.target.value })}
-                className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
               >
                 {AI_MODELS.map((m) => (
                   <option key={m} value={m}>
@@ -468,18 +468,18 @@ export default function AiWorkforcePage() {
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1">บทบาทหน้าที่ (Role) *</label>
+            <label className="block text-xs text-ink-2 mb-1">บทบาทหน้าที่ (Role) *</label>
             <input
               required
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
               placeholder="เช่น AI DevOps & Security Auditor"
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1">
+            <label className="block text-xs text-ink-2 mb-1">
               ระดับความเป็นอิสระ (Autonomy: {form.autonomy}%)
             </label>
             <input
@@ -488,21 +488,21 @@ export default function AiWorkforcePage() {
               max={100}
               value={form.autonomy}
               onChange={(e) => setForm({ ...form, autonomy: Number(e.target.value) })}
-              className="w-full accent-amber-500"
+              className="w-full accent-violet"
             />
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1">ทักษะ (คั่นด้วยเครื่องหมายจุลภาค ,)</label>
+            <label className="block text-xs text-ink-2 mb-1">ทักษะ (คั่นด้วยเครื่องหมายจุลภาค ,)</label>
             <input
               value={form.skillsText}
               onChange={(e) => setForm({ ...form, skillsText: e.target.value })}
-              className="w-full rounded-lg bg-slate-950 border border-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-lg bg-bg-2 border border-line px-3 py-2 text-sm text-ink"
             />
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1.5">สีประจำตัวเอเจนต์</label>
+            <label className="block text-xs text-ink-2 mb-1.5">สีประจำตัวเอเจนต์</label>
             <div className="flex flex-wrap gap-2">
               {TEAM_COLORS.map((c) => (
                 <button
@@ -522,14 +522,14 @@ export default function AiWorkforcePage() {
             <button
               type="button"
               onClick={() => setModalOpen(false)}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-xs text-slate-300 hover:bg-slate-800 cursor-pointer"
+              className="rounded-lg border border-line-2 px-4 py-2 text-xs text-ink-2 hover:bg-tint-1 cursor-pointer"
             >
               ยกเลิก
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-semibold text-slate-950 cursor-pointer"
+              className="rounded-lg bg-violet hover:bg-violet-2 px-4 py-2 text-xs font-semibold text-white shadow-sm cursor-pointer"
             >
               {saving ? 'กำลังบันทึก…' : 'บันทึกเอเจนต์'}
             </button>

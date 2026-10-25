@@ -1,13 +1,21 @@
 import type { NextConfig } from 'next'
 
 const isDev = process.env.NODE_ENV === 'development'
-const API_TARGET = process.env.API_TARGET || 'http://localhost:8080'
+const API_TARGET = process.env.API_TARGET || 'http://localhost:4050'
 
 const nextConfig: NextConfig = {
   ...(isDev ? {} : { output: 'export' }),
   trailingSlash: true,
   images: {
     unoptimized: true,
+  },
+  turbopack: {
+    rules: {
+      '*.css': {
+        loaders: ['@tailwindcss/turbopack'],
+        as: '*.css',
+      },
+    },
   },
   ...(isDev
     ? {

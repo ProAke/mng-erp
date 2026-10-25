@@ -1,11 +1,9 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/stores/auth'
 
 export default function HomePage() {
-  const router = useRouter()
   const { bootstrapped, isAuthenticated, bootstrap } = useAuth()
 
   useEffect(() => {
@@ -14,15 +12,16 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!bootstrapped) return
-    router.replace(isAuthenticated ? '/dashboard/' : '/login/')
-  }, [bootstrapped, isAuthenticated, router])
+    // static export: ใช้ window.location.replace เพื่อเปลี่ยนหน้าโดยไม่ค้าง spinner
+    window.location.replace(isAuthenticated ? '/dashboard/' : '/login/')
+  }, [bootstrapped, isAuthenticated])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400">
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-sm">กำลังเข้าสู่ระบบ MNG ERP…</p>
+    <main className="min-h-screen flex items-center justify-center bg-background">
+      <div className="flex items-center gap-3 text-muted text-sm">
+        <span className="w-4 h-4 border-2 border-line-2 border-t-violet rounded-full animate-spin" />
+        กำลังตรวจสอบสถานะ…
       </div>
-    </div>
+    </main>
   )
 }
