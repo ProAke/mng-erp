@@ -16,8 +16,8 @@
     "seed:test": "cd server && node seed.js",
     "dev:server": "cd server && node index.js",
     "dev:web": "cd web && npm run dev",
-    "verify": "bash scripts/verify.sh",
-    "deploy:local": "bash scripts/deploy-local.sh"
+    "verify": "npm run lint && npm test && npm run build:web",
+    "deploy:plesk": "bash deploy-plesk.sh"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

@@ -50,9 +50,6 @@ app.use('/api/drive', require('./drive-routes'));
 
 /* ---------- protected API ---------- */
 app.use('/api/users', auth.middleware, require('./users'));
-if (fs.existsSync(path.join(__dirname, 'hermes-mini', 'routes.js'))) {
-  app.use('/api/hermes-mini', auth.middleware, require('./hermes-mini/routes'));
-}
 app.use('/api', auth.middleware, workspaceApi);
 app.use('/api', auth.middleware, api);
 

@@ -52,7 +52,7 @@
 cd server
 cp .env.example .env      # แล้วใส่รหัสผ่านฐานข้อมูลจริง (อย่า commit .env!)
 npm install
-npm start                 # เปิด http://localhost:4050
+npm start                 # เปิด http://localhost:8080
 ```
 
 เซิร์ฟเวอร์จะ:

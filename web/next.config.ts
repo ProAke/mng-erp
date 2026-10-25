@@ -1,7 +1,7 @@
 import type { NextConfig } from 'next'
 
 const isDev = process.env.NODE_ENV === 'development'
-const API_TARGET = process.env.API_TARGET || 'http://localhost:4050'
+const API_TARGET = process.env.API_TARGET || 'http://localhost:8080'
 
 const nextConfig: NextConfig = {
   ...(isDev ? {} : { output: 'export' }),
