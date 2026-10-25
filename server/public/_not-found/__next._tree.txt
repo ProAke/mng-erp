@@ -1,4 +1,5 @@
-:HL["/_next/static/chunks/0aau2nfby-0my.css","style"]
+:HL["/_next/static/chunks/06uy4frvgfmi5.css","style"]
+:HL["https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Kanit:wght@400;500;600&display=swap","style"]
 2:[["children",{"s":"__PAGE__","h":160}]]
 1:[["children",{"s":"/_not-found","h":96,"c":"$Q2"}]]
-0:{"b":"s4Ajp46mcjwHNcrrl3c6i","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
+0:{"b":"_nxm8yiI8pUDbcYP3JWdM","t":{"t":{"s":"","h":80,"c":"$Q1"}}}

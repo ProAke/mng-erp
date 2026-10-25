@@ -4,27 +4,25 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/stores/auth'
 
-export default function Home() {
+export default function HomePage() {
   const router = useRouter()
-  const { isAuthenticated, bootstrap } = useAuth()
+  const { bootstrapped, isAuthenticated, bootstrap } = useAuth()
 
   useEffect(() => {
-    bootstrap().then((user) => {
-      if (!user) router.replace('/login')
-    })
-  }, [])
+    bootstrap()
+  }, [bootstrap])
 
-  if (!isAuthenticated) {
-    return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="flex items-center gap-3 text-slate-500 text-sm">
-          <span className="w-4 h-4 border-2 border-slate-700 border-t-amber-500 rounded-full animate-spin" />
-          กำลังตรวจสอบสถานะ…
-        </div>
-      </main>
-    )
-  }
+  useEffect(() => {
+    if (!bootstrapped) return
+    router.replace(isAuthenticated ? '/dashboard/' : '/login/')
+  }, [bootstrapped, isAuthenticated, router])
 
-  router.replace('/dashboard')
-  return null
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-400">
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-sm">กำลังเข้าสู่ระบบ MNG ERP…</p>
+      </div>
+    </div>
+  )
 }

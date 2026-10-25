@@ -1,85 +1,174 @@
-// web/src/components/editor/RichTextEditor.tsx
 'use client'
 
-import dynamic from 'next/dynamic'
 import { useRef } from 'react'
-
-// CKEditor 5 ต้อง client-side เท่านั้น (SSR ไม่ได้)
-const CKEditor = dynamic(
-  () => import('@ckeditor/ckeditor5-react').then((m) => m.CKEditor),
-  { ssr: false, loading: () => <div className="text-slate-500 text-sm py-4">กำลังโหลด editor…</div> },
-)
-
-import { ClassicEditor, Essentials, Paragraph, Bold, Italic, Underline, Strikethrough, Subscript, Superscript, Link, List, TodoList, Indent, BlockQuote, CodeBlock, Heading, Font, Alignment, Table, TableToolbar, Image, ImageCaption, ImageStyle, ImageResize, ImageUpload, MediaEmbed, Highlight, Code, RemoveFormat, HorizontalLine, PageBreak, SourceEditing, Autoformat, FindAndReplace, SpecialCharacters, SpecialCharactersEssentials, Mention } from 'ckeditor5'
+import { CKEditor } from '@ckeditor/ckeditor5-react'
+import {
+  ClassicEditor,
+  Essentials,
+  Paragraph,
+  Bold,
+  Italic,
+  Underline,
+  Strikethrough,
+  Subscript,
+  Superscript,
+  Link,
+  List,
+  TodoList,
+  Indent,
+  BlockQuote,
+  CodeBlock,
+  Heading,
+  Font,
+  Alignment,
+  Table,
+  TableToolbar,
+  Image,
+  ImageToolbar,
+  ImageCaption,
+  ImageStyle,
+  ImageResize,
+  ImageUpload,
+  FileRepository,
+  MediaEmbed,
+  Highlight,
+  Code,
+  RemoveFormat,
+  HorizontalLine,
+  SourceEditing,
+  Autoformat,
+  FindAndReplace,
+} from 'ckeditor5'
 
 import 'ckeditor5/ckeditor5.css'
 
 const editorConfig = {
-  licenseKey: 'GPL', // open-source GPL license
+  licenseKey: 'GPL',
   plugins: [
-    Essentials, Paragraph, Bold, Italic, Underline, Strikethrough, Subscript, Superscript,
-    Link, List, TodoList, Indent, BlockQuote, CodeBlock, Heading, Font, Alignment,
-    Table, TableToolbar, Image, ImageCaption, ImageStyle, ImageResize, ImageUpload,
-    MediaEmbed, Highlight, Code, RemoveFormat, HorizontalLine, PageBreak,
-    SourceEditing, Autoformat, FindAndReplace, SpecialCharacters, SpecialCharactersEssentials,
-    Mention,
+    Essentials,
+    Paragraph,
+    Bold,
+    Italic,
+    Underline,
+    Strikethrough,
+    Subscript,
+    Superscript,
+    Link,
+    List,
+    TodoList,
+    Indent,
+    BlockQuote,
+    CodeBlock,
+    Heading,
+    Font,
+    Alignment,
+    Table,
+    TableToolbar,
+    FileRepository,
+    Image,
+    ImageToolbar,
+    ImageCaption,
+    ImageStyle,
+    ImageResize,
+    ImageUpload,
+    MediaEmbed,
+    Highlight,
+    Code,
+    RemoveFormat,
+    HorizontalLine,
+    SourceEditing,
+    Autoformat,
+    FindAndReplace,
   ],
   toolbar: {
     items: [
-      'undo', 'redo', '|',
-      'heading', '|',
-      'bold', 'italic', 'underline', 'strikethrough', '|',
-      'link', 'insertImage', 'insertTable', 'mediaEmbed', '|',
-      'bulletedList', 'numberedList', 'todoList', 'indent', 'outdent', '|',
-      'alignment', 'fontColor', 'fontBackgroundColor', 'fontSize', 'fontFamily', '|',
-      'blockQuote', 'codeBlock', 'horizontalLine', '|',
-      'findAndReplace', 'sourceEditing', 'removeFormat',
+      'undo',
+      'redo',
+      '|',
+      'heading',
+      '|',
+      'bold',
+      'italic',
+      'underline',
+      'strikethrough',
+      '|',
+      'link',
+      'uploadImage',
+      'insertTable',
+      'mediaEmbed',
+      '|',
+      'bulletedList',
+      'numberedList',
+      'todoList',
+      'indent',
+      'outdent',
+      '|',
+      'alignment',
+      'fontColor',
+      'fontBackgroundColor',
+      'fontSize',
+      '|',
+      'blockQuote',
+      'codeBlock',
+      'horizontalLine',
+      '|',
+      'findAndReplace',
+      'sourceEditing',
+      'removeFormat',
     ],
     shouldNotGroupWhenFull: true,
   },
-  heading: {
-    options: [
-      { model: 'paragraph' as any, title: 'Paragraph', class: 'ck-heading_paragraph' },
-      { model: 'heading1' as any, view: 'h1', title: 'Heading 1', class: 'ck-heading_heading1' },
-      { model: 'heading2' as any, view: 'h2', title: 'Heading 2', class: 'ck-heading_heading2' },
-      { model: 'heading3' as any, view: 'h3', title: 'Heading 3', class: 'ck-heading_heading3' },
-    ],
-  },
   image: {
-    toolbar: ['imageTextAlternative', 'imageStyle:inline', 'imageStyle:block', 'imageStyle:side', 'toggleImageCaption', 'imageResize'],
+    toolbar: [
+      'imageTextAlternative',
+      'imageStyle:inline',
+      'imageStyle:block',
+      'imageStyle:side',
+      'toggleImageCaption',
+      'imageResize',
+    ],
     upload: {
       types: ['jpeg', 'png', 'gif', 'webp'],
     },
   },
   table: {
-    contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells', 'tableProperties', 'tableCellProperties'],
+    contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells'],
   },
   link: {
     addTargetToExternalLinks: true,
     defaultProtocol: 'https://',
   },
-  placeholder: 'เริ่มพิมพ์เนื้อหา…',
+  placeholder: 'เริ่มพิมพ์รายละเอียดขอบเขตงาน เป้าหมาย หรือแนบรูปภาพประกอบ…',
 }
 
 export interface RichTextEditorProps {
   value?: string
+  initialData?: string
   onChange?: (html: string) => void
-  onImageUpload?: (file: File) => Promise<string> // return URL
+  onImageUpload?: (file: File) => Promise<string>
 }
 
-export default function RichTextEditor({ value, onChange, onImageUpload }: RichTextEditorProps) {
+export default function RichTextEditor({
+  value,
+  initialData,
+  onChange,
+  onImageUpload,
+}: RichTextEditorProps) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null)
 
   return (
     <div className="rich-text-editor">
       <CKEditor
         editor={ClassicEditor}
-        config={editorConfig}
-        data={value || ''}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        config={editorConfig as any}
+        data={value ?? initialData ?? ''}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onReady={(editor: any) => {
           editorRef.current = editor
-          // custom upload adapter for images → Google Drive
           if (onImageUpload) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             editor.plugins.get('FileRepository').createUploadAdapter = (loader: any) => ({
               upload: async () => {
                 const file = await loader.file
@@ -90,6 +179,7 @@ export default function RichTextEditor({ value, onChange, onImageUpload }: RichT
             })
           }
         }}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onChange={(_event: any, editor: any) => {
           onChange?.(editor.getData())
         }}

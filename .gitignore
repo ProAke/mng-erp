@@ -8,6 +8,9 @@ dist/
 # server
 server/node_modules/
 server/.env
+server/.gdrive-token.json
+server/gdrive-credentials.json
+server/uploads/
 
 # web (Next.js)
 web/node_modules/

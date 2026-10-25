@@ -1,7 +1,6 @@
-:HL["/_next/static/chunks/0aau2nfby-0my.css","style"]
-:HL["/_next/static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
-:HL["/_next/static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+:HL["/_next/static/chunks/06uy4frvgfmi5.css","style"]
+:HL["https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Kanit:wght@400;500;600&display=swap","style"]
 3:[["children",{"s":"__PAGE__","h":160}]]
 2:[["children",{"s":"finance","h":96,"c":"$Q3"}]]
 1:[["children",{"s":"(app)","h":96,"c":"$Q2"}]]
-0:{"b":"s4Ajp46mcjwHNcrrl3c6i","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
+0:{"b":"_nxm8yiI8pUDbcYP3JWdM","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
