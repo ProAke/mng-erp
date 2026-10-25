@@ -21,7 +21,7 @@ fi
 # ตรวจเฉพาะ commit ที่แตะไฟล์โค้ด (ดูทั้ง staged + ทั้ง commit ที่จะเกิด)
 TOUCHED=$(
   { git diff --cached --name-only; git diff --name-only; } 2>/dev/null \
-    | grep -E '\.(js|ts|tsx|jsx|json)$' || true
+    | grep -E '\.(js|ts|tsx|jsx|json|sh|css|html)$' || true
 )
 if [ -z "$TOUCHED" ]; then
   echo "pre-commit: ไม่มีไฟล์โค้ดเปลี่ยน — ข้าม"
