@@ -108,8 +108,8 @@ git push origin main
 
 ```bash
 # 1) รัน local server (port ต้องตรงกับที่จะ deploy)
-cd server && PORT=8080 node index.js
-# ควรเห็น: [mng-erp] listening on http://0.0.0.0:8080
+cd server && PORT=4050 node index.js
+# ควรเห็น: [mng-erp] listening on http://0.0.0.0:4050
 
 # 2) ตรวจทุกหน้าจริงใน browser (ห้ามใช้ curl อย่างเดียว)
 npm run deploy:local         # รัน local + ตรวจทุกหน้าอัตโนมัติ

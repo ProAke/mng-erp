@@ -15,7 +15,7 @@ function getOAuth2Client() {
   }
   const creds = JSON.parse(fs.readFileSync(CREDENTIALS_PATH, 'utf8'));
   const { client_id, client_secret, redirect_uris } = creds.installed || creds.web || {};
-  return new google.auth.OAuth2(client_id, client_secret, redirect_uris?.[0] || 'http://localhost:8080/api/drive/callback');
+  return new google.auth.OAuth2(client_id, client_secret, redirect_uris?.[0] || 'http://localhost:4050/api/drive/callback');
 }
 
 // Get authenticated drive client (or null if not yet authorized)

@@ -4,7 +4,7 @@
 # ต้องรัน server ไว้ก่อน — สคริปต์นี้จะไม่ start server ให้
 set -uo pipefail
 
-BASE="${1:-http://127.0.0.1:8080}"
+BASE="${1:-http://127.0.0.1:4050}"
 
 FAIL=0
 PASS=0
