@@ -30,8 +30,9 @@ const shape = r => ({
 router.post('/me/password', async (req, res) => {
   try {
     const b = req.body || {};
-    const cur = String(b.current || '');
-    const nw  = String(b.password || '');
+    const cur = String(b.current ?? b.oldPassword ?? '');
+    const nw  = String(b.password ?? b.newPassword ?? '');
+    if (!cur) return res.status(400).json({ error: 'กรุณากรอกรหัสผ่านปัจจุบัน' });
     if (nw.length < 6) return res.status(400).json({ error: 'รหัสผ่านใหม่อย่างน้อย 6 ตัวอักษร' });
     const [rows] = await authPool.query('SELECT id, password, email FROM users WHERE id = ?', [req.user.user_id]);
     if (!rows.length) return res.status(404).json({ error: 'not_found' });
@@ -39,21 +40,26 @@ router.post('/me/password', async (req, res) => {
     if (!ok) return res.status(400).json({ error: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' });
     const hash = await bcrypt.hash(nw, 12);
     await authPool.query('UPDATE users SET password = ? WHERE id = ?', [hash, req.user.user_id]);
-    // เคลียร์ session อื่นของตัวเอง เก็บไว้แค่อันที่ใช้อยู่
+    // เคลียร์ session อื่นของตัวเอง เก็บไว้แค่อันที่ใชู่
     await workPool.query('DELETE FROM erp_sessions WHERE user_id = ? AND token <> ?', [req.user.user_id, req.token]).catch(() => {});
     await userLog(req, 'เปลี่ยนรหัสผ่านของตัวเอง');
     res.json({ ok: true });
   } catch (e) { console.error('[users/me/password]', e.message); res.status(500).json({ error: 'server_error' }); }
 });
 
-/* ---- self: อัพเดตรูปโปรไฟล์ (URL หรือ base64 data URL) ---- */
+/* ---- self: อัพเดตรูปโปรไฟล์ (URL หรือ base64 data URL หรือค่าว่างเพื่อลบรูป) ---- */
 router.patch('/me/avatar', async (req, res) => {
   try {
-    const url = String((req.body || {}).avatar || '').trim();
-    if (!url) return res.status(400).json({ error: 'กรุณาใส่ URL รูปหรือ base64 data URL' });
+    const raw = (req.body || {}).avatar;
+    const url = raw == null ? '' : String(raw).trim();
+    if (!url) {
+      await authPool.query('UPDATE users SET avatar = NULL WHERE id = ?', [req.user.user_id]);
+      await userLog(req, 'ลบรูปโปรไฟล์');
+      return res.json({ ok: true, avatar: null });
+    }
     // ตรวจสอบว่าเป็น URL หรือ data URL ที่ถูกต้อง
     const isDataUrl = /^data:image\/(png|jpe?g|gif|webp);base64,/.test(url);
-    const isHttpUrl = /^https?:\/\/.+/.test(url);
+    const isHttpUrl = /^https?:\/\/.+/.test(url) || /^\/uploads\/.+/.test(url);
     if (!isDataUrl && !isHttpUrl)
       return res.status(400).json({ error: 'ต้องเป็น URL (https://...) หรือ base64 data URL (data:image/...;base64,...)' });
     // จำกัดขนาด base64 (~2MB)
@@ -71,16 +77,21 @@ router.patch('/:id/avatar', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!id) return res.status(400).json({ error: 'bad_id' });
-    const url = String((req.body || {}).avatar || '').trim();
-    if (!url) return res.status(400).json({ error: 'กรุณาใส่ URL รูปหรือ base64 data URL' });
+    const raw = (req.body || {}).avatar;
+    const url = raw == null ? '' : String(raw).trim();
+    const [t] = await authPool.query('SELECT id, name FROM users WHERE id = ?', [id]);
+    if (!t.length) return res.status(404).json({ error: 'ไม่พบผู้ใช้' });
+    if (!url) {
+      await authPool.query('UPDATE users SET avatar = NULL WHERE id = ?', [id]);
+      await userLog(req, `ลบรูปโปรไฟล์ของ <b>${esc(t[0].name)}</b>`);
+      return res.json({ ok: true, avatar: null });
+    }
     const isDataUrl = /^data:image\/(png|jpe?g|gif|webp);base64,/.test(url);
-    const isHttpUrl = /^https?:\/\/.+/.test(url);
+    const isHttpUrl = /^https?:\/\/.+/.test(url) || /^\/uploads\/.+/.test(url);
     if (!isDataUrl && !isHttpUrl)
       return res.status(400).json({ error: 'ต้องเป็น URL (https://...) หรือ base64 data URL (data:image/...;base64,...)' });
     if (isDataUrl && url.length > 2_800_000)
       return res.status(413).json({ error: 'รูปใหญ่เกินไป (สูงสุด ~2MB)' });
-    const [t] = await authPool.query('SELECT id, name FROM users WHERE id = ?', [id]);
-    if (!t.length) return res.status(404).json({ error: 'ไม่พบผู้ใช้' });
     await authPool.query('UPDATE users SET avatar = ? WHERE id = ?', [url, id]);
     await userLog(req, `เปลี่ยนรูปโปรไฟล์ให้ <b>${esc(t[0].name)}</b>`);
     res.json({ ok: true, avatar: url });

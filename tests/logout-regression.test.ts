@@ -1,104 +1,65 @@
-// logout-regression.test.ts
-// Regression test for: doLogout() session clear + cache-bypass
-// Verifies the logout fix from commit 0ec32d0 works correctly
-// Uses node environment with manual mocks
-import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll, cleanup } from 'vitest'
+// @vitest-environment jsdom
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { tokenStore } from '../web/src/lib/api/client'
+import { useAuth } from '../web/src/lib/stores/auth'
+import { useApp } from '../web/src/lib/stores/app'
 
-// Mock fetch for node environment
-let originalFetch: typeof fetch
-beforeAll(() => {
-  originalFetch = (globalThis as any).fetch
-  ;(globalThis as any).fetch = async (input: any, init?: any) => {
-    const url = typeof input === 'string' ? input : input.url || input
-    const method = (init?.method || 'GET').toUpperCase()
-    const headers = init?.headers || {}
-
-    // Simulate /api/health without auth → 401
-    if (url.includes('/api/health') && !headers.authorization) {
-      return new Response(JSON.stringify({ error: 'unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-
-    // Simulate /api/auth/logout POST
-    if (url.includes('/api/auth/logout') && method === 'POST') {
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-
-    // Default: ok response
-    return new Response(JSON.stringify({ ok: true }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-})
-
-afterAll(() => {
-  ;(globalThis as any).fetch = originalFetch
-})
-
-describe('Logout regression', () => {
+describe('Logout & Session State Regression Suite', () => {
   beforeEach(() => {
-    // Mock localStorage for node environment
-    ;(global as any).localStorage = {
-      getItem: () => null,
-      setItem: (_key: string, _value: string) => {},
-      removeItem: (_key: string) => {},
-      clear: () => {},
-      key: () => null,
-      length: 0,
-    }
+    localStorage.clear()
+    useAuth.getState().clear()
+    useApp.getState().clear()
+    vi.restoreAllMocks()
   })
 
-  afterEach(() => {
-    // cleanup is imported from vitest
-  })
-
-  it('should handle logout API call without crashing', async () => {
-    // The key check: logout API should not return 401 or 500
-    // when called without a valid token (graceful handling)
-    const response = await fetch('/api/auth/logout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ confirm: true }),
+  it('clears token from localStorage and resets both auth and app stores upon logout', () => {
+    useAuth.getState().setSession('mock-jwt-token-123', {
+      id: '1',
+      email: 'test@mng.local',
+      name: 'Test User',
+      role: 'admin',
+      avatar: 'https://example.com/a.png',
     })
 
-    // Should get a response (not crash)
-    expect(response.status).not.toBe(500)
+    expect(tokenStore.get()).toBe('mock-jwt-token-123')
+    expect(useAuth.getState().isAuthenticated).toBe(true)
 
-    const data = await response.json()
-    // Accept any response structure - the important thing is it doesn't crash
-    expect(data).toMatchObject({
-      success: expect.any(Boolean),
-    })
+    useAuth.getState().updateUser({ avatar: 'https://example.com/b.png' })
+    expect(useAuth.getState().user?.avatar).toBe('https://example.com/b.png')
+
+    useAuth.getState().clear()
+
+    expect(tokenStore.get()).toBeNull()
+    expect(useAuth.getState().isAuthenticated).toBe(false)
+    expect(useAuth.getState().user).toBeNull()
+    expect(useApp.getState().data).toBeNull()
+    expect(useAuth.getState().bootstrapped).toBe(true)
   })
 
-  it('should prevent access without auth token', async () => {
-    // Simulate accessing protected route without valid session
-    const response = await fetch('/api/health')
+  it('remains logged out when bootstrapping without a stored token', async () => {
+    expect(tokenStore.get()).toBeNull()
 
-    // Should return 401 unauthorized
-    expect(response.status).toBe(401)
+    await useAuth.getState().bootstrap()
 
-    const data = await response.json()
-    expect(data).toMatchObject({ error: expect.any(String) })
+    expect(useAuth.getState().isAuthenticated).toBe(false)
+    expect(useAuth.getState().user).toBeNull()
+    expect(useAuth.getState().bootstrapped).toBe(true)
   })
 
-  it('should return success structure from logout', async () => {
-    const response = await fetch('/api/auth/logout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ confirm: true }),
+  it('clears invalid token if bootstrap API call fails (401 Unauthorized)', async () => {
+    tokenStore.set('expired-or-invalid-token')
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: async () => JSON.stringify({ error: 'unauthorized' }),
     })
 
-    expect(response.status).toBe(200)
-    const data = await response.json()
-    expect(data).toHaveProperty('success', true)
+    await useAuth.getState().bootstrap()
+
+    expect(tokenStore.get()).toBeNull()
+    expect(useAuth.getState().isAuthenticated).toBe(false)
+    expect(useAuth.getState().user).toBeNull()
+    expect(useAuth.getState().bootstrapped).toBe(true)
   })
 })

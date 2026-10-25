@@ -1,12 +1,15 @@
+import path from 'path'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'web/src'),
+    },
+  },
   test: {
     globals: true,
     environment: 'node',
-    // api-contract ต้อง DB จริง — ใช้ project แยก (รันด้วย --project=integration)
-    include: ['tests/**/*.test.ts'],
-    exclude: ['tests/api-contract.test.ts'],
     coverage: {
       provider: 'v8',
     },
