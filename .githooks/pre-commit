@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
-# temp diagnostic hook — writes full env + node resolution to a log
 exec > /tmp/hook-diag.log 2>&1
-echo "=== date ==="; date
 echo "=== pwd ==="; pwd
-echo "=== env keys ==="; env | sort | grep -Ei "node|npm|npm_config|prefix|arch" | head -20
-echo "=== which node/npm ==="; which node npm
-echo "=== node resolution ==="; node -p "process.version + ' ' + process.arch"
-echo "=== npm run verify ==="
-cd /Volumes/MNG/Work/MNG/mng-erp
-npm run verify
-echo "verify exit=$?"
+echo "=== uname -m ==="; uname -m
+echo "=== sysctl.proc_translated ==="; sysctl -n sysctl.proc_translated
+echo "=== which node ==="; which -a node
+echo "=== node arch ==="; node -p "process.arch + ' ' + process.version"
+echo "=== arch -arm64 node ==="; arch -arm64 node -p "process.arch + ' ' + process.version" 2>&1
+echo "=== env NODE ==="; env | grep -iE "^(NODE|npm_config|PATH=)" | head -5
 exit 0

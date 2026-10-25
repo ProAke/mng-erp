@@ -14,6 +14,17 @@ bad()  { echo "  ❌ $1"; FAIL=$((FAIL+1)); }
 
 hr()   { echo "────────────────────────────────────────────"; }
 
+echo "== 0. node arch =="
+hr
+NODE_ARCH="$(node -p 'process.arch' 2>/dev/null || echo unknown)"
+if [ "$NODE_ARCH" != "$(uname -m)" ]; then
+  bad "node arch = $NODE_ARCH แต่เครื่องคือ $(uname -m) — rollup native binary จะไม่โหลด"
+  echo "     แก้: ใช้ node ที่ตรงสถาปัตยกรรม (arm64) เช่น /opt/homebrew/bin/node"
+else
+  ok "node arch = $NODE_ARCH (ตรงกับเครื่อง)"
+fi
+hr
+
 echo "== 1. lint =="
 hr
 if [ -x node_modules/.bin/eslint ]; then
