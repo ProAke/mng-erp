@@ -24,8 +24,10 @@ export function Sidebar() {
 
   async function handleLogout() {
     await logout()
-    // hard navigate + cache-bust — กันการ cache หน้าที่เคยเข้าถึง
-    window.location.href = `/?_t=${Date.now()}`
+    // hard navigate + cache-bust — กัน browser ย้อนกลับ (back) เข้าหน้าที่เคยเข้าถึง
+    // ใช้ location.replace แทน assign เพื่อไม่ทิ้ง history entry ของหน้าที่ต้อง auth
+    const bust = Date.now()
+    window.location.replace(`/login/?_t=${bust}`)
   }
 
   return (

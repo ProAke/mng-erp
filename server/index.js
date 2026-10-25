@@ -12,6 +12,15 @@ app.use(express.json({ limit: '2mb' }));
 /* tiny request log */
 app.use('/api', (req, _res, next) => { console.log(`[api] ${req.method} ${req.path}`); next(); });
 
+/* API ต้องไม่ถูก cache เด็ดขาด — มิฉะนั้น token ที่ logout แล้วอาจยังดึงข้อมูลจริงได้
+   จาก cache ของ browser โดยไม่มีการถาม server */
+app.use('/api', (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 /* ---------- public endpoints ---------- */
 app.get('/api/health', async (_req, res) => { res.json({ ok: true, ...(await healthCheck()) }); });
 
@@ -37,6 +46,7 @@ app.post('/api/auth/logout', async (req, res) => {
 /* ---------- protected API ---------- */
 app.use('/api/users', auth.middleware, require('./users'));
 app.use('/api/drive', auth.middleware, require('./drive-routes'));
+app.use('/api/hermes-mini', auth.middleware, require('./hermes-mini/routes'));
 app.use('/api', auth.middleware, api);
 
 /* ---------- static SPA ---------- */

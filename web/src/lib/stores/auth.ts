@@ -25,6 +25,17 @@ interface AuthState {
   bootstrap: () => Promise<SessionUser | null>
 }
 
+/* ---------- คีย์ทั้งหมดที่เคยใช้เก็บ auth ไว้ ----------
+   ล้างให้ครบทุกคีย์ ไม่งั้น token เก่าเผื่ออยู่แล้วกลับเข้าระบบเอง
+   (คีย์เก่าจากเวอร์ชั่นก่อนหน้า: mng_erp_token) */
+const LEGACY_KEYS = ['mng_token', 'mng_erp_token', 'mng_user', 'mng_session']
+
+export function clearAuthStorage(): void {
+  if (typeof window === 'undefined') return
+  LEGACY_KEYS.forEach((k) => window.localStorage.removeItem(k))
+  try { window.sessionStorage.clear() } catch { /* ignore */ }
+}
+
 export const useAuth = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
@@ -41,7 +52,7 @@ export const useAuth = create<AuthState>((set) => ({
     } catch {
       // ล้มเหลวตอนนี้ก็ล้างฝั่ง client ต่อ — ไม่บล็อก user
     }
-    tokenStore.clear()
+    clearAuthStorage()
     set({ user: null, isAuthenticated: false })
   },
 
@@ -60,7 +71,7 @@ export const useAuth = create<AuthState>((set) => ({
       set({ user, isAuthenticated: true })
       return user
     } catch {
-      tokenStore.clear()
+      clearAuthStorage()
       set({ user: null, isAuthenticated: false })
       return null
     }

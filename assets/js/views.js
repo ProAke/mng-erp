@@ -161,6 +161,11 @@ function renderDashboard(){
     renderMiniWeek($('#miniWeek'));
   }
 
+  /* hermes-mini insights on dashboard */
+  if (typeof HermesMiniClient !== 'undefined' && HermesMiniClient.on) {
+    HermesMiniClient.showInsights();
+  }
+
   function kpiCard(icon, _g, grad, num, label, trend){
     return `<div class="kpi"><div class="k-ico" style="background:${grad};color:#fff">${icon}</div>
       <div><div class="k-num">${num}</div><div class="k-lbl">${label}</div></div>

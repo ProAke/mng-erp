@@ -1,20 +1,19 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { Sidebar } from '@/components/shell/Sidebar'
 import { useAuth } from '@/lib/stores/auth'
 import { useApp } from '@/lib/stores/app'
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const router = useRouter()
   const { isAuthenticated, bootstrap } = useAuth()
   const { load, loading } = useApp()
 
   // boot: เช็ค session จาก server (token อยู่ใน localStorage)
   useEffect(() => {
     bootstrap().then((user) => {
-      if (!user) router.replace('/login')
+      // static export: router.replace อาจไม่ยิง — ใช้ window.location ให้แน่ใจว่าเปลี่ยนหน้า
+      if (!user) window.location.replace('/login/')
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
