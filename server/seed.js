@@ -2,8 +2,6 @@
    - Creates ERP module data (team, clients, invoices, events, activity)
    - Enriches the REAL projects/tasks with erp_* metadata (additive only)
    - Guarded by erp_settings seedVersion — safe to run repeatedly         */
-const { workPool } = require('./db');
-
 const SEED_VERSION = 3;
 
 const TEAM = [
