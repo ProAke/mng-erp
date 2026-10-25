@@ -90,6 +90,19 @@ git push origin main
 
 ## 6. เอกสาร
 
+- `docs/PROCEDURE.md` — **ระเบียบการทำงานและ Deploy** (อ่านก่อนทำงานทุกครั้ง)
 - `docs/migration/nextjs-plan.md` — แผน migration (strangler fig)
 - `server/.env.example` —ตัวแปรที่จำเป็น
 - **ห้าม commit `.env`** — มี secret จริง
+
+## 7. การขออนุมัติ (สรุป — รายละเอียดใน `docs/PROCEDURE.md` ข้อ 4)
+
+| ขั้น | ต้องทำ |
+|---|---|
+| 1 | รัน local + ตรวจทุกหน้าจริงใน browser (`npm run deploy:local`) |
+| 2 | เขียนเอกสารขออนุมัติที่ `docs/deploy/approval-<วันที่>.md` (ใช้แบบฟอร์มใน PROCEDURE.md) |
+| 3 | **รอพี่เอกอนุมัติ** — ห้าม FTP ก่อนได้รับอนุมัติ |
+| 4 | deploy + commit แยก 2 commit (`fix:` / `chore(deploy):`) + push git |
+| 5 | ตรวจซ้ำบน production จริงทุกหน้า |
+
+**ห้าม:** สร้างระบบใหม่แล้วทับระบบออนไลน์ผ่าน GitHub โดยไม่ผ่านขั้นตอนนี้
