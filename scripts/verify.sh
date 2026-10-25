@@ -16,10 +16,12 @@ hr()   { echo "─────────────────────�
 
 echo "== 0. node arch =="
 hr
+# เช็ค process.arch (ไม่ใช่ uname -m — ใต้ Rosetta uname จะรายงาน x86_64)
 NODE_ARCH="$(node -p 'process.arch' 2>/dev/null || echo unknown)"
-if [ "$NODE_ARCH" != "$(uname -m)" ]; then
-  bad "node arch = $NODE_ARCH แต่เครื่องคือ $(uname -m) — rollup native binary จะไม่โหลด"
-  echo "     แก้: ใช้ node ที่ตรงสถาปัตยกรรม (arm64) เช่น /opt/homebrew/bin/node"
+NATIVE_ARCH="$(arch -arm64 uname -m 2>/dev/null || uname -m)"
+if [ "$NODE_ARCH" != "$NATIVE_ARCH" ]; then
+  bad "node arch = $NODE_ARCH แต่เครื่องคือ $NATIVE_ARCH — rollup native binary จะไม่โหลด"
+  echo "     แก้: re-exec ด้วย arch -arm64 (ดู .githooks/pre-commit)"
 else
   ok "node arch = $NODE_ARCH (ตรงกับเครื่อง)"
 fi
