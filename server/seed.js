@@ -2,37 +2,9 @@
    - Creates ERP module data (team, clients, invoices, events, activity)
    - Enriches the REAL projects/tasks with erp_* metadata (additive only)
    - Guarded by erp_settings seedVersion — safe to run repeatedly         */
-const SEED_VERSION = 4;
+const { workPool } = require('./db');
 
-const TEAM_ENRICH = {
-  'worapot@outlook.com': { nickname:'เอก',   state:'online',  skills:['Product','Strategy','AI Ops'] },
-  'nuna@mnggroups.co':   { nickname:'หนูนา', state:'focus',   skills:['Figma','UX/UI','Design System'] },
-  'bank@mnggroups.co':   { nickname:'แบงค์', state:'working', skills:['Next.js','Node.js','MariaDB'] },
-  'may@mnggroups.co':    { nickname:'เมย์',  state:'working', skills:['React','Tailwind','Motion'] },
-  'art@mnggroups.co':    { nickname:'อาร์ท', state:'online',  skills:['API','SQL','DevOps'] },
-  'fah@mnggroups.co':    { nickname:'ฟ้า',   state:'focus',   skills:['QA','UAT','Playwright'] },
-};
-
-const AI_AGENTS = [
-  { name:'BYTE',  nickname:'Byte',  role:'AI Full-stack Engineer', color:'#22C793', email:'byte@ai.mnggroups.co',  state:'working', skills:['Next.js','SQL','Refactor'],    model:'Claude Sonnet 4.5', paused:0, autonomy:78, runs:142, success_rate:94, tokens_today:284500 },
-  { name:'NOVA',  nickname:'Nova',  role:'AI Project Coordinator', color:'#6C5CE7', email:'nova@ai.mnggroups.co',  state:'online',  skills:['Planning','Follow-up','Summary'], model:'Claude Sonnet 4.5', paused:0, autonomy:85, runs:118, success_rate:96, tokens_today:162400 },
-  { name:'ECHO',  nickname:'Echo',  role:'AI QA & Client Comms',   color:'#3BA7FF', email:'echo@ai.mnggroups.co',  state:'online',  skills:['QA Gate','Test Cases','Copy'],  model:'Gemini 2.5 Pro',    paused:0, autonomy:65, runs:64,  success_rate:90, tokens_today:74200 },
-  { name:'ORBIT', nickname:'Orbit', role:'AI Finance & Analytics', color:'#FFB020', email:'orbit@ai.mnggroups.co', state:'away',    skills:['Forecast','Budget','KPI'],      model:'GPT-4.1',           paused:1, autonomy:60, runs:39,  success_rate:89, tokens_today:18900 },
-  { name:'PIXEL', nickname:'Pixel', role:'AI Creative & UI Assist',color:'#FF6B9D', email:'pixel@ai.mnggroups.co', state:'online',  skills:['Key Visual','Banner','UX Copy'],model:'Flux 1.1 Pro',      paused:0, autonomy:72, runs:83,  success_rate:92, tokens_today:95300 },
-];
-
-const DEFAULT_ROOMS = [
-  { name:'ห้องประชุมใหญ่ MNG Boardroom', kind:'room',   capacity:12, floor:'ชั้น 3', color:'#3BA7FF', equipment:['จอ 4K 75"','ชุดไมค์ประชุม','Whiteboard','HDMI/USB-C'] },
-  { name:'ห้อง Focus Pod A (คุยลูกค้า)',  kind:'room',   capacity:4,  floor:'ชั้น 3', color:'#8E7CF3', equipment:['จอ 55"','Webcam 4K','เก็บเสียง'] },
-  { name:'สตูดิโอถ่ายทำ & Live Set',      kind:'studio', capacity:6,  floor:'ชั้น 2', color:'#FF6B9D', equipment:['ไฟ Softbox 3 จุด','ฉากเขียว','ไมค์ไร้สายคู่'] },
-  { name:'ชุดกล้อง Sony FX3 + เลนส์ G',   kind:'gear',   capacity:1,  floor:'ตู้เก็บอุปกรณ์', color:'#22C793', equipment:['Sony FX3','24-70mm GM','ขาตั้งวิดีโอ','SD 256GB'] },
-];
-
-const DEFAULT_CHANNELS = [
-  { name:'ประกาศและเป้าหมายทีม', emoji:'📢', type:'group', topic:'อัปเดตเป้าหมายประจำสัปดาห์และข่าวสำคัญของ MNG Groups', pinned:1 },
-  { name:'dev-engineering',      emoji:'💻', type:'group', topic:'พูดคุยงานพัฒนา โค้ดรีวิว API และเซิร์ฟเวอร์ (เรียก @BYTE หรือ @NOVA ได้)', pinned:1 },
-  { name:'design-ux-review',     emoji:'🎨', type:'group', topic:'ส่งดราฟต์ดีไซน์ ขอฟีดแบ็ก UI/UX และชิ้นงานลูกค้า', pinned:0 },
-];
+const SEED_VERSION = 3;
 
 const TEAM = [
   { name:'Worapot',       role:'Founder / PM',   color:'#FF8A5C', email:'worapot@outlook.com', phone:'081-234-5678', is_me:1, auth:2 },
@@ -241,96 +213,6 @@ async function seed(pool) {
     // backfill codes + progress sync
     await conn.query("UPDATE tasks SET erp_code = CONCAT('MNG-', 1000 + id) WHERE erp_code IS NULL");
     await conn.query("UPDATE tasks SET progress = 100 WHERE status = 'done' AND progress < 100");
-
-    // ---- Agency OS v4 additive enrichments (idempotent) ----
-    for (const [email, meta] of Object.entries(TEAM_ENRICH)) {
-      await conn.query(
-        'UPDATE erp_team SET nickname = COALESCE(nickname, ?), skills = COALESCE(skills, ?), state = COALESCE(NULLIF(state, \'\'), ?) WHERE email = ?',
-        [meta.nickname, JSON.stringify(meta.skills), meta.state, email]
-      );
-    }
-
-    const [aiCnt] = await conn.query("SELECT COUNT(*) c FROM erp_team WHERE kind = 'ai'");
-    if (!aiCnt[0].c) {
-      for (const a of AI_AGENTS) {
-        await conn.query(
-          `INSERT INTO erp_team (name, nickname, role, kind, state, color, email, skills, model, paused, autonomy, runs, success_rate, tokens_today, capacity, is_me)
-           VALUES (?,?,?, 'ai', ?,?,?,?,?,?,?,?,?,?, 40, 0)`,
-          [a.name, a.nickname, a.role, a.state, a.color, a.email, JSON.stringify(a.skills), a.model, a.paused, a.autonomy, a.runs, a.success_rate, a.tokens_today]
-        );
-      }
-      const [agents] = await conn.query("SELECT id, name FROM erp_team WHERE kind = 'ai' ORDER BY id");
-      const [sampleTasks] = await conn.query('SELECT id, erp_code, title FROM tasks WHERE archived = 0 ORDER BY id LIMIT 3');
-      if (agents.length && sampleTasks.length) {
-        await conn.query(
-          'INSERT INTO erp_ai_runs (agent_id, task_id, action, detail, output, duration_sec, tokens, status) VALUES (?,?,?,?,?,?,?,?)',
-          [agents[0].id, sampleTasks[0].id, 'วิเคราะห์โครงสร้างและแตก Subtasks', `${sampleTasks[0].erp_code} — ${sampleTasks[0].title}`, 'ตรวจสอบรายการงานและเตรียมแผนการทดสอบเรียบร้อย', 11, 1840, 'success']
-        );
-        if (agents[1] && sampleTasks[1]) {
-          await conn.query(
-            'INSERT INTO erp_ai_runs (agent_id, task_id, action, detail, output, duration_sec, tokens, status) VALUES (?,?,?,?,?,?,?,?)',
-            [agents[1].id, sampleTasks[1].id, 'สรุปความคืบหน้าและแจ้งเตือนเดดไลน์', `${sampleTasks[1].erp_code} — ${sampleTasks[1].title}`, 'รวบรวมสถานะล่าสุดพร้อมข้อเสนอแนะสำหรับทีมรีวิว', 8, 1320, 'success']
-          );
-        }
-      }
-      console.log('[seed] AI Workforce agents:', AI_AGENTS.length);
-    }
-
-    // Backfill short project codes (e.g. CHEF, LOVE, SGI, APH, MNG)
-    await conn.query(`
-      UPDATE projects
-      SET erp_code = UPPER(LEFT(REGEXP_REPLACE(COALESCE(NULLIF(hub_id,''), title), '[^A-Za-z0-9]', ''), 4))
-      WHERE erp_code IS NULL OR erp_code = ''
-    `).catch(async () => {
-      await conn.query("UPDATE projects SET erp_code = CONCAT('PRJ', id) WHERE erp_code IS NULL OR erp_code = ''");
-    });
-
-    // Rooms seed
-    const [rmCnt] = await conn.query('SELECT COUNT(*) c FROM erp_rooms');
-    if (!rmCnt[0].c) {
-      for (const r of DEFAULT_ROOMS) {
-        await conn.query(
-          'INSERT INTO erp_rooms (name, kind, capacity, floor, color, equipment) VALUES (?,?,?,?,?,?)',
-          [r.name, r.kind, r.capacity, r.floor, r.color, JSON.stringify(r.equipment)]
-        );
-      }
-      console.log('[seed] erp_rooms:', DEFAULT_ROOMS.length);
-    }
-
-    // Channels & initial welcome messages seed
-    const [chCnt] = await conn.query('SELECT COUNT(*) c FROM erp_channels');
-    if (!chCnt[0].c) {
-      const [allMembers] = await conn.query('SELECT id FROM erp_team ORDER BY id');
-      const memberIds = allMembers.map(m => m.id);
-      for (const ch of DEFAULT_CHANNELS) {
-        const [ins] = await conn.query(
-          'INSERT INTO erp_channels (name, emoji, type, topic, members, pinned) VALUES (?,?,?,?,?,?)',
-          [ch.name, ch.emoji, ch.type, ch.topic, JSON.stringify(memberIds), ch.pinned]
-        );
-        await conn.query(
-          'INSERT INTO erp_messages (channel_id, author_id, text, kind, pinned) VALUES (?,?,?,?,?)',
-          [ins.insertId, memberIds[0] || 1, `ยินดีต้อนรับสู่ห้อง #${ch.name} — ${ch.topic}`, 'system', 1]
-        );
-      }
-      console.log('[seed] erp_channels:', DEFAULT_CHANNELS.length);
-    }
-
-    // Default Agency OS settings (announce, work hours, office GPS, aiEnabled)
-    const [setRow] = await conn.query('SELECT data FROM erp_settings WHERE id = 1');
-    let curSettings = {};
-    try { curSettings = JSON.parse(setRow[0]?.data || '{}') || {}; } catch {}
-    const mergedSettings = {
-      orgName: 'MNG Groups Co., Ltd.',
-      announce: 'โฟกัสสัปดาห์นี้: ส่งมอบงานลูกค้าตามสปรินต์ + อัปเกรดระบบ MNG Workspace & AI Workforce 🚀',
-      workStart: '09:30',
-      workEnd: '18:30',
-      aiEnabled: true,
-      office: { name: 'MNG Groups Office — กรุงเทพฯ', lat: 13.7563, lng: 100.5018, radius: 250 },
-      ...curSettings,
-      seedVersion: SEED_VERSION,
-    };
-    await conn.query('UPDATE erp_settings SET data = ? WHERE id = 1', [JSON.stringify(mergedSettings)]);
-
     console.log('[seed] done');
   } finally { conn.release(); }
 }
@@ -349,5 +231,3 @@ if (require.main === module) {
   run().catch(e => { console.error(e); process.exit(1); });
 }
 module.exports = { seed };
-
-/* smoke */
