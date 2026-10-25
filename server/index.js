@@ -36,11 +36,10 @@ app.post('/api/auth/logout', async (req, res) => {
 
 /* ---------- protected API ---------- */
 app.use('/api/users', auth.middleware, require('./users'));
-app.use('/api/drive', auth.middleware, require('./drive-routes'));
 app.use('/api', auth.middleware, api);
 
 /* ---------- static SPA ---------- */
-const root = path.join(__dirname, 'public');
+const root = path.join(__dirname, '..');
 // no-cache ทุกไฟล์ — ป้องกัน browser cache ไฟล์เก่า (เดปลอยแล้วยังใช้ app.js เก่า)
 const noCache = (_res, p) => {
   _res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
