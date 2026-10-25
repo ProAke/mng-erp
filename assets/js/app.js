@@ -201,8 +201,6 @@ const App = {
     this.route();
     if(this._bootToast){ toast(this._bootToast[0], this._bootToast[1]); this._bootToast = null; }
     if(Remote.on) setTimeout(()=>toast('เชื่อมต่อฐานข้อมูลจริงแล้ว ✓ ข้อมูลจาก MariaDB pacific_mngworks'), 350);
-    /* init hermes-mini */
-    HermesMiniClient.status();
   },
 
   splash(msg){
@@ -323,7 +321,6 @@ const App = {
         <div class="search-pop" id="searchPop"></div>
       </div>
       <div class="tb-actions">
-        <button class="icon-btn" id="aiBtn" title="hermes-mini AI Assistant">${IC.flame}<span>AI</span></button>
         <div style="position:relative">
           <button class="icon-btn" id="bellBtn">${IC.bell}${notifs.length?'<span class="ping"></span>':''}</button>
           <div class="notif-pop" id="notifPop">
@@ -349,13 +346,7 @@ const App = {
         </div>
       </div>`;
 
-    // AI assistant button
-    $('#aiBtn')?.addEventListener('click', e=>{
-      if(!e.target.closest('[data-act]')) e.stopPropagation();
-      HermesMiniClient.openPanel();
-      $('#notifPop')?.classList.remove('open'); $('#userMenu')?.classList.remove('open');
-    });
-    // bell dropdown — อย่ากลืน click บน item ที่เป็น data-act
+    // bell dropdown — อย่ากลืน click บน item ที่เป็น data-act (เดิมทำ logout/เมนูใช้ไม่ได้)
     $('#bellBtn').addEventListener('click', e=>{
       if(!e.target.closest('[data-act]')) e.stopPropagation();
       $('#notifPop')?.classList.toggle('open'); $('#userMenu')?.classList.remove('open');
