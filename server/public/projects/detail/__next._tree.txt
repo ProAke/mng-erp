@@ -1,4 +1,4 @@
-:HL["/_next/static/chunks/0aau2nfby-0my.css","style"]
+:HL["/_next/static/chunks/0sut7i8y_1e7j.css","style"]
 :HL["/_next/static/media/797e433ab948586e-s.p.0r6juujl39pe6.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/_next/static/media/caa3a2e1cccd8315-s.p.0wgildi0cnwt9.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
 :HL["/_next/static/chunks/2z9c_nx9vsrkr.css","style"]
@@ -6,4 +6,4 @@
 3:[["children",{"s":"detail","h":96,"c":"$Q4"}]]
 2:[["children",{"s":"projects","h":96,"c":"$Q3"}]]
 1:[["children",{"s":"(app)","h":96,"c":"$Q2"}]]
-0:{"b":"ipfJGyTpWI0aIu6Wq8E0V","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
+0:{"b":"URXu4Z3gs2K61Go8E9TaJ","t":{"t":{"s":"","h":80,"c":"$Q1"}}}
