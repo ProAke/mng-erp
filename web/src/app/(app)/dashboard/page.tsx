@@ -22,7 +22,7 @@ export default function DashboardPage() {
   if (error) {
     return (
       <div className="p-8">
-        <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-4 text-red-300 text-sm">
+        <div className="rounded-xl bg-red-soft border border-red/20 p-4 text-red text-sm">
           ไม่สามารถโหลดข้อมูลได้: {error}
         </div>
       </div>
@@ -39,10 +39,10 @@ export default function DashboardPage() {
   return (
     <div className="p-6 space-y-6">
       <header>
-        <h1 className="text-xl font-semibold text-white">
+        <h1 className="text-xl font-semibold text-ink">
           สวัสดี{user?.name ? ` คุณ${user.name}` : ''}
         </h1>
-        <p className="text-sm text-slate-500 mt-0.5">ภาพรวมงานทั้งหมดในระบบ</p>
+        <p className="text-sm text-muted mt-0.5">ภาพรวมงานทั้งหมดในระบบ</p>
       </header>
 
       {/* KPI cards */}
@@ -55,10 +55,10 @@ export default function DashboardPage() {
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* projects */}
-        <div className="rounded-xl bg-slate-900 border border-slate-800 p-5">
-          <h2 className="text-sm font-medium text-slate-300 mb-4">โปรเจกต์ที่กำลังทำ</h2>
+        <div className="rounded-xl bg-card border border-line p-5">
+          <h2 className="text-sm font-medium text-ink-2 mb-4">โปรเจกต์ที่กำลังทำ</h2>
           {projects.length === 0 ? (
-            <p className="text-sm text-slate-600">ยังไม่มีโปรเจกต์</p>
+            <p className="text-sm text-muted">ยังไม่มีโปรเจกต์</p>
           ) : (
             <div className="space-y-3">
               {projects.slice(0, 6).map((p: any) => {
@@ -71,12 +71,12 @@ export default function DashboardPage() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-sm text-slate-200 truncate">{p.short || p.name}</span>
-                        <span className="text-xs text-slate-500 shrink-0">{progress}%</span>
+                        <span className="text-sm text-ink truncate">{p.short || p.name}</span>
+                        <span className="text-xs text-muted shrink-0">{progress}%</span>
                       </div>
-                      <div className="mt-1.5 h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                      <div className="mt-1.5 h-1.5 rounded-full bg-tint-2 overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-amber-500 transition-all"
+                          className="h-full rounded-full bg-violet transition-all"
                           style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
                         />
                       </div>
@@ -89,16 +89,16 @@ export default function DashboardPage() {
         </div>
 
         {/* activity */}
-        <div className="rounded-xl bg-slate-900 border border-slate-800 p-5">
-          <h2 className="text-sm font-medium text-slate-300 mb-4">กิจกรรมล่าสุด</h2>
+        <div className="rounded-xl bg-card border border-line p-5">
+          <h2 className="text-sm font-medium text-ink-2 mb-4">กิจกรรมล่าสุด</h2>
           {activity.length === 0 ? (
-            <p className="text-sm text-slate-600">ยังไม่มีกิจกรรม</p>
+            <p className="text-sm text-muted">ยังไม่มีกิจกรรม</p>
           ) : (
             <ul className="space-y-2">
               {activity.slice(0, 8).map((a: any, i: number) => (
                 <li key={i} className="flex items-start gap-3 text-sm">
-                  <span className="text-xs text-slate-600 shrink-0 mt-0.5 w-24 truncate">{a.at}</span>
-                  <span className="text-slate-300" dangerouslySetInnerHTML={{ __html: a.text }} />
+                  <span className="text-xs text-muted shrink-0 mt-0.5 w-24 truncate">{a.at}</span>
+                  <span className="text-ink-2" dangerouslySetInnerHTML={{ __html: a.text }} />
                 </li>
               ))}
             </ul>
@@ -107,19 +107,19 @@ export default function DashboardPage() {
       </section>
 
       {/* tasks due */}
-      <section className="rounded-xl bg-slate-900 border border-slate-800 p-5">
-        <h2 className="text-sm font-medium text-slate-300 mb-4">งานครบกำหนดใกล้ ๆ</h2>
+      <section className="rounded-xl bg-card border border-line p-5">
+        <h2 className="text-sm font-medium text-ink-2 mb-4">งานครบกำหนดใกล้ ๆ</h2>
         {activeTasks.length === 0 ? (
-          <p className="text-sm text-slate-600">ไม่มีงานที่ต้องทำ</p>
+          <p className="text-sm text-muted">ไม่มีงานที่ต้องทำ</p>
         ) : (
           <ul className="space-y-2">
             {activeTasks.slice(0, 8).map((t: any) => (
               <li
                 key={t.id}
-                className="flex items-center justify-between gap-3 rounded-lg bg-slate-950/60 px-3 py-2"
+                className="flex items-center justify-between gap-3 rounded-lg bg-bg-2/60 px-3 py-2"
               >
-                <span className="text-sm text-slate-300 truncate">{t.title}</span>
-                <span className="text-xs text-slate-500 shrink-0">
+                <span className="text-sm text-ink-2 truncate">{t.title}</span>
+                <span className="text-xs text-muted shrink-0">
                   {t.due ? formatDue(t.due) : '—'}
                 </span>
               </li>
@@ -133,23 +133,23 @@ export default function DashboardPage() {
 
 function StatCard({ label, value, tone }: { label: string; value: number; tone: 'amber' | 'blue' | 'green' | 'red' }) {
   const tones: Record<string, string> = {
-    amber: 'from-amber-500/15 to-transparent border-amber-500/20 text-amber-300',
-    blue: 'from-sky-500/15 to-transparent border-sky-500/20 text-sky-300',
-    green: 'from-emerald-500/15 to-transparent border-emerald-500/20 text-emerald-300',
-    red: 'from-red-500/15 to-transparent border-red-500/20 text-red-300',
+    amber: 'from-violet-soft to-transparent border-violet/20 text-violet',
+    blue: 'from-blue-soft to-transparent border-blue/20 text-blue',
+    green: 'from-mint-soft to-transparent border-mint/20 text-mint',
+    red: 'from-red-soft to-transparent border-red/20 text-red',
   }
   return (
     <div className={`rounded-xl bg-gradient-to-br ${tones[tone]} border p-4`}>
       <div className="text-2xl font-semibold">{value}</div>
-      <div className="text-xs text-slate-400 mt-1">{label}</div>
+      <div className="text-xs text-ink-2 mt-1">{label}</div>
     </div>
   )
 }
 
 function LoadingState() {
   return (
-    <div className="flex items-center gap-3 text-slate-500 text-sm">
-      <span className="w-4 h-4 border-2 border-slate-700 border-t-amber-500 rounded-full animate-spin" />
+    <div className="flex items-center gap-3 text-muted text-sm">
+      <span className="w-4 h-4 border-2 border-line-2 border-t-violet rounded-full animate-spin" />
       กำลังโหลดข้อมูล…
     </div>
   )

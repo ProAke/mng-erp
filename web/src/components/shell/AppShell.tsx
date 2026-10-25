@@ -26,9 +26,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="flex items-center gap-3 text-slate-500 text-sm">
-          <span className="w-4 h-4 border-2 border-slate-700 border-t-amber-500 rounded-full animate-spin" />
+      <main className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex items-center gap-3 text-muted text-sm">
+          <span className="w-4 h-4 border-2 border-line-2 border-t-violet rounded-full animate-spin" />
           กำลังตรวจสอบสถานะ…
         </div>
       </main>
@@ -36,11 +36,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-200">
+    <div className="flex min-h-screen bg-background text-foreground">
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col">
         {loading && (
-          <div className="px-6 py-2 bg-amber-500/10 border-b border-amber-500/20 text-xs text-amber-300">
+          <div className="px-6 py-2 bg-violet-soft border-b border-line text-xs text-violet">
             กำลังโหลดข้อมูล…
           </div>
         )}

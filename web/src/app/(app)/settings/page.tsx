@@ -18,12 +18,12 @@ export default function SettingsPage() {
 
   return (
     <div className="h-full flex flex-col">
-      <header className="px-6 py-4 border-b border-slate-800 shrink-0">
-        <h1 className="text-xl font-semibold text-white">ตั้งค่า</h1>
-        <p className="text-sm text-slate-500 mt-0.5">จัดการโปรไฟล์ ผู้ใช้ และระบบ</p>
+      <header className="px-6 py-4 border-b border-line shrink-0">
+        <h1 className="text-xl font-semibold text-ink">ตั้งค่า</h1>
+        <p className="text-sm text-muted mt-0.5">จัดการโปรไฟล์ ผู้ใช้ และระบบ</p>
       </header>
 
-      <div className="px-6 pt-3 border-b border-slate-800 shrink-0">
+      <div className="px-6 pt-3 border-b border-line shrink-0">
         <div className="flex gap-1">
           {tabs.map((t) => (
             <button
@@ -31,8 +31,8 @@ export default function SettingsPage() {
               onClick={() => setActiveTab(t.id)}
               className={`px-4 py-2 text-sm rounded-t-lg transition-colors ${
                 activeTab === t.id
-                  ? 'bg-slate-900 text-amber-400 border border-slate-800 border-b-0'
-                  : 'text-slate-500 hover:text-slate-300'
+                  ? 'bg-card text-violet border border-line border-b-0'
+                  : 'text-muted hover:text-ink-2'
               }`}
             >
               {t.label}
@@ -70,10 +70,10 @@ function ProfileTab({ user }: { user: any }) {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <section className="rounded-xl bg-slate-900 border border-slate-800 p-5 space-y-4">
-        <h2 className="text-sm font-medium text-slate-300">รูปโปรไฟล์</h2>
+      <section className="rounded-xl bg-card border border-line p-5 space-y-4">
+        <h2 className="text-sm font-medium text-ink-2">รูปโปรไฟล์</h2>
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-slate-700 flex items-center justify-center text-xl font-medium text-slate-300 overflow-hidden">
+          <div className="w-16 h-16 rounded-full bg-tint-3 flex items-center justify-center text-xl font-medium text-ink-2 overflow-hidden">
             {avatarUrl ? (
               <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
             ) : (
@@ -86,9 +86,9 @@ function ProfileTab({ user }: { user: any }) {
               value={avatarUrl}
               onChange={(e) => setAvatarUrl(e.target.value)}
               placeholder="https://... หรือ data:image/...;base64,..."
-              className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500"
+              className="w-full rounded-lg bg-bg-2 border border-line-2 px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-violet"
             />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted">
               ใส่ URL รูป (https://...) หรือ base64 data URL (data:image/...;base64,...) — ขนาดไม่เกิน ~2MB
             </p>
           </div>
@@ -97,32 +97,32 @@ function ProfileTab({ user }: { user: any }) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 px-4 py-2 text-sm font-medium text-slate-950 transition-colors"
+            className="rounded-lg bg-violet hover:bg-violet-2 disabled:opacity-50 px-4 py-2 text-sm font-medium text-muted transition-colors"
           >
             {saving ? 'กำลังบันทึก…' : 'บันทึกรูปโปรไฟล์'}
           </button>
           {message && (
-            <span className={`text-sm ${message.includes('✅') ? 'text-emerald-400' : 'text-red-400'}`}>
+            <span className={`text-sm ${message.includes('✅') ? 'text-mint' : 'text-red'}`}>
               {message}
             </span>
           )}
         </div>
       </section>
 
-      <section className="rounded-xl bg-slate-900 border border-slate-800 p-5 space-y-3">
-        <h2 className="text-sm font-medium text-slate-300">ข้อมูลส่วนตัว</h2>
+      <section className="rounded-xl bg-card border border-line p-5 space-y-3">
+        <h2 className="text-sm font-medium text-ink-2">ข้อมูลส่วนตัว</h2>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <span className="text-slate-500">ชื่อ:</span>
-            <span className="text-slate-200 ml-2">{user?.name || '—'}</span>
+            <span className="text-muted">ชื่อ:</span>
+            <span className="text-ink ml-2">{user?.name || '—'}</span>
           </div>
           <div>
-            <span className="text-slate-500">อีเมล:</span>
-            <span className="text-slate-200 ml-2">{user?.email || '—'}</span>
+            <span className="text-muted">อีเมล:</span>
+            <span className="text-ink ml-2">{user?.email || '—'}</span>
           </div>
           <div>
-            <span className="text-slate-500">สิทธิ์:</span>
-            <span className="text-slate-200 ml-2">{user?.role || '—'}</span>
+            <span className="text-muted">สิทธิ์:</span>
+            <span className="text-ink ml-2">{user?.role || '—'}</span>
           </div>
         </div>
       </section>
@@ -151,10 +151,10 @@ function UsersTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-slate-300">จัดการผู้ใช้</h2>
+        <h2 className="text-sm font-medium text-ink-2">จัดการผู้ใช้</h2>
         <button
           onClick={loadUsers}
-          className="text-xs text-amber-400 hover:text-amber-300"
+          className="text-xs text-violet hover:text-violet"
         >
           รีเฟรช
         </button>
@@ -162,10 +162,10 @@ function UsersTab() {
       {loading ? (
         <LoadingState />
       ) : (
-        <div className="rounded-xl bg-slate-900 border border-slate-800 overflow-hidden">
+        <div className="rounded-xl bg-card border border-line overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-slate-500 text-xs">
+              <tr className="border-b border-line text-muted text-xs">
                 <th className="text-left px-4 py-3">ชื่อ</th>
                 <th className="text-left px-4 py-3">อีเมล</th>
                 <th className="text-left px-4 py-3">สิทธิ์</th>
@@ -174,14 +174,14 @@ function UsersTab() {
             </thead>
             <tbody>
               {users.map((u: any) => (
-                <tr key={u.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                  <td className="px-4 py-3 text-slate-200">{u.name}</td>
-                  <td className="px-4 py-3 text-slate-400">{u.email}</td>
+                <tr key={u.id} className="border-b border-line hover:bg-tint-1">
+                  <td className="px-4 py-3 text-ink">{u.name}</td>
+                  <td className="px-4 py-3 text-ink-2">{u.email}</td>
                   <td className="px-4 py-3">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">{u.role}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-tint-2 text-ink-2">{u.role}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${u.status === 'active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-800 text-slate-500'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${u.status === 'active' ? 'bg-emerald-500/10 text-mint' : 'bg-tint-2 text-muted'}`}>
                       {u.status}
                     </span>
                   </td>
@@ -198,24 +198,24 @@ function UsersTab() {
 function SystemTab() {
   return (
     <div className="max-w-2xl space-y-4">
-      <section className="rounded-xl bg-slate-900 border border-slate-800 p-5">
-        <h2 className="text-sm font-medium text-slate-300 mb-3">ข้อมูลระบบ</h2>
+      <section className="rounded-xl bg-card border border-line p-5">
+        <h2 className="text-sm font-medium text-ink-2 mb-3">ข้อมูลระบบ</h2>
         <div className="space-y-2 text-sm">
           <div className="flex justify-between">
-            <span className="text-slate-500">เวอร์ชัน</span>
-            <span className="text-slate-200">MNG ERP v2</span>
+            <span className="text-muted">เวอร์ชัน</span>
+            <span className="text-ink">MNG ERP v2</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-500">Frontend</span>
-            <span className="text-slate-200">Next.js 16 + React + TypeScript</span>
+            <span className="text-muted">Frontend</span>
+            <span className="text-ink">Next.js 16 + React + TypeScript</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-500">Backend</span>
-            <span className="text-slate-200">Express 5 + MariaDB</span>
+            <span className="text-muted">Backend</span>
+            <span className="text-ink">Express 5 + MariaDB</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-500">Database</span>
-            <span className="text-slate-200">pacific_mng + pacific_mngworks</span>
+            <span className="text-muted">Database</span>
+            <span className="text-ink">pacific_mng + pacific_mngworks</span>
           </div>
         </div>
       </section>
@@ -225,8 +225,8 @@ function SystemTab() {
 
 function LoadingState() {
   return (
-    <div className="flex items-center gap-3 text-slate-500 text-sm">
-      <span className="w-4 h-4 border-2 border-slate-700 border-t-amber-500 rounded-full animate-spin" />
+    <div className="flex items-center gap-3 text-muted text-sm">
+      <span className="w-4 h-4 border-2 border-line-2 border-t-violet rounded-full animate-spin" />
       กำลังโหลดข้อมูล…
     </div>
   )

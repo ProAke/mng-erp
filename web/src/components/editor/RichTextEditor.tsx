@@ -7,7 +7,7 @@ import { useRef } from 'react'
 // CKEditor 5 ต้อง client-side เท่านั้น (SSR ไม่ได้)
 const CKEditor = dynamic(
   () => import('@ckeditor/ckeditor5-react').then((m) => m.CKEditor),
-  { ssr: false, loading: () => <div className="text-slate-500 text-sm py-4">กำลังโหลด editor…</div> },
+  { ssr: false, loading: () => <div className="text-muted text-sm py-4">กำลังโหลด editor…</div> },
 )
 
 import { ClassicEditor, Essentials, Paragraph, Bold, Italic, Underline, Strikethrough, Subscript, Superscript, Link, List, TodoList, Indent, BlockQuote, CodeBlock, Heading, Font, Alignment, Table, TableToolbar, Image, ImageCaption, ImageStyle, ImageResize, ImageUpload, MediaEmbed, Highlight, Code, RemoveFormat, HorizontalLine, PageBreak, SourceEditing, Autoformat, FindAndReplace, SpecialCharacters, SpecialCharactersEssentials, Mention } from 'ckeditor5'

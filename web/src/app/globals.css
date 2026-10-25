@@ -1,26 +1,124 @@
 @import "tailwindcss";
 
+/* ============================================================
+   MNG ERP — ธีมหลัก (Light)
+   สีดึงจาก i.playdigital.co.th โดยตรง (CSS custom properties)
+   ============================================================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* พื้นหลัง */
+  --background: #f6f7fc;      /* --bg    พื้นหลัก */
+  --foreground: #23264d;     /* --ink   ตัวอักษรหลัก */
+  --card: #ffffff;            /* --card  การ์ด */
+
+  /* ตัวอักษร */
+  --ink: #23264d;
+  --ink-2: #454a75;
+  --muted: #8a8fb1;
+
+  /* เส้นขอบ */
+  --line: #e9ebf6;
+  --line-2: #dfe2f2;
+
+  /* สีหลัก */
+  --violet: #6c5ce7;          /* ม่วงหลัก */
+  --violet-2: #8e7cf3;
+  --violet-soft: #efedfd;
+  --pink: #ff6b9d;
+  --pink-soft: #ffeef4;
+  --blue: #3ba7ff;
+  --blue-2: #2f7bf0;
+  --blue-soft: #e9f3ff;
+  --cyan: #3ba7ff;
+  --mint: #22c793;            /* เขียว */
+  --mint-soft: #e5f9f2;
+  --teal: #14c4b2;
+  --amber: #ffb020;           /* เหลืองส้ม */
+  --orange: #ff9a5a;
+  --yellow-soft: #fff6e4;
+  --red: #ff5c7a;
+  --red-soft: #ffecef;
+  --indigo: #5b8def;
+
+  /* โทนพื้น (playdigital: tint-1..3, panel, bg-2) */
+  --tint-1: #f3f4fb;
+  --tint-2: #eef0f8;
+  --tint-3: #e6e8f6;
+  --panel: #f6f7fc;
+  --panel-2: #f1f2fa;
+  --bg-2: #fbfbfe;
+
+  /* เงา + มุมโค้ง (ตาม playdigital) */
+  --shadow-sm: 0 1px 3px #2e32660f;
+  --shadow-soft: 0 8px 24px #4c42a814;
+  --shadow: 0 24px 60px #3c348c2e;
+  --shadow-lg: 0 24px 60px #3c348c2e;
+  --r-sm: 10px;
+  --r: 14px;
+  --r-lg: 18px;
+
+  /* gradient เด่น */
+  --grad-violet: linear-gradient(135deg, #8e7cf3, #6c5ce7 60%, #4a3fd1);
+  --grad-pink: linear-gradient(135deg, #ff8fb8, #b950f0);
+  --grad-cyan: linear-gradient(135deg, #3ba7ff, #2f7bf0);
+  --grad-mint: linear-gradient(135deg, #22c793, #14c4b2);
+  --grad-amber: linear-gradient(135deg, #ffb020, #ff9a5a);
+
+  /* ฟอนต์ไทย (playdigital ใช้ Prompt เป็นตัวแรก) */
+  --font-sans: "Prompt", "Kanit", "Sarabun", "IBM Plex Sans Thai",
+    "Segoe UI", system-ui, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-violet: var(--violet);
+  --color-violet-2: var(--violet-2);
+  --color-violet-soft: var(--violet-soft);
+  --color-pink: var(--pink);
+  --color-pink-soft: var(--pink-soft);
+  --color-blue: var(--blue);
+  --color-blue-2: var(--blue-2);
+  --color-blue-soft: var(--blue-soft);
+  --color-mint: var(--mint);
+  --color-mint-soft: var(--mint-soft);
+  --color-teal: var(--teal);
+  --color-amber: var(--amber);
+  --color-orange: var(--orange);
+  --color-yellow-soft: var(--yellow-soft);
+  --color-red: var(--red);
+  --color-red-soft: var(--red-soft);
+  --color-indigo: var(--indigo);
+  --color-tint-1: var(--tint-1);
+  --color-tint-2: var(--tint-2);
+  --color-tint-3: var(--tint-3);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-bg-2: var(--bg-2);
+  --font-sans: var(--font-sans);
 }
 
+/* ธีมนี้เป็น light เท่านั้น — ห้าม dark mode แฝงมาทับ */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #f6f7fc;
+    --foreground: #23264d;
   }
+}
+
+html, body {
+  height: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }

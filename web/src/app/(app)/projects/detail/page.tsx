@@ -40,25 +40,25 @@ export default function ProjectDetailPage() {
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
       <header>
-        <h1 className="text-xl font-semibold text-white">รายละเอียดโปรเจกต์</h1>
-        <p className="text-sm text-slate-500 mt-0.5">สร้างและแก้ไขรายละเอียดโปรเจกต์ — ใช้ Rich Text Editor</p>
+        <h1 className="text-xl font-semibold text-ink">รายละเอียดโปรเจกต์</h1>
+        <p className="text-sm text-muted mt-0.5">สร้างและแก้ไขรายละเอียดโปรเจกต์ — ใช้ Rich Text Editor</p>
       </header>
 
-      <section className="rounded-xl bg-slate-900 border border-slate-800 p-5 space-y-4">
+      <section className="rounded-xl bg-card border border-line p-5 space-y-4">
         <div>
-          <label className="block text-sm text-slate-300 mb-1.5">ชื่อโปรเจกต์</label>
+          <label className="block text-sm text-ink-2 mb-1.5">ชื่อโปรเจกต์</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="เช่น MNG ERP — Phase 2"
-            className="w-full rounded-lg bg-slate-950 border border-slate-700 px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500"
+            className="w-full rounded-lg bg-bg-2 border border-line-2 px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-violet"
           />
         </div>
 
         <div>
-          <label className="block text-sm text-slate-300 mb-1.5">รายละเอียด (Rich Text)</label>
-          <div className="rounded-lg border border-slate-700 overflow-hidden bg-white">
+          <label className="block text-sm text-ink-2 mb-1.5">รายละเอียด (Rich Text)</label>
+          <div className="rounded-lg border border-line-2 overflow-hidden bg-white">
             <RichTextEditor value={content} onChange={setContent} onImageUpload={handleImageUpload} />
           </div>
         </div>
@@ -67,21 +67,21 @@ export default function ProjectDetailPage() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="rounded-lg bg-amber-500 hover:bg-amber-400 disabled:opacity-50 px-4 py-2 text-sm font-medium text-slate-950 transition-colors"
+            className="rounded-lg bg-violet hover:bg-violet-2 disabled:opacity-50 px-4 py-2 text-sm font-medium text-muted transition-colors"
           >
             {saving ? 'กำลังบันทึก…' : 'บันทึกโปรเจกต์'}
           </button>
           {message && (
-            <span className={`text-sm ${message.includes('✅') ? 'text-emerald-400' : 'text-red-400'}`}>
+            <span className={`text-sm ${message.includes('✅') ? 'text-mint' : 'text-red'}`}>
               {message}
             </span>
           )}
         </div>
       </section>
 
-      <section className="rounded-xl bg-slate-900 border border-slate-800 p-5">
-        <h2 className="text-sm font-medium text-slate-300 mb-3">ฟีเจอร์ที่ CKEditor 5 รองรับ</h2>
-        <ul className="grid grid-cols-2 gap-2 text-xs text-slate-400">
+      <section className="rounded-xl bg-card border border-line p-5">
+        <h2 className="text-sm font-medium text-ink-2 mb-3">ฟีเจอร์ที่ CKEditor 5 รองรับ</h2>
+        <ul className="grid grid-cols-2 gap-2 text-xs text-ink-2">
           <li>✅ Bold, Italic, Underline, Strikethrough</li>
           <li>✅ Headings (H1-H3)</li>
           <li>✅ Bulleted / Numbered / Todo lists</li>
