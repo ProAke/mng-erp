@@ -37,8 +37,11 @@ function shapeTask(r) {
     status: STATUS_MAP[r.status] || r.status,
     priority: r.erp_prio || PRIO_BASE[r.priority] || 'med',
     assignee: r.erp_assignee ? 'u' + r.erp_assignee : null,
+    aiAgentId: r.erp_ai_agent || null,
     start: r.erp_start, due: r.due_date,
-    progress: r.progress || 0, est: r.erp_est ? +r.erp_est : 0,
+    progress: r.progress || 0,
+    est: r.erp_est ? +r.erp_est : 0,
+    spent: r.erp_spent_hrs ? +r.erp_spent_hrs : 0,
     tags: J(r.erp_tags, []), subtasks: J(r.erp_subtasks, []), comments: J(r.erp_comments, []),
   };
 }
@@ -49,8 +52,10 @@ function shapeProject(r, tasks) {
   const done = pts.length - open;
   const prog = pts.length ? Math.round(done / pts.length * 100) : (r.erp_progress || 0);
   const pal = PALETTE[(r.id - 1) % PALETTE.length];
+  const fallbackCode = String(r.hub_id || r.title || 'MNG').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 3) || 'MNG';
   return {
     id: 'p' + r.id,
+    code: r.erp_code || fallbackCode,
     name: r.title,
     short: (r.title || '').split('—')[0].trim().slice(0, 16),
     client: r.erp_client_id ? 'c' + r.erp_client_id : (r.erp_client || 'Internal — MNG Groups'),
@@ -103,6 +108,19 @@ router.get('/bootstrap', async (req, res) => {
     const [actR]    = await workPool.query('SELECT * FROM erp_activity ORDER BY id DESC LIMIT 30');
     const [setR]    = await workPool.query('SELECT data FROM erp_settings WHERE id = 1');
 
+    // Agency OS collections (graceful fallback if any table empty)
+    let aiAgentR = [], aiRunR = [], chanR = [], msgR = [], roomR = [], bookR = [], checkinR = [], leaveR = [];
+    try {
+      [aiAgentR] = await workPool.query('SELECT * FROM erp_ai_agents ORDER BY id');
+      [aiRunR]   = await workPool.query('SELECT * FROM erp_ai_runs ORDER BY id DESC LIMIT 40');
+      [chanR]    = await workPool.query('SELECT * FROM erp_channels ORDER BY id');
+      [msgR]     = await workPool.query('SELECT * FROM erp_messages ORDER BY id ASC LIMIT 200');
+      [roomR]    = await workPool.query('SELECT * FROM erp_rooms ORDER BY id');
+      [bookR]    = await workPool.query('SELECT * FROM erp_bookings ORDER BY date, start');
+      [checkinR] = await workPool.query('SELECT * FROM erp_checkins ORDER BY date DESC, id DESC LIMIT 90');
+      [leaveR]   = await workPool.query('SELECT * FROM erp_leaves ORDER BY id DESC LIMIT 60');
+    } catch {}
+
     const archIds = new Set(archP.map(x => 'p' + x.id));
     const tasks = taskR.map(shapeTask).filter(t => !archIds.has(t.project));
     const projects = projR.map(r => shapeProject(r, tasks));
@@ -130,13 +148,54 @@ router.get('/bootstrap', async (req, res) => {
 
     res.json({
       user: req.user,
-      team: team.map(r => ({ id: 'u' + r.id, name: r.name, role: r.role, color: r.color, email: r.email || '', phone: r.phone || '', me: !!r.is_me,
-        authUserId: authByEmail[r.email]?.id || null, authRole: authByEmail[r.email]?.role || null, authStatus: authByEmail[r.email]?.status || null })),
+      team: team.map(r => ({
+        id: 'u' + r.id, name: r.name, nickname: r.nickname || '',
+        presence: r.presence || 'online', skills: J(r.skills, []),
+        role: r.role, color: r.color, email: r.email || '', phone: r.phone || '', me: !!r.is_me,
+        authUserId: authByEmail[r.email]?.id || null, authRole: authByEmail[r.email]?.role || null, authStatus: authByEmail[r.email]?.status || null
+      })),
       projects, tasks,
       events: eventR.map(shapeEvent),
       clients: clients.map(shapeClient),
       invoices: invR.map(shapeInvoice),
       activity: actR.map(r => ({ at: String(r.created_at).slice(0, 16), u: 'u' + (r.team_id || 1), text: r.text })).reverse(),
+      aiAgents: aiAgentR.map(r => ({
+        id: 'ai' + r.id, code: r.code, name: r.name, role: r.role, model: r.model,
+        color: r.color, autonomy: +r.autonomy || 80, paused: !!r.paused,
+        runs: +r.runs || 0, successRate: +r.success_rate || 99, tokensToday: +r.tokens_today || 0,
+        skills: J(r.skills, []), prompt: r.prompt || '',
+      })),
+      aiRuns: aiRunR.map(r => ({
+        id: 'run' + r.id, agentId: 'ai' + r.agent_id,
+        taskId: r.task_id ? 't' + r.task_id : null,
+        action: r.action, detail: r.detail || '',
+        durationSec: +r.duration_sec || 3, tokens: +r.tokens || 0,
+        status: r.status || 'ok', at: String(r.created_at || '').slice(0, 16),
+      })),
+      channels: chanR.map(r => ({ id: 'ch' + r.id, slug: r.slug, name: r.name, emoji: r.emoji || '💬', topic: r.topic || '' })),
+      messages: msgR.map(r => ({
+        id: 'm' + r.id, channelId: 'ch' + r.channel_id, senderId: r.sender_id || 'u1',
+        senderName: r.sender_name || '', kind: r.kind || 'text', body: r.body,
+        pinned: !!r.pinned, reactions: J(r.reactions, {}), at: String(r.created_at || '').slice(0, 16),
+      })),
+      rooms: roomR.map(r => ({
+        id: 'rm' + r.id, name: r.name, kind: r.kind || 'room', zone: r.zone || '',
+        capacity: +r.capacity || 6, color: r.color || '#6C5CE7', equip: J(r.equip, []),
+      })),
+      bookings: bookR.map(r => ({
+        id: 'bk' + r.id, roomId: 'rm' + r.room_id, title: r.title, date: r.date,
+        start: r.start, end: r.end, hostId: r.host_id || 'u1',
+        members: J(r.members, []), note: r.note || '',
+      })),
+      checkins: checkinR.map(r => ({
+        id: 'ck' + r.id, memberId: r.member_id, date: r.date,
+        clockIn: r.clock_in || '', clockOut: r.clock_out || '', mode: r.mode || 'office', note: r.note || '',
+      })),
+      leaves: leaveR.map(r => ({
+        id: 'lv' + r.id, memberId: r.member_id, kind: r.kind || 'annual',
+        startDate: r.start_date, endDate: r.end_date, days: +r.days || 1,
+        reason: r.reason || '', status: r.status || 'pending', approvedBy: r.approved_by || '',
+      })),
       eventCats: EVENT_CATS,
       settings: J(setR[0]?.data, {}) || {},
       trend: {
@@ -155,14 +214,21 @@ router.post('/tasks', async (req, res) => {
   const b = req.body || {};
   if (!b.title?.trim()) return res.status(400).json({ error: 'title_required' });
   try {
+    const pid = numid(b.project);
+    let pCode = 'MNG';
+    if (pid) {
+      const [pr] = await workPool.query('SELECT erp_code, hub_id, title FROM projects WHERE id=? LIMIT 1', [pid]);
+      if (pr[0]) pCode = pr[0].erp_code || String(pr[0].hub_id || pr[0].title || 'MNG').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 3) || 'MNG';
+    }
     const [r] = await workPool.query(
       `INSERT INTO tasks (project_id, title, description, status, priority, due_date, progress,
-        erp_start, erp_assignee, erp_est, erp_prio, erp_tags, erp_subtasks, erp_comments)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [numid(b.project), b.title.trim(), b.desc || '', b.status || 'todo', toDbPrio(b.priority), b.due || null,
-       b.progress || 0, b.start || null, b.assignee ? numid(b.assignee) : null, b.est || 0, b.priority || 'med',
+        erp_start, erp_assignee, erp_ai_agent, erp_est, erp_spent_hrs, erp_prio, erp_tags, erp_subtasks, erp_comments)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [pid, b.title.trim(), b.desc || '', b.status || 'todo', toDbPrio(b.priority), b.due || null,
+       b.progress || 0, b.start || null, b.assignee ? numid(b.assignee) : null, b.aiAgentId || null,
+       b.est || 0, b.spent || 0, b.priority || 'med',
        JSON.stringify(b.tags || []), JSON.stringify(b.subtasks || []), JSON.stringify(b.comments || [])]);
-    const code = 'MNG-' + (1000 + r.insertId);
+    const code = `${pCode}-${1000 + r.insertId}`;
     await workPool.query('UPDATE tasks SET erp_code=? WHERE id=?', [code, r.insertId]);
     await logActivity(`สร้างงาน <b>${code}</b> — ${b.title.trim()}`, numid(req.user?.user_id) || 1);
     res.json({ id: 't' + r.insertId, code });
@@ -180,10 +246,12 @@ router.patch('/tasks/:id', async (req, res) => {
     due:        v => { sets.push('due_date=?');        vals.push(v); },
     start:      v => { sets.push('erp_start=?');       vals.push(v); },
     assignee:   v => { sets.push('erp_assignee=?');    vals.push(v ? numid(v) : null); },
+    aiAgentId:  v => { sets.push('erp_ai_agent=?');    vals.push(v || null); },
     title:      v => { sets.push('title=?');           vals.push(v); },
     desc:       v => { sets.push('description=?');     vals.push(v); },
     project:    v => { sets.push('project_id=?');      vals.push(numid(v)); },
     est:        v => { sets.push('erp_est=?');         vals.push(v); },
+    spent:      v => { sets.push('erp_spent_hrs=?');   vals.push(v); },
     tags:       v => { sets.push('erp_tags=?');        vals.push(JSON.stringify(v)); },
     subtasks:   v => { sets.push('erp_subtasks=?');    vals.push(JSON.stringify(v)); },
     comments:   v => { sets.push('erp_comments=?');    vals.push(JSON.stringify(v)); },
@@ -286,16 +354,17 @@ router.post('/projects', async (req, res) => {
   const b = req.body || {};
   if (!b.name?.trim()) return res.status(400).json({ error: 'name_required' });
   const hub = (b.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'proj') + '-' + Date.now().toString(36);
+  const pCode = String(b.code || b.name || 'MNG').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4) || 'MNG';
   const pal = PALETTE[Math.floor(Math.random() * PALETTE.length)];
   try {
     const [r] = await workPool.query(
-      `INSERT INTO projects (hub_id, title, description, stat, icon, erp_client, erp_budget, erp_start, erp_end, erp_grad, erp_color, erp_status, erp_members)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [hub, b.name.trim(), b.desc ?? null, 'prog', '📁',
+      `INSERT INTO projects (hub_id, title, description, stat, icon, erp_code, erp_client, erp_budget, erp_start, erp_end, erp_grad, erp_color, erp_status, erp_members)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [hub, b.name.trim(), b.desc ?? null, 'prog', '📁', pCode,
        b.clientName ?? b.client ?? null, b.budget ?? 0,
        b.start ?? null, b.end ?? null, b.grad ?? pal[1], b.color ?? pal[0], 'todo', JSON.stringify([1])]);
     await logActivity(`สร้างโปรเจกต์ <b>${b.name.trim()}</b>`, 1);
-    res.json({ id: 'p' + r.insertId });
+    res.json({ id: 'p' + r.insertId, code: pCode });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -310,6 +379,7 @@ router.patch('/projects/:id', async (req, res) => {
     const b = req.body || {};
     const sets = [], vals = [], changes = [];
     if (b.name != null && String(b.name).trim()) { sets.push('title = ?'); vals.push(String(b.name).trim()); changes.push('ชื่อ'); }
+    if (b.code !== undefined) { sets.push('erp_code = ?'); vals.push(String(b.code || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 6) || null); }
     if (b.desc !== undefined) { sets.push('description = ?'); vals.push(b.desc || null); changes.push('รายละเอียด'); }
     if (b.clientName !== undefined || b.client !== undefined) {
       const cn = b.clientName ?? b.client ?? null;
@@ -384,8 +454,9 @@ router.post('/teams', async (req, res) => {
     let authId = null;
     if (email) { const [u] = await authPool.query('SELECT id FROM users WHERE email = ? LIMIT 1', [email]); authId = u[0]?.id ?? null; }
     const [r] = await workPool.query(
-      'INSERT INTO erp_team (name, role, color, email, phone, auth_user_id, is_me) VALUES (?,?,?,?,?,?,0)',
-      [b.name.trim(), b.role?.trim() || 'สมาชิกทีม', b.color || '#6C5CE7', email, b.phone?.trim() || null, authId]);
+      'INSERT INTO erp_team (name, nickname, presence, skills, role, color, email, phone, auth_user_id, is_me) VALUES (?,?,?,?,?,?,?,?,?,0)',
+      [b.name.trim(), b.nickname?.trim() || null, b.presence || 'online', JSON.stringify(b.skills || []),
+       b.role?.trim() || 'สมาชิกทีม', b.color || '#6C5CE7', email, b.phone?.trim() || null, authId]);
     await logActivity(`เพิ่มสมาชิกทีม <b>${escS(b.name.trim())}</b>`, 1);
     res.status(201).json({ id: 'u' + r.insertId, authUserId: authId });
   } catch (e) { console.error('[teams/post]', e.message); res.status(500).json({ error: e.message }); }
@@ -401,6 +472,9 @@ router.patch('/teams/:id', async (req, res) => {
     const b = req.body || {};
     const sets = [], vals = [], changes = [];
     if (b.name != null && String(b.name).trim()) { sets.push('name = ?'); vals.push(String(b.name).trim()); changes.push('ชื่อ'); }
+    if (b.nickname !== undefined) { sets.push('nickname = ?'); vals.push(b.nickname || null); }
+    if (b.presence !== undefined) { sets.push('presence = ?'); vals.push(b.presence || 'online'); }
+    if (b.skills   !== undefined) { sets.push('skills = ?');   vals.push(JSON.stringify(b.skills || [])); }
     if (b.role !== undefined)  { sets.push('role = ?');  vals.push(b.role || null);  changes.push('ตำแหน่ง'); }
     if (b.color !== undefined) { sets.push('color = ?'); vals.push(b.color || null); changes.push('สี'); }
     if (b.phone !== undefined) { sets.push('phone = ?'); vals.push(b.phone || null); changes.push('เบอร์'); }
@@ -444,5 +518,8 @@ router.put('/settings', async (req, res) => {
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+/* ---------------- AGENCY OS WORKSPACE ROUTES ---------------- */
+router.use(require('./workspace-routes'));
 
 module.exports = router;

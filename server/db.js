@@ -17,6 +17,11 @@ const SCHEMA = [
      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  `ALTER TABLE erp_team
+     ADD COLUMN IF NOT EXISTS nickname VARCHAR(40) NULL,
+     ADD COLUMN IF NOT EXISTS presence VARCHAR(20) DEFAULT 'online',
+     ADD COLUMN IF NOT EXISTS skills LONGTEXT NULL`,
+
   `CREATE TABLE IF NOT EXISTS erp_clients (
      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
      name VARCHAR(200) NOT NULL, short VARCHAR(60) NOT NULL DEFAULT '',
@@ -68,8 +73,114 @@ const SCHEMA = [
      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  /* ---------- iPlay Workspace / Agency OS additive tables ---------- */
+  `CREATE TABLE IF NOT EXISTS erp_ai_agents (
+     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     code VARCHAR(30) NOT NULL,
+     name VARCHAR(100) NOT NULL,
+     role VARCHAR(120) NOT NULL DEFAULT '',
+     model VARCHAR(80) NOT NULL DEFAULT 'Claude 3.7 Sonnet',
+     color VARCHAR(20) NOT NULL DEFAULT '#6C5CE7',
+     autonomy TINYINT UNSIGNED DEFAULT 85,
+     paused TINYINT(1) DEFAULT 0,
+     runs INT UNSIGNED DEFAULT 0,
+     success_rate DECIMAL(5,2) DEFAULT 98.5,
+     tokens_today INT UNSIGNED DEFAULT 0,
+     skills LONGTEXT NULL,
+     prompt TEXT NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_ai_runs (
+     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     agent_id INT UNSIGNED NOT NULL,
+     task_id INT UNSIGNED NULL,
+     action VARCHAR(160) NOT NULL,
+     detail TEXT NULL,
+     duration_sec INT UNSIGNED DEFAULT 4,
+     tokens INT UNSIGNED DEFAULT 850,
+     status VARCHAR(20) DEFAULT 'ok',
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     INDEX idx_agent (agent_id), INDEX idx_created (created_at)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_channels (
+     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     slug VARCHAR(60) NOT NULL,
+     name VARCHAR(120) NOT NULL,
+     emoji VARCHAR(16) DEFAULT '💬',
+     topic VARCHAR(300) DEFAULT '',
+     is_private TINYINT(1) DEFAULT 0,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_messages (
+     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     channel_id INT UNSIGNED NOT NULL,
+     sender_id VARCHAR(30) NOT NULL DEFAULT 'u1',
+     sender_name VARCHAR(100) NOT NULL DEFAULT '',
+     kind VARCHAR(20) DEFAULT 'text',
+     body TEXT NOT NULL,
+     pinned TINYINT(1) DEFAULT 0,
+     reactions LONGTEXT NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     INDEX idx_chan (channel_id), INDEX idx_created (created_at)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_rooms (
+     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     name VARCHAR(150) NOT NULL,
+     kind VARCHAR(30) DEFAULT 'room',
+     zone VARCHAR(100) DEFAULT 'ชั้น 3',
+     capacity INT UNSIGNED DEFAULT 8,
+     color VARCHAR(20) DEFAULT '#6C5CE7',
+     equip LONGTEXT NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_bookings (
+     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     room_id INT UNSIGNED NOT NULL,
+     title VARCHAR(250) NOT NULL,
+     date DATE NOT NULL,
+     start VARCHAR(5) NOT NULL DEFAULT '10:00',
+     end VARCHAR(5) NOT NULL DEFAULT '11:00',
+     host_id VARCHAR(30) DEFAULT 'u1',
+     members LONGTEXT NULL,
+     note VARCHAR(300) NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     INDEX idx_room_date (room_id, date)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_checkins (
+     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     member_id VARCHAR(30) NOT NULL,
+     date DATE NOT NULL,
+     clock_in VARCHAR(5) NOT NULL,
+     clock_out VARCHAR(5) NULL,
+     mode VARCHAR(20) DEFAULT 'office',
+     note VARCHAR(250) NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     INDEX idx_date (date), INDEX idx_member_date (member_id, date)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_leaves (
+     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     member_id VARCHAR(30) NOT NULL,
+     kind VARCHAR(20) DEFAULT 'annual',
+     start_date DATE NOT NULL,
+     end_date DATE NOT NULL,
+     days DECIMAL(4,1) DEFAULT 1,
+     reason VARCHAR(300) DEFAULT '',
+     status VARCHAR(20) DEFAULT 'pending',
+     approved_by VARCHAR(100) NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     INDEX idx_status (status)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   // additive ERP columns on the EXISTING tables (nothing removed/renamed)
   `ALTER TABLE projects
+     ADD COLUMN IF NOT EXISTS erp_code VARCHAR(16) NULL,
      ADD COLUMN IF NOT EXISTS erp_client_id INT UNSIGNED NULL,
      ADD COLUMN IF NOT EXISTS erp_client VARCHAR(200) NULL,
      ADD COLUMN IF NOT EXISTS erp_budget DECIMAL(15,2) NULL,
@@ -87,7 +198,11 @@ const SCHEMA = [
      ADD COLUMN IF NOT EXISTS erp_start DATE NULL,
      ADD COLUMN IF NOT EXISTS erp_assignee INT UNSIGNED NULL,
      ADD COLUMN IF NOT EXISTS erp_est DECIMAL(6,2) NULL,
+     ADD COLUMN IF NOT EXISTS erp_spent DECIMAL(6,2) DEFAULT 0,
      ADD COLUMN IF NOT EXISTS erp_prio VARCHAR(10) NULL,
+     ADD COLUMN IF NOT EXISTS erp_blocked TINYINT(1) DEFAULT 0,
+     ADD COLUMN IF NOT EXISTS erp_block_reason VARCHAR(300) NULL,
+     ADD COLUMN IF NOT EXISTS erp_ai_generated TINYINT(1) DEFAULT 0,
      ADD COLUMN IF NOT EXISTS erp_tags LONGTEXT NULL,
      ADD COLUMN IF NOT EXISTS erp_subtasks LONGTEXT NULL,
      ADD COLUMN IF NOT EXISTS erp_comments LONGTEXT NULL`,
@@ -97,15 +212,20 @@ async function ensureSchema() {
   const conn = await workPool.getConnection();
   try {
     for (const sql of SCHEMA) await conn.query(sql);
-    console.log('[db] schema ready (authPool=users only, workPool=works data)');
+    console.log('[db] schema ready (authPool=users only, workPool=works + agency-os data)');
   } finally { conn.release(); }
 }
 
 /* ping both pools, used on boot + /api/health */
 async function healthCheck() {
-  const out = { auth: false, work: false };
+  if (cfg.demoOnly) {
+    return { auth: false, work: false, demo: true, latencyMs: 0 };
+  }
+  const t0 = Date.now();
+  const out = { auth: false, work: false, latencyMs: 0 };
   try { await authPool.query('SELECT 1'); out.auth = true; } catch (e) { out.authErr = e.code || e.message; }
   try { await workPool.query('SELECT 1'); out.work = true; } catch (e) { out.workErr = e.code || e.message; }
+  out.latencyMs = Math.max(1, Date.now() - t0);
   return out;
 }
 

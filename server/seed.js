@@ -1,18 +1,41 @@
 /* MNG ERP — one-time seed into pacific_mngworks
-   - Creates ERP module data (team, clients, invoices, events, activity)
+   - Creates ERP module data (team, clients, invoices, events, activity, agency-os)
    - Enriches the REAL projects/tasks with erp_* metadata (additive only)
    - Guarded by erp_settings seedVersion — safe to run repeatedly         */
-const { workPool } = require('./db');
 
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 
 const TEAM = [
-  { name:'Worapot',       role:'Founder / PM',   color:'#FF8A5C', email:'worapot@outlook.com', phone:'081-234-5678', is_me:1, auth:2 },
-  { name:'Nuna Sirima',   role:'UX/UI Designer', color:'#8E7CF3', email:'nuna@mnggroups.co',   phone:'089-111-2233', is_me:0 },
-  { name:'Bank Kritsada', role:'Full-stack Dev', color:'#3BA7FF', email:'bank@mnggroups.co',   phone:'086-555-8899', is_me:0 },
-  { name:'May Thanyarat', role:'Front-end Dev',  color:'#FF6B9D', email:'may@mnggroups.co',    phone:'092-777-1144', is_me:0 },
-  { name:'Art Pongsakorn',role:'Back-end Dev',   color:'#22C793', email:'art@mnggroups.co',    phone:'095-888-2211', is_me:0 },
-  { name:'Fah Chanya',    role:'QA Tester',      color:'#FFB020', email:'fah@mnggroups.co',    phone:'097-333-4455', is_me:0 },
+  { name:'Worapot',       nickname:'เอก',   presence:'online',  skills:['PM','Strategy','ERP'],     role:'Founder / PM',   color:'#FF8A5C', email:'worapot@outlook.com', phone:'081-234-5678', is_me:1, auth:2 },
+  { name:'Nuna Sirima',   nickname:'นุ่น',  presence:'working', skills:['UX/UI','Figma','Brand'],    role:'UX/UI Designer', color:'#8E7CF3', email:'nuna@mnggroups.co',   phone:'089-111-2233', is_me:0 },
+  { name:'Bank Kritsada', nickname:'แบงก์', presence:'working', skills:['Node.js','React','DevOps'], role:'Full-stack Dev', color:'#3BA7FF', email:'bank@mnggroups.co',   phone:'086-555-8899', is_me:0 },
+  { name:'May Thanyarat', nickname:'เมย์',  presence:'focus',   skills:['Frontend','CSS','UI'],      role:'Front-end Dev',  color:'#FF6B9D', email:'may@mnggroups.co',    phone:'092-777-1144', is_me:0 },
+  { name:'Art Pongsakorn',nickname:'อาร์ต', presence:'online',  skills:['MariaDB','API','Cron'],     role:'Back-end Dev',   color:'#22C793', email:'art@mnggroups.co',    phone:'095-888-2211', is_me:0 },
+  { name:'Fah Chanya',    nickname:'ฟ้า',   presence:'away',    skills:['QA','E2E','UAT'],           role:'QA Tester',      color:'#FFB020', email:'fah@mnggroups.co',    phone:'097-333-4455', is_me:0 },
+];
+
+const AI_AGENTS = [
+  { code:'NOVA',  name:'NOVA',  role:'AI Project & Sprint Planner', model:'Claude 3.7 Sonnet', color:'#6C5CE7', autonomy:92, runs:148, success:99.2, tokens:18420, skills:['Sprint Plan','Risk Alert','Stand-up Summary'], prompt:'วิเคราะห์ความเสี่ยงเดดไลน์และกระจายภาระงานให้สมดุล' },
+  { code:'PIXEL', name:'PIXEL', role:'AI Creative & UX Copywriter', model:'GPT-4.1',           color:'#FF6B9D', autonomy:88, runs:112, success:98.4, tokens:14200, skills:['UX Microcopy','Campaign Copy','TH/EN Translation'], prompt:'ช่วยร่าง UX writing และข้อความแคมเปญสองภาษา' },
+  { code:'BYTE',  name:'BYTE',  role:'AI Code & QA Reviewer',       model:'Claude 3.7 Sonnet', color:'#3BA7FF', autonomy:90, runs:204, success:99.5, tokens:26850, skills:['Code Review','SQL Audit','Test Cases'], prompt:'ตรวจเช็กโค้ด API และสร้างชุดทดสอบ QA อัตโนมัติ' },
+  { code:'ECHO',  name:'ECHO',  role:'AI Client Comms & MoM',       model:'Gemini 2.5 Pro',    color:'#22C793', autonomy:84, runs:89,  success:97.8, tokens:11300, skills:['Meeting Minutes','Client Update','Proposal Draft'], prompt:'สรุปรายงานการประชุมและร่างอัปเดตรายสัปดาห์ส่งลูกค้า' },
+  { code:'ORBIT', name:'ORBIT', role:'AI Finance & Ops Analyst',    model:'GPT-4.1 Mini',      color:'#FFB020', autonomy:86, runs:67,  success:99.0, tokens:8940,  skills:['Invoice Follow-up','Budget Burn','Cashflow'], prompt:'ติดตามบิลค้างชำระและวิเคราะห์งบประมาณโปรเจกต์' },
+];
+
+const CHANNELS = [
+  { slug:'general',        name:'general',        emoji:'📢', topic:'ประกาศกลางและอัปเดตประจำวันของทีม MNG Groups' },
+  { slug:'dev-ops',        name:'dev-ops',        emoji:'💻', topic:'พูดคุยงานพัฒนา API, Deploy, Database และแก้บั๊ก' },
+  { slug:'design-review',  name:'design-review',  emoji:'🎨', topic:'ส่งดราฟต์ UI/UX, การ์ดข่าว และตรวจงานดีไซน์' },
+  { slug:'client-updates', name:'client-updates', emoji:'🤝', topic:'สรุปความคืบหน้าลูกค้า นัดหมาย Demo และ UAT' },
+  { slug:'ai-feed',        name:'ai-feed',        emoji:'✨', topic:'รายงานผลการทำงานอัตโนมัติจากทีม AI Workforce' },
+];
+
+const ROOMS = [
+  { name:'Boardroom ชั้น 4 (ห้องประชุมใหญ่)', kind:'room',   zone:'ชั้น 4 · โซนหน้า', capacity:12, color:'#6C5CE7', equip:['จอ 4K 75"','กล้อง Conference','Whiteboard'] },
+  { name:'Creative Studio A (ถ่ายภาพ/ไฟ)',    kind:'studio', zone:'ชั้น 2 · สตูดิโอ', capacity:8,  color:'#FF6B9D', equip:['ฉาก Cyclorama','ไฟ Aputure 300d','ไมค์ไร้สาย'] },
+  { name:'Podcast & Sound Booth',             kind:'studio', zone:'ชั้น 2 · ห้องอัด', capacity:4,  color:'#3BA7FF', equip:['Rodecaster Pro','ไมค์ Shure SM7B x3','เก็บเสียง'] },
+  { name:'Focus Pod 1 (ห้องคุยงานด่วน)',       kind:'room',   zone:'ชั้น 3 · โซน Dev', capacity:4,  color:'#22C793', equip:['จอ Monitor 27"','ปลั๊ก USB-C'] },
+  { name:'ชุดออกกอง Sony FX3 + เลนส์ G-Master', kind:'gear',  zone:'ตู้เก็บอุปกรณ์',    capacity:1,  color:'#FFB020', equip:['Sony FX3','24-70mm GM II','Gimbal RS4'] },
 ];
 
 const CLIENTS = [
@@ -138,9 +161,90 @@ async function seed(pool) {
     let [rows] = await conn.query('SELECT COUNT(*) c FROM erp_team');
     if (!rows[0].c) {
       for (const t of TEAM) await conn.query(
-        'INSERT INTO erp_team (name, role, color, email, phone, is_me, auth_user_id) VALUES (?,?,?,?,?,?,?)',
-        [t.name, t.role, t.color, t.email, t.phone, t.is_me, t.auth || null]);
+        'INSERT INTO erp_team (name, nickname, presence, skills, role, color, email, phone, is_me, auth_user_id) VALUES (?,?,?,?,?,?,?,?,?,?)',
+        [t.name, t.nickname, t.presence, JSON.stringify(t.skills || []), t.role, t.color, t.email, t.phone, t.is_me, t.auth || null]);
       console.log('[seed] erp_team:', TEAM.length);
+    } else {
+      for (const t of TEAM) {
+        await conn.query(
+          'UPDATE erp_team SET nickname=COALESCE(nickname,?), presence=COALESCE(presence,?), skills=COALESCE(skills,?) WHERE email=?',
+          [t.nickname, t.presence, JSON.stringify(t.skills || []), t.email]
+        );
+      }
+    }
+
+    // AI Workforce agents + runs
+    [rows] = await conn.query('SELECT COUNT(*) c FROM erp_ai_agents');
+    if (!rows[0].c) {
+      for (const a of AI_AGENTS) await conn.query(
+        `INSERT INTO erp_ai_agents (code, name, role, model, color, autonomy, paused, runs, success_rate, tokens_today, skills, prompt)
+         VALUES (?,?,?,?,?,?,0,?,?,?,?,?)`,
+        [a.code, a.name, a.role, a.model, a.color, a.autonomy, a.runs, a.success, a.tokens, JSON.stringify(a.skills), a.prompt]);
+      await conn.query(
+        `INSERT INTO erp_ai_runs (agent_id, task_id, action, detail, duration_sec, tokens, status) VALUES
+         (1, 1, 'วิเคราะห์ความเสี่ยง Sprint & เดดไลน์', 'ตรวจพบงานใกล้เดดไลน์ 3 รายการ แนะนำเกลี่ยโหลดให้ u4 และ u5', 4, 940, 'ok'),
+         (3, 1, 'Code & Webhook Queue Audit', 'ตรวจ retry queue ของ LINE OA webhook รองรับ burst 250 msg/s ผ่านเกณฑ์', 6, 1280, 'ok'),
+         (2, 4, 'ร่าง UX Copy การ์ดข่าว LoveIT 5 สไตล์', 'สรุปหัวข้อและ microcopy ทั้งโหมดสว่างและมืดครบ 5 รูปแบบ', 3, 760, 'ok'),
+         (5, null, 'ตรวจสอบใบแจ้งหนี้ค้างชำระประจำสัปดาห์', 'แจ้งเตือน INV-2026-042 เกินกำหนดชำระ พร้อมร่างอีเมลติดตาม', 3, 610, 'ok')`
+      );
+      console.log('[seed] erp_ai_agents:', AI_AGENTS.length);
+    }
+
+    // Team Channels + initial messages
+    [rows] = await conn.query('SELECT COUNT(*) c FROM erp_channels');
+    if (!rows[0].c) {
+      for (const c of CHANNELS) await conn.query(
+        'INSERT INTO erp_channels (slug, name, emoji, topic) VALUES (?,?,?,?)',
+        [c.slug, c.name, c.emoji, c.topic]);
+      await conn.query(
+        `INSERT INTO erp_messages (channel_id, sender_id, sender_name, kind, body, pinned, reactions) VALUES
+         (1, 'u1', 'Worapot (เอก)', 'text', 'ยินดีต้อนรับสู่ระบบแชตกลางของ MNG ERP! อัปเดตงานด่วนและไฟล์ส่งมอบในแต่ละห้องได้เลยครับ 🚀', 1, '{"🔥":["u2","u3"],"👍":["u4","u5"]}'),
+         (2, 'u3', 'Bank Kritsada', 'text', 'อัปเดต: เชื่อมฐานข้อมูล MariaDB แยก 2 pool (auth + works) เรียบร้อย พร้อมทดสอบ load test บ่ายนี้ครับ', 0, '{"✅":["u1","u5"]}'),
+         (3, 'u2', 'Nuna Sirima', 'text', 'ส่งดราฟต์การ์ดข่าว LoveIT แบบที่ 3 และ 5 ปรับโทนสีให้คมขึ้นแล้ว รบกวนพี่เอกช่วยดูหน่อยนะคะ 🎨', 0, '{"🎉":["u1"]}'),
+         (5, 'ai1', 'NOVA (AI)', 'ai', '✨ <b>สรุปภาพรวมเช้าวันนี้</b> — มีงานกำลังทำ 8 ชิ้น ใกล้ครบกำหนดใน 3 วัน 2 ชิ้น แนะนำโฟกัส MNG-1031 ก่อนเที่ยง', 0, '{"👍":["u1"]}')`
+      );
+      console.log('[seed] erp_channels:', CHANNELS.length);
+    }
+
+    // Rooms & Studio + initial bookings
+    [rows] = await conn.query('SELECT COUNT(*) c FROM erp_rooms');
+    if (!rows[0].c) {
+      for (const rm of ROOMS) await conn.query(
+        'INSERT INTO erp_rooms (name, kind, zone, capacity, color, equip) VALUES (?,?,?,?,?,?)',
+        [rm.name, rm.kind, rm.zone, rm.capacity, rm.color, JSON.stringify(rm.equip)]);
+      const td = new Date().toISOString().slice(0, 10);
+      await conn.query(
+        `INSERT INTO erp_bookings (room_id, title, date, start, end, host_id, members, note) VALUES
+         (1, 'Sprint Planning & Review ทีม MNG', ?, '10:00', '11:30', 'u1', '["u1","u2","u3","u5"]', 'เตรียมสไลด์สรุปความคืบหน้า'),
+         (2, 'ถ่ายภาพสินค้าโปรเจกต์ Chef-jeed Set ใหม่', ?, '13:30', '16:00', 'u2', '["u2","u4"]', 'เซ็ตไฟ Warm Daylight'),
+         (4, 'Pair Programming — LINE Webhook Retry', ?, '15:00', '16:30', 'u3', '["u3","u5"]', 'ทดสอบโหลด 200 msg/s')`,
+        [td, td, td]
+      );
+      console.log('[seed] erp_rooms:', ROOMS.length);
+    }
+
+    // HR Check-ins + Leaves
+    [rows] = await conn.query('SELECT COUNT(*) c FROM erp_checkins');
+    if (!rows[0].c) {
+      const td = new Date().toISOString().slice(0, 10);
+      await conn.query(
+        `INSERT INTO erp_checkins (member_id, date, clock_in, clock_out, mode, note) VALUES
+         ('u1', ?, '09:05', NULL, 'office', 'เข้าออฟฟิศ ประชุมเช้า'),
+         ('u2', ?, '09:18', NULL, 'wfh', 'WFH ปั่นงานดีไซน์ LoveIT'),
+         ('u3', ?, '08:55', NULL, 'office', 'เตรียมเทสต์ระบบ LINE OA'),
+         ('u4', ?, '09:25', NULL, 'office', 'ทำหน้า UI 29 หน้า'),
+         ('u5', ?, '09:12', NULL, 'wfh', 'ดูแลเซิร์ฟเวอร์และฐานข้อมูล')`,
+        [td, td, td, td, td]
+      );
+    }
+    [rows] = await conn.query('SELECT COUNT(*) c FROM erp_leaves');
+    if (!rows[0].c) {
+      await conn.query(
+        `INSERT INTO erp_leaves (member_id, kind, start_date, end_date, days, reason, status, approved_by) VALUES
+         ('u6', 'personal', '2026-10-28', '2026-10-28', 1, 'ติดต่อธุระราชการช่วงเช้า-บ่าย', 'pending', NULL),
+         ('u2', 'wfh', '2026-10-29', '2026-10-30', 2, 'ขอปฏิบัติงาน WFH โฟกัสงานออกแบบ UI ชุดใหญ่', 'approved', 'Worapot'),
+         ('u4', 'annual', '2026-11-05', '2026-11-06', 2, 'ลาพักร้อนประจำปี', 'approved', 'Worapot')`
+      );
     }
     // clients
     [rows] = await conn.query('SELECT COUNT(*) c FROM erp_clients');
@@ -210,8 +314,16 @@ async function seed(pool) {
       console.log('[seed] extra tasks:', EXTRA_TASKS.length);
     }
 
-    // backfill codes + progress sync
-    await conn.query("UPDATE tasks SET erp_code = CONCAT('MNG-', 1000 + id) WHERE erp_code IS NULL");
+    // backfill codes + progress sync (pure JS + standard SQL for maximum MariaDB compatibility)
+    const [projRows] = await conn.query("SELECT id, hub_id, name, erp_code FROM projects WHERE erp_code IS NULL OR erp_code = ''");
+    for (const pr of projRows) {
+      const cleaned = String(pr.hub_id || pr.name || 'MNG').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 3);
+      const code = cleaned.length >= 2 ? cleaned : 'MNG';
+      await conn.query('UPDATE projects SET erp_code=? WHERE id=?', [code, pr.id]);
+    }
+    await conn.query(`UPDATE tasks t LEFT JOIN projects p ON p.id = t.project_id
+      SET t.erp_code = CONCAT(COALESCE(NULLIF(p.erp_code, ''), 'MNG'), '-', 1000 + t.id)
+      WHERE t.erp_code IS NULL OR t.erp_code = ''`);
     await conn.query("UPDATE tasks SET progress = 100 WHERE status = 'done' AND progress < 100");
     console.log('[seed] done');
   } finally { conn.release(); }

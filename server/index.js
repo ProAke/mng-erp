@@ -9,13 +9,24 @@ const api = require('./routes');
 const app = express();
 app.use(express.json({ limit: '2mb' }));
 
-/* tiny request log */
-app.use('/api', (req, _res, next) => { console.log(`[api] ${req.method} ${req.path}`); next(); });
+const setNoStore = (res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+};
+
+/* tiny request log + API no-store */
+app.use('/api', (req, res, next) => {
+  setNoStore(res);
+  console.log(`[api] ${req.method} ${req.path}`);
+  next();
+});
 
 /* ---------- public endpoints ---------- */
 app.get('/api/health', async (_req, res) => { res.json({ ok: true, ...(await healthCheck()) }); });
 
 app.post('/api/auth/login', async (req, res) => {
+  if (cfg.demoOnly) return res.status(503).json({ error: 'โหมดสาธิต (ยังไม่ได้ตั้งค่าฐานข้อมูล MariaDB)' });
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'กรุณากรอกอีเมลและรหัสผ่าน' });
   try {
@@ -29,9 +40,11 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.post('/api/auth/logout', async (req, res) => {
-  const h = req.headers.authorization || '';
-  await auth.logout(h.startsWith('Bearer ') ? h.slice(7) : null);
-  res.json({ ok: true });
+  if (!cfg.demoOnly) {
+    const h = req.headers.authorization || '';
+    await auth.logout(h.startsWith('Bearer ') ? h.slice(7) : null);
+  }
+  res.json({ ok: true, success: true });
 });
 
 /* ---------- protected API ---------- */
@@ -41,25 +54,32 @@ app.use('/api', auth.middleware, api);
 /* ---------- static SPA ---------- */
 const root = path.join(__dirname, '..');
 // no-cache ทุกไฟล์ — ป้องกัน browser cache ไฟล์เก่า (เดปลอยแล้วยังใช้ app.js เก่า)
-const noCache = (_res, p) => {
-  _res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  _res.setHeader('Pragma', 'no-cache');
-  _res.setHeader('Expires', '0');
-};
-app.use(express.static(root, { extensions: ['html'], setHeaders: noCache }));
+app.use(express.static(root, { extensions: ['html'], setHeaders: (res) => setNoStore(res) }));
 // catch-all → SPA; **ยกเว้น** /hub และ /workspace (ของ MNG Hub เดิม — อย่าเบ่งเส้นทาง)
 app.get(/^\/(?!api\/|hub(?:\/|$)|workspace(?:\/|$)).*/, (_req, res) => {
-  noCache(res);
+  setNoStore(res);
   res.sendFile(path.join(root, 'index.html'));
 });
 
 /* ---------- boot ---------- */
-(async () => {
+async function boot() {
   console.log('[mng-erp] starting…');
-  const h = await healthCheck();
-  console.log('[mng-erp] db auth:', h.auth ? 'OK' : `FAIL (${h.authErr})`, '| work:', h.work ? 'OK' : `FAIL (${h.workErr})`);
-  await ensureSchema();
-  const { seed } = require('./seed');
-  await seed(workPool);   // idempotent
-  app.listen(cfg.port, '0.0.0.0', () => console.log(`[mng-erp] listening on http://0.0.0.0:${cfg.port}`));
-})().catch(e => { console.error('[mng-erp] boot failed:', e); process.exit(1); });
+  if (cfg.demoOnly) {
+    console.log('[mng-erp] DB_AUTH_PASS / DB_WORK_PASS not set → running in Demo SPA mode');
+  } else {
+    const h = await healthCheck();
+    console.log('[mng-erp] db auth:', h.auth ? 'OK' : `FAIL (${h.authErr})`, '| work:', h.work ? 'OK' : `FAIL (${h.workErr})`);
+    if (h.work) {
+      await ensureSchema();
+      const { seed } = require('./seed');
+      await seed(workPool); // idempotent
+    }
+  }
+  return app.listen(cfg.port, '0.0.0.0', () => console.log(`[mng-erp] listening on http://0.0.0.0:${cfg.port}`));
+}
+
+if (require.main === module) {
+  boot().catch(e => { console.error('[mng-erp] boot failed:', e); process.exit(1); });
+}
+
+module.exports = { app, boot };
