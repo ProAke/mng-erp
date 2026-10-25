@@ -1,4 +1,5 @@
-/* MNG ERP — server entry: static SPA + REST API backed by MariaDB */
+/* MNG ERP — server entry: static SPA + REST API backed by MariaDB
+   Compatible with Phusion Passenger (Plesk IN_PASSENGER=1) and standalone Node */
 const path = require('path');
 const express = require('express');
 const cfg = require('./config');
@@ -15,6 +16,32 @@ const setNoStore = (res) => {
   res.setHeader('Expires', '0');
 };
 
+/* ---------- background DB schema + seed init (never blocks Passenger spawn!) ---------- */
+let dbReadyResolved = cfg.demoOnly;
+const dbInitPromise = (async () => {
+  if (cfg.demoOnly) {
+    console.log('[mng-erp] DB_AUTH_PASS / DB_WORK_PASS not set → Demo SPA mode');
+    return;
+  }
+  try {
+    const h = await healthCheck();
+    console.log('[mng-erp] db auth:', h.auth ? 'OK' : `FAIL (${h.authErr})`, '| work:', h.work ? 'OK' : `FAIL (${h.workErr})`);
+    if (h.work) {
+      await ensureSchema();
+      const { seed } = require('./seed');
+      await seed(workPool); // idempotent + fast-path
+    }
+  } catch (e) {
+    console.error('[mng-erp] db init warning (continuing to serve requests):', e.message);
+  } finally {
+    dbReadyResolved = true;
+  }
+})();
+
+const waitDbReady = () => dbReadyResolved
+  ? Promise.resolve()
+  : Promise.race([dbInitPromise, new Promise(resolve => setTimeout(resolve, 15000))]);
+
 /* tiny request log + API no-store */
 app.use('/api', (req, res, next) => {
   setNoStore(res);
@@ -23,10 +50,13 @@ app.use('/api', (req, res, next) => {
 });
 
 /* ---------- public endpoints ---------- */
-app.get('/api/health', async (_req, res) => { res.json({ ok: true, ...(await healthCheck()) }); });
+app.get('/api/health', async (_req, res) => {
+  res.json({ ok: true, dbReady: dbReadyResolved, ...(await healthCheck()) });
+});
 
 app.post('/api/auth/login', async (req, res) => {
   if (cfg.demoOnly) return res.status(503).json({ error: 'โหมดสาธิต (ยังไม่ได้ตั้งค่าฐานข้อมูล MariaDB)' });
+  await waitDbReady();
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'กรุณากรอกอีเมลและรหัสผ่าน' });
   try {
@@ -48,38 +78,36 @@ app.post('/api/auth/logout', async (req, res) => {
 });
 
 /* ---------- protected API ---------- */
-app.use('/api/users', auth.middleware, require('./users'));
-app.use('/api', auth.middleware, api);
+app.use('/api/users', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, require('./users'));
+app.use('/api', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, api);
 
 /* ---------- static SPA ---------- */
 const root = path.join(__dirname, '..');
-// no-cache ทุกไฟล์ — ป้องกัน browser cache ไฟล์เก่า (เดปลอยแล้วยังใช้ app.js เก่า)
-app.use(express.static(root, { extensions: ['html'], setHeaders: (res) => setNoStore(res) }));
-// catch-all → SPA; **ยกเว้น** /hub และ /workspace (ของ MNG Hub เดิม — อย่าเบ่งเส้นทาง)
+// Prevent serving internal backend/test/source directories over HTTP
+app.use(['/server', '/tests', '/web', '/node_modules'], (_req, res) => res.status(404).end());
+
+// no-cache ทุกไฟล์ — ป้องกัน browser cache ไฟล์เก่า
+app.use(express.static(root, { dotfiles: 'ignore', extensions: ['html'], setHeaders: (res) => setNoStore(res) }));
+
+// catch-all → SPA; **ยกเว้น** /hub และ /workspace (ของ MNG Hub เดิม — อย่าแย่งเส้นทาง)
 app.get(/^\/(?!api\/|hub(?:\/|$)|workspace(?:\/|$)).*/, (_req, res) => {
   setNoStore(res);
   res.sendFile(path.join(root, 'index.html'));
 });
 
-/* ---------- boot ---------- */
-async function boot() {
-  console.log('[mng-erp] starting…');
-  if (cfg.demoOnly) {
-    console.log('[mng-erp] DB_AUTH_PASS / DB_WORK_PASS not set → running in Demo SPA mode');
-  } else {
-    const h = await healthCheck();
-    console.log('[mng-erp] db auth:', h.auth ? 'OK' : `FAIL (${h.authErr})`, '| work:', h.work ? 'OK' : `FAIL (${h.workErr})`);
-    if (h.work) {
-      await ensureSchema();
-      const { seed } = require('./seed');
-      await seed(workPool); // idempotent
-    }
+/* ---------- start HTTP listener immediately (critical for Phusion Passenger!) ---------- */
+function startServer() {
+  const inPassenger = !!(process.env.IN_PASSENGER || typeof global.PhusionPassenger !== 'undefined');
+  if (inPassenger) {
+    return app.listen(cfg.port, () => console.log(`[mng-erp] listening via Phusion Passenger (port ${cfg.port})`));
   }
   return app.listen(cfg.port, '0.0.0.0', () => console.log(`[mng-erp] listening on http://0.0.0.0:${cfg.port}`));
 }
 
-if (require.main === module) {
-  boot().catch(e => { console.error('[mng-erp] boot failed:', e); process.exit(1); });
+/* IMPORTANT: Phusion Passenger loads server/index.js via require() inside node-loader.js,
+   so `require.main === module` is FALSE under Passenger! Always start unless inside Vitest. */
+if (!process.env.VITEST) {
+  startServer();
 }
 
-module.exports = { app, boot };
+module.exports = { app, startServer, dbInitPromise };

@@ -985,12 +985,12 @@ function renderHR() {
                 <td style="max-width:260px;color:var(--ink-2)">${esc(l.reason || '—')}</td>
                 <td>${stBadge}${l.approvedBy ? `<div style="font-size:10.5px;color:var(--muted);margin-top:2px">โดย ${esc(l.approvedBy)}</div>` : ''}</td>
                 <td>
-                  ${l.status === 'pending' ? `
+                  ${l.status === 'pending' && (!Remote.on || (typeof canLead === 'function' && canLead())) ? `
                     <div style="display:flex;gap:6px">
                       <button class="btn btn-primary btn-sm" onclick="decideLeave('${l.id}','approved')">อนุมัติ</button>
                       <button class="btn btn-ghost btn-sm" onclick="decideLeave('${l.id}','rejected')">ปฏิเสธ</button>
                     </div>
-                  ` : '<span style="font-size:12px;color:var(--muted)">ดำเนินการแล้ว</span>'}
+                  ` : `<span style="font-size:12px;color:var(--muted)">${l.status === 'pending' ? 'รอหัวหน้าอนุมัติ' : 'ดำเนินการแล้ว'}</span>`}
                 </td>
               </tr>`;
             }).join('') : '<tr><td colspan="7" class="empty-state">ไม่มีรายการคำขอลาในหมวดนี้</td></tr>'}
@@ -1107,15 +1107,24 @@ function openLeaveForm() {
   };
 }
 
-function decideLeave(leaveId, status) {
+async function decideLeave(leaveId, status) {
   const l = Store.data.leaves.find(x => x.id === leaveId);
   if (!l) return;
-  const me = meMember();
-  l.status = status;
-  l.approvedBy = me.name;
-  Store.save();
-  Remote.push(`/leaves/${leaveId}`, 'PATCH', { status });
-  App.refresh();
+  if (Remote.on) {
+    try {
+      await Remote.req(`/leaves/${leaveId}`, { method: 'PATCH', body: { status } });
+      await Remote.refreshAll();
+    } catch (e) {
+      toast(e.message, 'err');
+      return;
+    }
+  } else {
+    const me = meMember();
+    l.status = status;
+    l.approvedBy = me.name;
+    Store.save();
+    App.refresh();
+  }
   toast(status === 'approved' ? '✅ อนุมัติคำขอเรียบร้อย' : 'ปฏิเสธคำขอแล้ว');
 }
 

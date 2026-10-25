@@ -16,7 +16,7 @@ const TH_DOW      = ['อาทิตย์','จันทร์','อังค�
 const TH_DOW_S    = ['อา','จ','อ','พ','พฤ','ศ','ส'];
 
 const d2s   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-const s2d   = s => { const [y,m,dd]=s.split('-').map(Number); return new Date(y, m-1, dd); };
+const s2d   = s => { if(!s || typeof s!=='string') return new Date(); const [y,m,dd]=s.slice(0,10).split('-').map(Number); return new Date(y||2026, (m||1)-1, dd||1); };
 const todayS = () => d2s(new Date());
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
 const sameDay = (a,b) => d2s(a)===d2s(b);
@@ -30,6 +30,7 @@ function fmtD(s, opt={}) {           // '2026-10-21' -> '21 ต.ค. 2569'
   return `${d.getDate()} ${TH_MONTHS_S[d.getMonth()]} ${bud}`;
 }
 function relDay(s){                 // relative to today
+  if(!s) return '—';
   const t=s2d(todayS()), d=s2d(s);
   const diff=Math.round((d-t)/86400000);
   if(diff===0) return 'วันนี้';
@@ -39,7 +40,7 @@ function relDay(s){                 // relative to today
   if(diff<-1 && diff>=-7) return `${-diff} วันก่อน`;
   return fmtD(s);
 }
-const daysLeft = s => Math.round((s2d(s)-s2d(todayS()))/86400000);
+const daysLeft = s => s ? Math.round((s2d(s)-s2d(todayS()))/86400000) : 999;
 const money = (n, unit='฿') => (unit==='฿'?'฿':'') + Number(n||0).toLocaleString('en-US');
 const moneyK = n => n < 1000 ? '฿' + Number(n||0).toLocaleString('en-US') : '฿' + (n/1000).toLocaleString('en-US', {maximumFractionDigits:0}) + 'k';
 

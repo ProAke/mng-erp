@@ -516,7 +516,7 @@ function renderTasks(){
       </div></div>`;
   }
   function renderTable(items){
-    items.sort((a,b)=>a.due.localeCompare(b.due));
+    items.sort((a,b)=>(a.due||'9999-12-31').localeCompare(b.due||'9999-12-31'));
     view.innerHTML = `<div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>รหัส</th><th>งาน</th><th>โปรเจกต์</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th><th>ความสำคัญ</th><th>คืบหน้า</th><th>กำหนดส่ง</th><th>ชม.ประเมิน</th></tr></thead>
       <tbody>${items.map(t=>{const p=Store.projectOf(t),u=Store.userOf(t.assignee),ag=t.aiAgentId?aiAgentOf(t.aiAgentId):null;return `<tr data-act="open-task" data-id="${t.id}">
