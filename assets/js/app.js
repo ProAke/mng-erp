@@ -30,11 +30,6 @@ const Remote = {
     this.user = d.user;
     return d.user;
   },
-  async logout(){
-    try { await this.req('/auth/logout', {method:'POST'}); } catch {}
-    this.token = null; this.user = null; localStorage.removeItem('mng_token');
-    localStorage.removeItem('mng_erp_token');
-  },
   push(path, method, body){          // fire-and-forget mutation
     if(!this.on) return;
     this.req(path, {method, body}).catch(e => toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+e.message, 'err'));
@@ -44,7 +39,6 @@ const Remote = {
     try { Store.hydrate(await this.req('/bootstrap')); App.refresh(); } catch {}
   },
   async logout(){
-    const t = this.token;
     try { await this.req('/auth/logout', {method:'POST', _skipAuthGuard:true}); } catch {}
     this.token = null; this.user = null;
     localStorage.removeItem('mng_token');
@@ -81,6 +75,19 @@ const Store = {
       taskMode: 'board',
       dashTab: 'work',
     };
+    if (typeof ensureAgencyData === 'function') ensureAgencyData();
+    // Backfill project codes & <CODE>-10xx task keys if upgrading from older localStorage
+    const pMap = {};
+    this.data.projects.forEach(p => {
+      if (!p.code) p.code = String(p.short || p.name || 'MNG').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 3) || 'MNG';
+      pMap[p.id] = p.code;
+    });
+    this.data.tasks.forEach((t, i) => {
+      if (!t.code || t.code.startsWith('MNG-')) {
+        const num = (t.code || '').split('-')[1] || String(1001 + i);
+        t.code = `${pMap[t.project] || 'MNG'}-${num}`;
+      }
+    });
   },
   save(){
     this.data.settings.calView = this.ui.calView;
@@ -95,6 +102,7 @@ const Store = {
     this.data = { ...d, eventCats: cats };
     this.ui = ui;
     if(!this.ui.calCats || !this.ui.calCats.size) this.ui.calCats = new Set(Object.keys(cats));
+    if (typeof ensureAgencyData === 'function') ensureAgencyData();
     this.save();
   },
 
@@ -162,15 +170,19 @@ const Store = {
    ============================================================ */
 const App = {
   routes: {
-    dashboard:{ title:'ภาพรวมวันนี้ 🔥',   sub:'ยินดีต้อนรับสู่ MNG ERP',            icon:IC.dash,   label:'แดชบอร์ด', render:renderDashboard },
-    calendar: { title:'ปฏิทินงานเต็มจอ 🔥', sub:'MNG Groups / Work Tracking',        icon:IC.cal,    label:'ปฏิทิน',   render:renderCalendar,  badge:()=>Store.data.events.filter(e=>e.date===todayS()).length },
-    tasks:    { title:'บอร์ดงาน (Kanban)',  sub:'MNG Groups / Work Everyday',        icon:IC.task,   label:'งาน',      render:renderTasks,     badge:()=>Store.data.tasks.filter(t=>t.status!=='done').length },
-    projects: { title:'โปรเจกต์ทั้งหมด',    sub:'ทุกโปรเจกต์ของ MNG Groups',         icon:IC.proj,   label:'โปรเจกต์', render:renderProjects },
-    finance:  { title:'การเงิน & ใบแจ้งหนี้',sub:'รายรับ · รอเก็บ · VAT 7%',          icon:IC.money,  label:'การเงิน',  render:renderFinance },
-    team:     { title:'ทีมงาน & ภาระงาน',   sub:'HR — โหลดงานรายบุคคล',              icon:IC.team,   label:'ทีม',      render:renderTeam },
-    clients:  { title:'ลูกค้า (CRM)',       sub:'ฐานลูกค้าและยอดขายสะสม',            icon:IC.client, label:'ลูกค้า',   render:renderClients },
-    reports:  { title:'รายงานผู้บริหาร',    sub:'สรุปผลงาน · รายได้ · โหลดงาน',      icon:IC.report, label:'รายงาน',   render:renderReports },
-    settings: { title:'ตั้งค่าระบบ',        sub:'โปรไฟล์ · ธีม · ข้อมูลสำรอง',       icon:IC.gear,   label:'ตั้งค่า',  render:renderSettings },
+    dashboard:{ title:'ภาพรวมวันนี้ 🔥',       sub:'ยินดีต้อนรับสู่ MNG ERP · Agency OS', icon:IC.dash,   label:'แดชบอร์ด', render:renderDashboard },
+    calendar: { title:'ปฏิทินงานเต็มจอ 🔥',     sub:'MNG Groups / Work Tracking',          icon:IC.cal,    label:'ปฏิทิน',   render:renderCalendar,  badge:()=>Store.data.events.filter(e=>e.date===todayS()).length },
+    tasks:    { title:'บอร์ดงาน (Kanban)',      sub:'MNG Groups / Work Everyday',          icon:IC.task,   label:'งาน',      render:renderTasks,     badge:()=>Store.data.tasks.filter(t=>t.status!=='done').length },
+    projects: { title:'โปรเจกต์ทั้งหมด',        sub:'ทุกโปรเจกต์ของ MNG Groups',           icon:IC.proj,   label:'โปรเจกต์', render:renderProjects },
+    ai:       { title:'ศูนย์ควบคุม AI Workforce',sub:'AI Co-pilot · Autonomy · Live Logs', icon:IC.bot,    label:'AI Hub',   render:renderAI,        badge:()=>(Store.data.aiAgents||[]).filter(a=>!a.paused).length },
+    chat:     { title:'แชตทีม & #ai-feed 💬',   sub:'สื่อสารภายในทีมแบบเรียลไทม์',        icon:IC.chat,   label:'แชตทีม',   render:renderChat },
+    hr:       { title:'ลงเวลาเข้างาน & ใบลา 🌿', sub:'HR · Daily Check-in · WFH',           icon:IC.hr,     label:'ลงเวลา',   render:renderHR,        badge:()=>(Store.data.leaves||[]).filter(l=>l.status==='pending').length },
+    rooms:    { title:'จองห้องประชุม & สตูดิโอ', sub:'ป้องกันคิวชนอัตโนมัติ (Conflict Guard)', icon:IC.room, label:'จองห้อง',  render:renderRooms },
+    finance:  { title:'การเงิน & ใบแจ้งหนี้',   sub:'รายรับ · รอเก็บ · VAT 7%',            icon:IC.money,  label:'การเงิน',  render:renderFinance },
+    team:     { title:'ทีมงาน Human + AI',      sub:'สถานะสด · ทักษะ · โหลดงานรายบุคคล',   icon:IC.team,   label:'ทีม',      render:renderTeam },
+    clients:  { title:'ลูกค้า (CRM)',           sub:'ฐานลูกค้าและยอดขายสะสม',              icon:IC.client, label:'ลูกค้า',   render:renderClients },
+    reports:  { title:'รายงานผู้บริหาร',        sub:'สรุปผลงาน · รายได้ · โหลดงาน',        icon:IC.report, label:'รายงาน',   render:renderReports },
+    settings: { title:'ตั้งค่าระบบ',            sub:'โปรไฟล์ · ธีม · ข้อมูลสำรอง',         icon:IC.gear,   label:'ตั้งค่า',  render:renderSettings },
   },
 
   async init(){
@@ -294,33 +306,48 @@ const App = {
   renderRail(){
     const rail = $('#rail');
     const cur = Store.ui.route;
-    const order = ['dashboard','calendar','tasks','projects','finance','team','clients','reports'];
+    const coreOrder = ['dashboard','calendar','tasks','projects','finance','team','clients','reports'];
+    const osOrder   = ['ai','chat','hr','rooms'];
+    const btnHtml = k => {
+      const r = this.routes[k];
+      const b = r.badge ? r.badge() : 0;
+      return `<button class="rail-btn ${cur===k?'active':''}" data-act="nav:${k}" title="${r.label}">
+        ${r.icon}<span>${r.label}</span>${b?`<span class="rail-badge">${b}</span>`:''}</button>`;
+    };
     rail.innerHTML = `<div class="logo" data-act="nav:dashboard" title="MNG ERP">M</div>` +
-      order.map(k=>{
-        const r = this.routes[k];
-        const b = r.badge ? r.badge() : 0;
-        return `<button class="rail-btn ${cur===k?'active':''}" data-act="nav:${k}" title="${r.label}">
-          ${r.icon}<span>${r.label}</span>${b?`<span class="rail-badge">${b}</span>`:''}</button>`;
-      }).join('') +
+      coreOrder.map(btnHtml).join('') +
+      `<div class="rail-sep"></div>` +
+      osOrder.map(btnHtml).join('') +
       `<div class="spacer"></div>
        <button class="rail-btn ${cur==='settings'?'active':''}" data-act="nav:settings" title="ตั้งค่า">${IC.gear}<span>ตั้งค่า</span></button>
        <div class="rail-avatar" data-act="user-menu" title="Worapot — Admin">WP</div>`;
   },
 
   renderTopbar(r){
+    r = r || this.routes[Store.ui?.route] || this.routes.calendar;
     const tb = $('#topbar');
     const notifs = Store.notifs();
     const me = Store.data.user;
     const meName = me ? me.name : 'Worapot';
     const meRole = me ? (me.role === 'super_admin' ? 'Super Admin' : me.role) : 'Administrator';
+    const meTeam = (typeof meMember === 'function') ? meMember() : { presence: 'online' };
+    const pm = PRESENCE_META[meTeam.presence || 'online'] || PRESENCE_META.online;
     tb.innerHTML = `
       <div class="tb-title"><small>${r.sub}</small><h1>${r.title}
         <span class="db-pill ${Remote.on?'on':'off'}"><span class="dot"></span>${Remote.on?'MariaDB':'สาธิต'}</span></h1></div>
       <div class="tb-search">${IC.search}
-        <input type="text" id="globalQ" placeholder="ค้นหาอะไรก็ได้ในระบบ… (งาน / อีเวนต์ / โปรเจกต์)">
+        <input type="text" id="globalQ" placeholder="ค้นหาอะไรก็ได้ในระบบ… หรือกด Ctrl+K เปิด Command Palette">
+        <kbd id="cmdKBtn" title="เปิด Command Palette (Ctrl+K)">⌘K</kbd>
         <div class="search-pop" id="searchPop"></div>
       </div>
       <div class="tb-actions">
+        <button class="presence-pill" type="button" onclick="openPresencePicker()" title="ตั้งค่าสถานะการทำงาน">
+          <span class="p-dot" style="background:${pm.color}"></span>
+          <span class="p-txt">${pm.label}</span>
+        </button>
+        <button class="pomo-pill ${Pomo.running?'running':''}" type="button" id="pomoBtn" onclick="Pomo.toggle()" title="คลิกเพื่อจับเวลาโฟกัส Pomodoro 25 นาที">
+          <span>${Pomo.running?'🎧':'⏱'}</span><span class="pomo-time">${Pomo.fmt()}</span>
+        </button>
         <div style="position:relative">
           <button class="icon-btn" id="bellBtn">${IC.bell}${notifs.length?'<span class="ping"></span>':''}</button>
           <div class="notif-pop" id="notifPop">
@@ -375,10 +402,18 @@ const App = {
     };
     gq.addEventListener('input', debounce(doSearch,200));
     gq.addEventListener('focus', doSearch);
+    const ck = $('#cmdKBtn');
+    if (ck) ck.onclick = () => openCommandPalette(gq.value || '');
   },
 
   /* ---------- global delegation ---------- */
   bindGlobal(){
+    document.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        openCommandPalette();
+      }
+    });
     document.addEventListener('click', e=>{
       // close popovers
       if(!e.target.closest('.notif-pop') && !e.target.closest('#bellBtn')) $('#notifPop')?.classList.remove('open');
@@ -410,6 +445,10 @@ const App = {
         case 'new-event': openEventForm(); break;
         case 'new-project': openProjectForm(); break;
         case 'new-invoice': openInvoiceForm(); break;
+        case 'ai-dispatch': openAiDispatchModal(id||''); break;
+        case 'new-leave': openLeaveForm(); break;
+        case 'new-booking': openBookingForm(); break;
+        case 'cmd-palette': openCommandPalette(); break;
         case 'mark-paid': markInvoicePaid(id); e.stopPropagation(); break;
         case 'cal-prev': shiftCal(-1); this.refresh(); break;
         case 'cal-next': shiftCal(1); this.refresh(); break;
@@ -513,6 +552,7 @@ function showDayPopover(ds, x, y){
 function openTaskModal(id){
   const t = Store.getTask(id); if(!t) return;
   const p = Store.projectOf(t), u = Store.userOf(t.assignee);
+  const ag = t.aiAgentId && typeof aiAgentOf === 'function' ? aiAgentOf(t.aiAgentId) : null;
   const dl = daysLeft(t.due);
   openModal(`
     <div class="td-head-band ${p.grad}">
@@ -522,11 +562,11 @@ function openTaskModal(id){
     <div class="modal-body" style="padding-top:0">
       <div class="td-meta">
         <div class="m"><small>ผู้รับผิดชอบ</small><b>${avatar(u)} ${esc(u.name)}</b></div>
+        <div class="m"><small>AI Co-pilot</small><b>${ag ? `<span class="ai-copilot-tag">🤖 ${esc(ag.code)}</span>` : '<span style="color:var(--muted)">— ไม่ได้ผูก</span>'}</b></div>
         <div class="m"><small>สถานะ</small><b>${statusBadge(t.status)}</b></div>
         <div class="m"><small>ความสำคัญ</small><b>${prioBadge(t.priority)}</b></div>
-        <div class="m"><small>เริ่ม</small><b>${fmtD(t.start)}</b></div>
         <div class="m"><small>ครบกำหนด</small><b style="color:${dl<0&&t.status!=='done'?'var(--red)':'inherit'}">${fmtD(t.due)} (${relDay(t.due)})</b></div>
-        <div class="m"><small>ประเมินเวลา</small><b>${t.est||'—'} ชม.</b></div>
+        <div class="m"><small>เวลาใช้จริง / ประเมิน</small><b>${t.spent||0} / ${t.est||'—'} ชม.</b></div>
       </div>
       <div class="td-sec"><h4>ความคืบหน้า — ${t.progress}%</h4>
         <div class="progress" style="height:9px"><div style="width:${t.progress}%;background:${STATUS_META[t.status].color}"></div></div></div>
@@ -546,6 +586,7 @@ function openTaskModal(id){
     </div>
     <div class="modal-foot">
       <button class="btn btn-danger" id="tdDel">${IC.trash} ลบงาน</button>
+      <button class="btn btn-ghost" id="tdAiBtn">⚡ ให้ AI ช่วยงานนี้</button>
       <div style="flex:1"></div>
       <button class="btn btn-ghost" onclick="closeModal()">ปิด</button>
       <button class="btn btn-primary" id="tdEdit">${IC.edit} แก้ไขงาน</button>
@@ -556,6 +597,7 @@ function openTaskModal(id){
     Remote.push('/tasks/'+id, 'PATCH', {subtasks: t.subtasks});
     cb.closest('.sub-item').classList.toggle('done', cb.checked);
   }));
+  $('#tdAiBtn').onclick = () => openAiDispatchModal(t.aiAgentId || '', t.id);
   $('#cmtBtn').onclick = ()=>{
     const v = $('#cmtInput').value.trim(); if(!v) return;
     const now = new Date();
@@ -574,22 +616,29 @@ function openTaskModal(id){
 }
 
 function openTaskForm(id, presetStatus){
+  if (typeof ensureAgencyData === 'function') ensureAgencyData();
+  const defProj = Store.data.projects[0] || { id: 'p1', code: 'MNG' };
   const t = id ? Store.getTask(id) : {
-    id:uid('t'), code:'MNG-'+(1040+Store.data.tasks.length), project:Store.data.projects[0].id,
-    title:'', status:presetStatus||'todo', priority:'med', assignee:'u1',
-    start:todayS(), due:todayS(), progress:0, est:8, tags:[], subtasks:[], comments:[], desc:''
+    id:uid('t'), code:`${defProj.code||'MNG'}-${1040+Store.data.tasks.length}`, project:defProj.id,
+    title:'', status:presetStatus||'todo', priority:'med', assignee:'u1', aiAgentId:'',
+    start:todayS(), due:todayS(), progress:0, est:8, spent:0, tags:[], subtasks:[], comments:[], desc:''
   };
-  openModal(`${modalHead(id?`แก้ไขงาน — ${t.code}`:'เพิ่มงานใหม่', id?'':'สร้างงานพร้อมกำหนดส่ง จะขึ้นปฏิทินอัตโนมัติ')}
+  openModal(`${modalHead(id?`แก้ไขงาน — ${t.code}`:'เพิ่มงานใหม่ (<CODE>-10xx)', id?'':'สร้างงานพร้อมรหัสโปรเจกต์อัตโนมัติ และผูกผู้ช่วย AI ได้ทันที')}
     <div class="modal-body"><div class="form-grid">
       <div class="f-group full"><label>ชื่องาน *</label><input id="fTitle" value="${esc(t.title)}" placeholder="เช่น พัฒนาหน้า checkout"></div>
-      <div class="f-group"><label>โปรเจกต์</label><select id="fProj">${Store.data.projects.map(p=>`<option value="${p.id}" ${p.id===t.project?'selected':''}>${esc(p.short)}</option>`).join('')}</select></div>
-      <div class="f-group"><label>ผู้รับผิดชอบ</label><select id="fUser">${Store.data.team.map(u=>`<option value="${u.id}" ${u.id===t.assignee?'selected':''}>${esc(u.name)} — ${esc(u.role)}</option>`).join('')}</select></div>
+      <div class="f-group"><label>โปรเจกต์</label><select id="fProj">${Store.data.projects.map(p=>`<option value="${p.id}" ${p.id===t.project?'selected':''}>[${esc(p.code||'PRJ')}] ${esc(p.short)}</option>`).join('')}</select></div>
+      <div class="f-group"><label>ผู้รับผิดชอบ (Human)</label><select id="fUser">${Store.data.team.map(u=>`<option value="${u.id}" ${u.id===t.assignee?'selected':''}>${esc(u.name)} — ${esc(u.role)}</option>`).join('')}</select></div>
+      <div class="f-group"><label>ผู้ช่วย AI Co-pilot</label><select id="fAiAgent">
+        <option value="">— ไม่ผูก AI —</option>
+        ${(Store.data.aiAgents||[]).map(a=>`<option value="${a.id}" ${a.id===(t.aiAgentId||'')?'selected':''}>🤖 ${esc(a.code)} — ${esc(a.role)}</option>`).join('')}
+      </select></div>
       <div class="f-group"><label>สถานะ</label><select id="fStatus">${Object.entries(STATUS_META).map(([k,v])=>`<option value="${k}" ${k===t.status?'selected':''}>${v.label}</option>`).join('')}</select></div>
       <div class="f-group"><label>ความสำคัญ</label><select id="fPrio">${Object.entries(PRIO_META).map(([k,v])=>`<option value="${k}" ${k===t.priority?'selected':''}>${v.label}</option>`).join('')}</select></div>
+      <div class="f-group"><label>ความคืบหน้า — <b id="progLbl">${t.progress}%</b></label><input type="range" id="fProg" min="0" max="100" value="${t.progress}" style="--p:${t.progress}%"></div>
       <div class="f-group"><label>วันเริ่ม</label><input type="date" id="fStart" value="${t.start}"></div>
       <div class="f-group"><label>กำหนดส่ง *</label><input type="date" id="fDue" value="${t.due}"></div>
-      <div class="f-group"><label>ความคืบหน้า — <b id="progLbl">${t.progress}%</b></label><input type="range" id="fProg" min="0" max="100" value="${t.progress}" style="--p:${t.progress}%"></div>
       <div class="f-group"><label>ชั่วโมงประเมิน</label><input type="number" id="fEst" min="0" value="${t.est}"></div>
+      <div class="f-group"><label>ชั่วโมงใช้จริง</label><input type="number" id="fSpent" min="0" step="0.5" value="${t.spent||0}"></div>
       <div class="f-group full"><label>แท็ก (คั่นด้วยจุลภาค)</label><input id="fTags" value="${esc(t.tags.join(', '))}" placeholder="Frontend, API"></div>
       <div class="f-group full"><label>รายละเอียด</label><textarea id="fDesc" placeholder="อธิบายขอบเขตงาน…">${esc(t.desc)}</textarea></div>
     </div></div>
@@ -602,15 +651,20 @@ function openTaskForm(id, presetStatus){
   $('#fSave').onclick = async ()=>{
     const title = $('#fTitle').value.trim();
     if(!title) return toast('กรุณาใส่ชื่องาน','err');
+    const selProjId = $('#fProj').value;
+    const selProj = Store.data.projects.find(p => p.id === selProjId);
+    const pCode = selProj?.code || 'MNG';
     const payload = {
-      title, project:$('#fProj').value, assignee:$('#fUser').value,
+      title, project:selProjId, assignee:$('#fUser').value,
+      aiAgentId:$('#fAiAgent').value || null,
       status:$('#fStatus').value, priority:$('#fPrio').value,
       start:$('#fStart').value||todayS(), due:$('#fDue').value||todayS(),
-      progress:+pr.value, est:+$('#fEst').value||0,
+      progress:+pr.value, est:+$('#fEst').value||0, spent:+$('#fSpent').value||0,
       tags:$('#fTags').value.split(',').map(s=>s.trim()).filter(Boolean),
       desc:$('#fDesc').value.trim(),
     };
     if(payload.status==='done') payload.progress=100;
+    if(!id) t.code = `${pCode}-${1040 + Store.data.tasks.length}`;
     Object.assign(t, payload);
     if(Remote.on){
       if(id) Remote.push('/tasks/'+t.id, 'PATCH', payload);
@@ -623,7 +677,7 @@ function openTaskForm(id, presetStatus){
     else Store.logActivity(`แก้ไขงาน <b>${t.code}</b>`);
     Store.save(); closeModal();
     if(Remote.on && !id) await Remote.refreshAll(); else App.refresh();
-    toast(id?'บันทึกงานแล้ว':`สร้างงานแล้ว — เดดไลน์ขึ้นปฏิทินอัตโนมัติ${Remote.on?' (MariaDB ✓)':''}`);
+    toast(id?'บันทึกงานแล้ว':`สร้างงาน ${t.code} แล้ว — เดดไลน์ขึ้นปฏิทินอัตโนมัติ${Remote.on?' (MariaDB ✓)':''}`);
   };
 }
 
@@ -769,9 +823,10 @@ const canLead = () => Remote.on && ['super_admin','admin','manager'].includes(Re
 function openProjectForm(p){
   const isEdit = !!p; p = p || {};
   const clientName = isEdit ? (Store.clientOf(p)?.name || p.clientName || '') : '';
-  openModal(`${modalHead(isEdit ? `แก้ไขโปรเจกต์ — ${p.name||''}` : 'เพิ่มโปรเจกต์ใหม่', isEdit ? 'บันทึกแล้งลง MariaDB ทันที คนทั้งทีมเห็นพร้อมกัน' : 'ใส่เฉพาะข้อมูลหลัก — แก้ไขเพิ่มได้ภายหลัง')}
+  openModal(`${modalHead(isEdit ? `แก้ไขโปรเจกต์ — ${p.name||''}` : 'เพิ่มโปรเจกต์ใหม่', isEdit ? 'บันทึกแล้วลง MariaDB ทันที คนทั้งทีมเห็นพร้อมกัน' : 'กำหนดรหัสย่อ เช่น ERP, LVT เพื่อสร้างเลขงาน <CODE>-10xx อัตโนมัติ')}
     <div class="modal-body"><div class="form-grid">
-      <div class="f-group full"><label>ชื่อโปรเจกต์ *</label><input id="pName" value="${esc(p.name||'')}" placeholder="เช่น เว็บ e-commerce ร้าน X"></div>
+      <div class="f-group"><label>ชื่อโปรเจกต์ *</label><input id="pName" value="${esc(p.name||'')}" placeholder="เช่น เว็บ e-commerce ร้าน X"></div>
+      <div class="f-group"><label>รหัสโปรเจกต์ (2–4 ตัวอักษร)</label><input id="pCode" value="${esc(p.code||'')}" maxlength="5" placeholder="เช่น ECX, ERP"></div>
       <div class="f-group"><label>ลูกค้า</label><select id="pClient">${Store.data.clients.map(c=>`<option value="${esc(c.name)}" ${c.name===clientName?'selected':''}>${esc(c.name)}</option>`).join('')}<option value="Internal — MNG Groups" ${clientName==='Internal — MNG Groups'?'selected':''}>Internal</option></select></div>
       <div class="f-group"><label>งบประมาณ (บาท)</label><input type="number" id="pBudget" value="${isEdit? (p.budget??0) : 100000}" min="0" step="1000"></div>
       <div class="f-group"><label>เริ่ม</label><input type="date" id="pStart" value="${isEdit ? (p.start||todayS()) : todayS()}"></div>
@@ -788,7 +843,8 @@ function openProjectForm(p){
   $$('#pGrad .chip').forEach(c=>c.onclick=()=>{grad=c.dataset.g; $$('#pGrad .chip').forEach(x=>x.classList.toggle('on',x===c));});
   $('#pSave').onclick = async ()=>{
     const name=$('#pName').value.trim(); if(!name) return toast('กรุณาใส่ชื่อโปรเจกต์','err');
-    const body = { name, clientName:$('#pClient').value, budget:+$('#pBudget').value||0,
+    const code=($('#pCode').value.trim().toUpperCase().replace(/[^A-Z0-9]/g,'') || name.replace(/[^A-Za-z0-9]/g,'').toUpperCase().slice(0,3) || 'PRJ').slice(0,5);
+    const body = { name, code, clientName:$('#pClient').value, budget:+$('#pBudget').value||0,
       start:$('#pStart').value, end:$('#pEnd').value, grad, color:PROJ_COLORS[grad] };
     if(isEdit){ body.status = $('#pStatus').value; body.desc = $('#pDesc').value; }
     const btn = $('#pSave'); btn.disabled = true;
@@ -800,14 +856,14 @@ function openProjectForm(p){
       } catch(e){ toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+e.message,'err'); btn.disabled=false; }
       return;
     }
-    if(isEdit){ Object.assign(p, {name, short:name.slice(0,14), client:body.clientName, grad, color:PROJ_COLORS[grad], budget:body.budget, start:body.start, end:body.end, status:body.status, desc:body.desc});
+    if(isEdit){ Object.assign(p, {name, code, short:name.slice(0,14), client:body.clientName, grad, color:PROJ_COLORS[grad], budget:body.budget, start:body.start, end:body.end, status:body.status, desc:body.desc});
       Store.logActivity(`แก้ไขโปรเจกต์ <b>${esc(name)}</b>`);
     } else {
-      Store.data.projects.push({id:uid('p'), name, short:name.slice(0,14), client:body.clientName, grad, color:PROJ_COLORS[grad],
+      Store.data.projects.push({id:uid('p'), code, name, short:name.slice(0,14), client:body.clientName, grad, color:PROJ_COLORS[grad],
         status:'todo', progress:0, budget:body.budget, spent:0, start:body.start, end:body.end, owner:'u1', members:['u1'], desc:''});
-      Store.logActivity(`สร้างโปรเจกต์ <b>${esc(name)}</b>`);
+      Store.logActivity(`สร้างโปรเจกต์ <b>[${esc(code)}] ${esc(name)}</b>`);
     }
-    Store.save(); closeModal(); App.refresh(); toast(isEdit?'บันทึกการแก้ไขแล้ว':'สร้างโปรเจกต์แล้ว');
+    Store.save(); closeModal(); App.refresh(); toast(isEdit?'บันทึกการแก้ไขแล้ว':`สร้างโปรเจกต์ [${code}] แล้ว`);
   };
 }
 

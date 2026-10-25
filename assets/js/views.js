@@ -75,12 +75,55 @@ function renderDashboard(){
 
     const stCount = Object.keys(STATUS_META).map(k=>Store.data.tasks.filter(t=>t.status===k).length);
 
+    ensureAgencyData();
+    const td = todayS();
+    const aiActive = Store.data.aiAgents.filter(a=>!a.paused).length;
+    const aiRunsCnt = Store.data.aiAgents.reduce((s,a)=>s+(+a.runs||0),0);
+    const ckToday = Store.data.checkins.filter(c=>c.date===td).length;
+    const bkToday = Store.data.bookings.filter(b=>b.date===td).length;
+    const msgCnt = Store.data.messages.length;
+
     view.innerHTML = `
       <div class="kpi-grid">
         ${kpiCard(IC.proj,'g-blue','linear-gradient(135deg,#3BA7FF,#2F6BF0)', doing, 'โปรเจกต์ที่กำลังทำ', '+2 เดือนนี้')}
         ${kpiCard(IC.task,'','linear-gradient(135deg,#A06BF5,#6C5CE7)', openTasks.length, `งานคงค้าง ${overdue?`<small style="color:var(--red)">(${overdue} ล่าช้า)</small>`:''}`, completedWk+' ปิดในสัปดาห์')}
         ${kpiCard(IC.alarm,'','linear-gradient(135deg,#FF9A5A,#FF6B5C)', dueSoon, 'ใกล้เดดไลน์ (≤ 3 วัน)', dueSoon?'ต้องเร่ง':'โล่งแล้ว')}
         ${kpiCard(IC.money,'','linear-gradient(135deg,#FF6B9D,#B950F0)', money(receivable), 'ยอดรอเก็บ (รวม VAT)', Store.data.invoices.filter(i=>i.status==='overdue').length+' ใบเกินกำหนด')}
+      </div>
+
+      <div class="aos-pulse">
+        <div class="aos-tile" data-act="nav:ai">
+          <div class="aos-ico" style="background:#efeaff;color:#6C5CE7">🤖</div>
+          <div class="aos-meta">
+            <div class="aos-lbl">AI Workforce</div>
+            <div class="aos-val">${aiActive}/${Store.data.aiAgents.length} พร้อมทำงาน</div>
+            <div class="aos-sub">ทำสำเร็จสะสม ${aiRunsCnt} ภารกิจ</div>
+          </div>
+        </div>
+        <div class="aos-tile" data-act="nav:chat">
+          <div class="aos-ico" style="background:#e6f4ff;color:#1b7fe0">💬</div>
+          <div class="aos-meta">
+            <div class="aos-lbl">แชตทีม & #ai-feed</div>
+            <div class="aos-val">${Store.data.channels.length} ห้องสนทนา</div>
+            <div class="aos-sub">${msgCnt} ข้อความซิงก์สดในทีม</div>
+          </div>
+        </div>
+        <div class="aos-tile" data-act="nav:hr">
+          <div class="aos-ico" style="background:#e4fbf2;color:#119e6e">🌿</div>
+          <div class="aos-meta">
+            <div class="aos-lbl">เช็กอินเข้างานวันนี้</div>
+            <div class="aos-val">${ckToday}/${Store.data.team.length} คน</div>
+            <div class="aos-sub">ใบลารออนุมัติ ${Store.data.leaves.filter(l=>l.status==='pending').length} รายการ</div>
+          </div>
+        </div>
+        <div class="aos-tile" data-act="nav:rooms">
+          <div class="aos-ico" style="background:#fff4dc;color:#d68900">🚪</div>
+          <div class="aos-meta">
+            <div class="aos-lbl">ห้องประชุม & สตูดิโอ</div>
+            <div class="aos-val">จองวันนี้ ${bkToday} คิว</div>
+            <div class="aos-sub">ทรัพยากรพร้อมใช้ ${Store.data.rooms.length} รายการ</div>
+          </div>
+        </div>
       </div>
 
       <div class="section-ttl">${IC.flame} โปรเจกต์เด่น <span class="right">เหมือน Featured Jobs ใน reference — คลิกเพื่อดูรายละเอียด</span></div>
@@ -456,12 +499,13 @@ function renderTasks(){
     });
   }
   function kbCard(t){
-    const p=Store.projectOf(t), u=Store.userOf(t.assignee);
+    const p=Store.projectOf(t), u=Store.userOf(t.assignee), ag=t.aiAgentId?aiAgentOf(t.aiAgentId):null;
     const dl=daysLeft(t.due);
     return `<div class="kb-card ${dl<0&&t.status!=='done'?'overdue':''}" draggable="true" data-id="${t.id}" data-act="open-task">
       <div class="kc-top"><span class="kc-code">${t.code}</span>${prioBadge(t.priority)}</div>
       <div class="kc-title">${esc(t.title)}</div>
       <div class="kc-tags"><span class="badge" style="background:${p.color}18;color:${p.color}">${p.short}</span>
+        ${ag?`<span class="ai-copilot-tag">✨ ${esc(ag.code)}</span>`:''}
         ${t.tags.slice(0,2).map(tg=>`<span class="badge b-grey">${esc(tg)}</span>`).join('')}</div>
       <div class="progress"><div style="width:${t.progress}%;background:${STATUS_META[t.status].color}"></div></div>
       <div class="kc-meta">
@@ -475,9 +519,9 @@ function renderTasks(){
     items.sort((a,b)=>a.due.localeCompare(b.due));
     view.innerHTML = `<div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>รหัส</th><th>งาน</th><th>โปรเจกต์</th><th>ผู้รับผิดชอบ</th><th>สถานะ</th><th>ความสำคัญ</th><th>คืบหน้า</th><th>กำหนดส่ง</th><th>ชม.ประเมิน</th></tr></thead>
-      <tbody>${items.map(t=>{const p=Store.projectOf(t),u=Store.userOf(t.assignee);return `<tr data-act="open-task" data-id="${t.id}">
+      <tbody>${items.map(t=>{const p=Store.projectOf(t),u=Store.userOf(t.assignee),ag=t.aiAgentId?aiAgentOf(t.aiAgentId):null;return `<tr data-act="open-task" data-id="${t.id}">
         <td class="t-code">${t.code}</td>
-        <td><div class="t-title">${esc(t.title)}</div>${t.subtasks.length?`<div class="t-sub">งานย่อย ${t.subtasks.filter(s=>s.d).length}/${t.subtasks.length}</div>`:''}</td>
+        <td><div class="t-title">${esc(t.title)} ${ag?`<span class="ai-copilot-tag">✨ ${esc(ag.code)}</span>`:''}</div>${t.subtasks.length?`<div class="t-sub">งานย่อย ${t.subtasks.filter(s=>s.d).length}/${t.subtasks.length}</div>`:''}</td>
         <td><span class="badge" style="background:${p.color}18;color:${p.color}">${p.short}</span></td>
         <td>${avatar(u)} ${esc(u.name)}</td>
         <td>${statusBadge(t.status)}</td><td>${prioBadge(t.priority)}</td>
@@ -509,9 +553,10 @@ function renderProjects(){
     const ts=Store.data.tasks.filter(t=>t.project===p.id);
     const open=ts.filter(t=>t.status!=='done').length;
     const budgetPct = p.budget?Math.round(p.spent/p.budget*100):0;
+    const pCode = p.code || initials(p.short);
     return `<div class="proj-card" data-act="open-project" data-id="${p.id}">
-      <div class="pc-band ${p.grad}"><div><b>${esc(p.name)}</b><small>${esc(c?c.name:'')} · เริ่ม ${fmtD(p.start,{short:true})}</small></div>
-        <div class="pc-logo">${initials(p.short)}</div></div>
+      <div class="pc-band ${p.grad}"><div><div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><span class="proj-code-pill">${esc(pCode)}</span></div><b>${esc(p.name)}</b><small>${esc(c?c.name:'')} · เริ่ม ${fmtD(p.start,{short:true})}</small></div>
+        <div class="pc-logo">${esc(pCode.slice(0,3))}</div></div>
       <div class="pc-body">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px">
           <b style="font-size:12.5px">ความคืบหน้า ${p.progress}%</b>${statusBadge(p.status)}</div>
@@ -573,35 +618,52 @@ function renderFinance(){
 }
 
 /* ============================================================
-   TEAM
+   TEAM (Unified Human + AI Workforce Roster & Capacity)
    ============================================================ */
 function renderTeam(){
+  ensureAgencyData();
   const view=$('#view'), side=$('#side');
-  side.innerHTML = sideSearch('ค้นหาสมาชิก…','team') +
-    `<div class="side-block"><h3>ภาระงาน</h3>
+  const tab = Store.ui.teamTab || 'all';
+  side.innerHTML = sideSearch('ค้นหาสมาชิก หรือทักษะ…','team') +
+    `<div class="side-block"><h3>ประเภททีมงาน</h3>
+      <div class="chips">
+        ${[
+          ['all', `ทั้งหมด (${Store.data.team.length + Store.data.aiAgents.length})`],
+          ['human', `มนุษย์ (${Store.data.team.length})`],
+          ['ai', `AI Workforce (${Store.data.aiAgents.length})`],
+        ].map(([k,l])=>`<span class="chip ${tab===k?'on':''}" data-ttab="${k}">${l}</span>`).join('')}
+      </div>
+    </div>
+    <div class="side-block"><h3>ภาระงาน (Capacity)</h3>
       <div class="legend" style="flex-direction:column;gap:8px">
         <span><i style="background:#22C793"></i>โหลดปกติ (&lt; 30 ชม./สัปดาห์)</span>
         <span><i style="background:#FFB020"></i>ค่อนข้างหนัก (30–40 ชม.)</span>
         <span><i style="background:#FF5C7A"></i>หนักเกิน (&gt; 40 ชม.)</span>
       </div></div>` +
-    promoCard('MNG Groups Team','ทีมเล็ก ไฟแรง — 6 คน ครบทุกสาย: ออกแบบ พัฒนา และทดสอบ','เชิญสมาชิก','invite');
+    promoCard('MNG Hybrid Team','ผสานทีมงานมนุษย์ 6 คน + AI Co-pilot 5 ตัว กระจายโหลดงานอย่างสมดุล','จัดการ AI Hub','nav:ai');
   wireSideCommon(view);
+  $$('[data-ttab]', side).forEach(el => el.onclick = () => { Store.ui.teamTab = el.dataset.ttab; App.refresh(); });
 
   const q=(Store.ui.q.team||'').toLowerCase();
   const _lead = Remote.on && ['super_admin','admin','manager'].includes(Remote.user?.role);
   const ROLE_TH_T = { super_admin:'Super Admin', admin:'Admin', manager:'Manager', user:'User', viewer:'Viewer' };
-  const list = Store.data.team.filter(u=>!q||u.name.toLowerCase().includes(q)||u.role.toLowerCase().includes(q));
-  view.innerHTML = `<div class="team-grid">${list.map(u=>{
+  const humanList = tab==='ai' ? [] : Store.data.team.filter(u=>!q||`${u.name} ${u.nickname||''} ${u.role} ${(u.skills||[]).join(' ')}`.toLowerCase().includes(q));
+  const aiList = tab==='human' ? [] : Store.data.aiAgents.filter(a=>!q||`${a.code} ${a.name} ${a.role} ${a.model} ${(a.skills||[]).join(' ')}`.toLowerCase().includes(q));
+
+  view.innerHTML = `<div class="team-grid">${humanList.map(u=>{
     const open=Store.data.tasks.filter(t=>t.assignee===u.id&&t.status!=='done');
     const hrs=open.reduce((s,t)=>s+(t.est||0)*(1-t.progress/100),0);
     const done=Store.data.tasks.filter(t=>t.assignee===u.id&&t.status==='done').length;
-    const pct=Math.min(100, Math.round(hrs/45*100));
-    const col = hrs>40?'#FF5C7A':hrs>25?'#FFB020':'#22C793';
-    return `<div class="team-card"><div class="av av-xl" style="background:${u.color};display:flex;align-items:center;justify-content:center;color:#fff">${initials(u.name)}${u.me?' <span style="font-size:9px"></span>':''}</div>
-      <b class="name">${esc(u.name)}${u.me?' <span class="badge b-purple" style="font-size:9px">คุณ</span>':''}</b>
+    const pct=Math.min(100, Math.round(hrs/40*100));
+    const col = hrs>40?'#FF5C7A':hrs>28?'#FFB020':'#22C793';
+    return `<div class="team-card">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:-10px">${presenceBadge(u.presence||'online')}</div>
+      <div class="av av-xl" style="background:${u.color};display:flex;align-items:center;justify-content:center;color:#fff">${initials(u.name)}</div>
+      <b class="name">${esc(u.name)}${u.nickname?` <small style="color:var(--muted);font-weight:500">(${esc(u.nickname)})</small>`:''}${u.me?' <span class="badge b-purple" style="font-size:9px">คุณ</span>':''}</b>
       <div class="role">${esc(u.role)}</div>
+      ${(u.skills&&u.skills.length)?`<div class="skill-row" style="justify-content:center;margin:6px 0">${u.skills.map(s=>`<span class="skill-chip">${esc(s)}</span>`).join('')}</div>`:''}
       <div class="t-stats"><div><b>${open.length}</b><small>งานคงค้าง</small></div><div><b>${done}</b><small>ปิดแล้ว</small></div><div><b>${Math.round(hrs)}</b><small>ชม.เหลือ</small></div></div>
-      <div style="text-align:left;font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between"><span>ภาระงานสัปดาห์นี้</span><b style="color:${col}">${pct}%</b></div>
+      <div style="text-align:left;font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between"><span>ภาระงาน (${Math.round(hrs)}/40 ชม.)</span><b style="color:${col}">${pct}%</b></div>
       <div class="wkbar"><div style="width:${pct}%;background:${col}"></div></div>
       <div style="margin-top:12px;display:flex;gap:7px;justify-content:center;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" data-act="open-member" data-id="${u.id}">${IC.eye} งานของ${esc(u.name.split(' ')[0])}</button>
@@ -611,7 +673,22 @@ function renderTeam(){
       ${u.authRole?`<div style="margin-top:8px;font-size:10px;color:var(--muted)">บัญชี: <span class="urole ur-${u.authRole}">${ROLE_TH_T[u.authRole]||u.authRole}</span></div>`:(_lead?`<div style="margin-top:8px;font-size:10px;color:var(--muted)">ยังไม่มีบัญชี login</div>`:'')}
     </div>`;
   }).join('')}
-  ${_lead ? `<div class="team-card add-team" data-act="team-new" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:2.5px dashed var(--line);min-height:230px;color:var(--muted)">
+  ${aiList.map(a=>{
+    const coTasks = Store.data.tasks.filter(t=>t.aiAgentId===a.id&&t.status!=='done').length;
+    return `<div class="team-card" style="background:linear-gradient(180deg,#faf8ff 0%,#ffffff 100%);border-color:#e4ddff">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:-10px"><span class="badge ${a.paused?'b-yellow':'b-purple'}">${a.paused?'⏸ พักชั่วคราว':'🤖 AI Online'}</span></div>
+      <div class="av av-xl" style="background:${a.color};display:flex;align-items:center;justify-content:center;color:#fff;border-radius:18px">${esc(a.code.slice(0,3))}</div>
+      <b class="name">${esc(a.name)} <span class="ai-model">${esc(a.model)}</span></b>
+      <div class="role">${esc(a.role)}</div>
+      <div class="skill-row" style="justify-content:center;margin:6px 0">${(a.skills||[]).map(s=>`<span class="skill-chip">${esc(s)}</span>`).join('')}</div>
+      <div class="t-stats"><div><b>${coTasks}</b><small>งาน Co-pilot</small></div><div><b>${a.runs}</b><small>รันสำเร็จ</small></div><div><b>${a.autonomy}%</b><small>Autonomy</small></div></div>
+      <div style="margin-top:12px;display:flex;gap:7px;justify-content:center">
+        <button class="btn btn-primary btn-sm" onclick="openAiDispatchModal('${a.id}')">⚡ สั่งงาน ${esc(a.code)}</button>
+        <button class="btn btn-ghost btn-sm" data-act="nav:ai">ตั้งค่า</button>
+      </div>
+    </div>`;
+  }).join('')}
+  ${(_lead && tab!=='ai') ? `<div class="team-card add-team" data-act="team-new" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;border:2.5px dashed var(--line);min-height:230px;color:var(--muted)">
     <span style="font-size:34px">${IC.plus}</span><b>เพิ่มสมาชิกทีม</b><small style="font-size:11px">ผูกอีเมล → ใช้สิทธิ์ login ร่วม MNG Hub ได้</small>
   </div>` : ''}</div>`;
 }

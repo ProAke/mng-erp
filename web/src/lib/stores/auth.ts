@@ -1,140 +1,70 @@
-'use client'
+// lib/stores/auth.ts
+// Auth state — Zustand store + React Query
+// Backend: Bearer token (erp_sessions) → เก็บ token ใน localStorage
 
 import { create } from 'zustand'
-import { api, tokenStore } from '@/lib/api/client'
-import { useApp } from '@/lib/stores/app'
+import { api, tokenStore, type User } from '@/lib/api/client'
 
 export interface SessionUser {
   id: string
-  authId?: number
-  email: string
+  authId: number
   name: string
+  email: string
   role: string
-  avatar?: string | null
 }
 
 interface AuthState {
   user: SessionUser | null
-  bootstrapped: boolean
   isAuthenticated: boolean
+  /** login ผ่าน → เก็บ token + user */
   login: (user: SessionUser, token: string) => void
-  setSession: (token: string, user: SessionUser) => void
-  updateUser: (patch: Partial<SessionUser>) => void
+  /** logout → เรียก server ลบ session แล้วล้าง state */
   logout: () => Promise<void>
-  clear: () => void
+  /** เช็ค session ปัจจุบันจาก /api/bootstrap (ใช้ตอน app boot) */
   bootstrap: () => Promise<SessionUser | null>
 }
 
-/* ---------- คีย์ทั้งหมดที่เคยใช้เก็บ auth ไว้ ----------
-   ล้างให้ครบทุกคีย์ ป้องกัน token เก่าค้างแล้วกลับเข้าระบบเอง */
-const LEGACY_KEYS = ['mng.token', 'mng_token', 'mng_erp_token', 'mng_user', 'mng_session']
-
-export function clearAuthStorage(): void {
-  tokenStore.clear()
-  if (typeof window === 'undefined') return
-  LEGACY_KEYS.forEach((k) => {
-    try {
-      window.localStorage.removeItem(k)
-    } catch {
-      /* ignore */
-    }
-  })
-  try {
-    window.sessionStorage.clear()
-  } catch {
-    /* ignore */
-  }
-}
-
-export const useAuth = create<AuthState>((set, get) => ({
+export const useAuth = create<AuthState>((set) => ({
   user: null,
-  bootstrapped: false,
   isAuthenticated: false,
 
   login: (user, token) => {
     tokenStore.set(token)
-    set({ user, isAuthenticated: true, bootstrapped: true })
-  },
-
-  setSession: (token, user) => {
-    tokenStore.set(token)
-    set({ user, isAuthenticated: true, bootstrapped: true })
-  },
-
-  updateUser: (patch) => {
-    const cur = get().user
-    if (!cur) return
-    set({ user: { ...cur, ...patch } })
+    set({ user, isAuthenticated: true })
   },
 
   logout: async () => {
+    // เรียก server ลบ session ก่อน (สำคัญ — ไม่งั้น token ยังมีผลที่ DB)
     try {
-      await api.auth.logout()
+      await api.logout()
     } catch {
-      /* ล้างฝั่ง client ต่อแม้เรียก server ไม่สำเร็จ */
+      // ล้มเหลวตอนนี้ก็ล้างฝั่ง client ต่อ — ไม่บล็อก user
     }
-    clearAuthStorage()
-    try {
-      useApp.getState().clear()
-    } catch {
-      /* ignore */
-    }
-    set({ user: null, isAuthenticated: false, bootstrapped: true })
-  },
-
-  clear: () => {
-    clearAuthStorage()
-    try {
-      useApp.getState().clear()
-    } catch {
-      /* ignore */
-    }
-    set({ user: null, isAuthenticated: false, bootstrapped: true })
+    tokenStore.clear()
+    set({ user: null, isAuthenticated: false })
   },
 
   bootstrap: async () => {
-    const token = tokenStore.get()
-    if (!token) {
-      set({ user: null, isAuthenticated: false, bootstrapped: true })
-      return null
-    }
+    if (!tokenStore.get()) return null
     try {
       const data = await api.bootstrap()
-      useApp.getState().setData(data)
-      const u = data.user as {
-        user_id?: number
-        authId?: number
-        email?: string
-        name?: string
-        role?: string
-        avatar?: string | null
-      } | null
-      if (!u?.email) throw new Error('invalid_session')
-      const me =
-        data.team.find((m) => m.email && m.email === u.email) ??
-        data.team.find((m) => m.me)
-      const sessionUser: SessionUser = {
-        id: String(u.user_id ?? u.authId ?? me?.id ?? 'me'),
-        authId: u.user_id ?? u.authId ?? me?.authUserId ?? undefined,
-        email: u.email,
-        name: u.name ?? me?.name ?? u.email,
-        role: u.role ?? 'staff',
-        avatar: u.avatar ?? me?.avatar ?? null,
+      const user: SessionUser = {
+        id: `u${data.user.user_id}`,
+        authId: data.user.user_id,
+        name: data.user.name,
+        email: data.user.email,
+        role: data.user.role,
       }
-      set({
-        user: sessionUser,
-        isAuthenticated: true,
-        bootstrapped: true,
-      })
-      return sessionUser
+      set({ user, isAuthenticated: true })
+      return user
     } catch {
-      clearAuthStorage()
-      useApp.getState().clear()
-      set({ user: null, isAuthenticated: false, bootstrapped: true })
+      tokenStore.clear()
+      set({ user: null, isAuthenticated: false })
       return null
     }
   },
 }))
 
+/** convenience helper — ดึง role ปัจจุบัน */
+export const useRole = () => useAuth((s) => s.user?.role)
 export const isAdmin = (role?: string) => role === 'super_admin' || role === 'admin'
-export const canManage = (role?: string) => role === 'super_admin' || role === 'admin' || role === 'manager'

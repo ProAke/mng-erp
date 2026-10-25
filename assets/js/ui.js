@@ -101,6 +101,15 @@ const IC = (() => {
     link:    w('<path d="M10 14a4 4 0 0 0 6 .4l3-3a4 4 0 1 0-5.7-5.6l-1.6 1.6"/><path d="M14 10a4 4 0 0 0-6-.4l-3 3a4 4 0 1 0 5.7 5.6l1.6-1.6"/>'),
     alarm:   w('<circle cx="12" cy="13" r="7"/><path d="M12 9.5V13l2.5 1.5M5 3.5L3 5.5M19 3.5l2 2"/>'),
     eye:     w('<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/>'),
+    bot:     w('<rect x="4" y="7" width="16" height="12" rx="4"/><path d="M12 3v4M8.5 12.5h.01M15.5 12.5h.01M9.5 16h5"/><path d="M2 12h2M20 12h2"/>'),
+    chat:    w('<path d="M4 6.5A3.5 3.5 0 0 1 7.5 3h9A3.5 3.5 0 0 1 20 6.5v6A3.5 3.5 0 0 1 16.5 16H10l-4.5 4v-4A3.5 3.5 0 0 1 4 12.5z"/><path d="M8.5 8.5h7M8.5 11.5h4.5"/>'),
+    hr:      w('<path d="M12 20.5s-7-4.5-7-10a4.2 4.2 0 0 1 7-3.1 4.2 4.2 0 0 1 7 3.1c0 5.5-7 10-7 10z"/><path d="M9.5 12h2l1-2 1.5 4 1-2h1.5"/>'),
+    room:    w('<path d="M4 20h16M6 20V5.5A1.5 1.5 0 0 1 7.5 4h9A1.5 1.5 0 0 1 18 5.5V20"/><circle cx="14.5" cy="12" r="1" fill="currentColor"/>'),
+    send:    w('<path d="M20.5 3.5L10 14M20.5 3.5l-6.5 17-4-6.5-6.5-4z"/>'),
+    tack:    w('<path d="M9 4h6l-1 5 3 3v1.5H7V12l3-3zM12 13.5v7"/>'),
+    bolt:    w('<path d="M13 3L5.5 13.5H12L11 21l7.5-10.5H12z"/>'),
+    pause:   w('<rect x="6.5" y="5" width="3.8" height="14" rx="1.2"/><rect x="13.7" y="5" width="3.8" height="14" rx="1.2"/>'),
+    play:    w('<path d="M7.5 5.5l11 6.5-11 6.5z"/>'),
   };
 })();
 
@@ -312,6 +321,13 @@ const INV_META = {
   overdue:{label:'เกินกำหนด', badge:'b-red'},
   draft:  {label:'ฉบับร่าง',  badge:'b-grey'},
 };
-const statusBadge = st => { const m=STATUS_META[st]; return `<span class="badge ${m.badge}"><span class="dot" style="background:${m.color}"></span>${m.label}</span>`; };
-const prioBadge  = p  => { const m=PRIO_META[p];  return `<span class="prio ${m.cls}">${m.label}</span>`; };
-const invBadge   = st => { const m=INV_META[st];  return `<span class="badge ${m.badge}">${m.label}</span>`; };
+const PRESENCE_META = {
+  online:  { label:'ออนไลน์',      color:'#22C793', badge:'b-green',  dot:'🟢' },
+  working: { label:'กำลังทำงาน',   color:'#3BA7FF', badge:'b-blue',   dot:'💻' },
+  focus:   { label:'โฟกัสห้ามกวน', color:'#6C5CE7', badge:'b-purple', dot:'🎧' },
+  away:    { label:'ไม่อยู่ชั่วคราว', color:'#FFB020', badge:'b-yellow', dot:'🌙' },
+};
+const statusBadge = st => { const m=STATUS_META[st]||STATUS_META.todo; return `<span class="badge ${m.badge}"><span class="dot" style="background:${m.color}"></span>${m.label}</span>`; };
+const prioBadge  = p  => { const m=PRIO_META[p]||PRIO_META.med;  return `<span class="prio ${m.cls}">${m.label}</span>`; };
+const invBadge   = st => { const m=INV_META[st]||INV_META.draft;  return `<span class="badge ${m.badge}">${m.label}</span>`; };
+const presenceBadge = p => { const m=PRESENCE_META[p]||PRESENCE_META.online; return `<span class="badge ${m.badge}"><span class="dot" style="background:${m.color}"></span>${m.label}</span>`; };

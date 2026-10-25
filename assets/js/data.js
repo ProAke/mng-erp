@@ -4,37 +4,37 @@
 window.SEED = (() => {
 
   const team = [
-    { id:'u1', name:'Worapot',      role:'Founder / PM',   color:'#FF8A5C', email:'worapot@outlook.com', phone:'081-234-5678', me:true },
-    { id:'u2', name:'Nuna Sirima',  role:'UX/UI Designer', color:'#8E7CF3', email:'nuna@mnggroups.co',   phone:'089-111-2233' },
-    { id:'u3', name:'Bank Kritsada',role:'Full-stack Dev', color:'#3BA7FF', email:'bank@mnggroups.co',   phone:'086-555-8899' },
-    { id:'u4', name:'May Thanyarat',role:'Front-end Dev',  color:'#FF6B9D', email:'may@mnggroups.co',    phone:'092-777-1144' },
-    { id:'u5', name:'Art Pongsakorn',role:'Back-end Dev',  color:'#22C793', email:'art@mnggroups.co',    phone:'095-888-2211' },
-    { id:'u6', name:'Fah Chanya',   role:'QA Tester',      color:'#FFB020', email:'fah@mnggroups.co',    phone:'097-333-4455' },
+    { id:'u1', name:'Worapot',       nickname:'เอก',   presence:'online',  skills:['PM','Strategy','ERP'],     role:'Founder / PM',   color:'#FF8A5C', email:'worapot@outlook.com', phone:'081-234-5678', me:true },
+    { id:'u2', name:'Nuna Sirima',   nickname:'นุ่น',  presence:'working', skills:['UX/UI','Figma','Brand'],    role:'UX/UI Designer', color:'#8E7CF3', email:'nuna@mnggroups.co',   phone:'089-111-2233' },
+    { id:'u3', name:'Bank Kritsada', nickname:'แบงก์', presence:'working', skills:['Node.js','React','DevOps'], role:'Full-stack Dev', color:'#3BA7FF', email:'bank@mnggroups.co',   phone:'086-555-8899' },
+    { id:'u4', name:'May Thanyarat', nickname:'เมย์',  presence:'focus',   skills:['Frontend','CSS','UI'],      role:'Front-end Dev',  color:'#FF6B9D', email:'may@mnggroups.co',    phone:'092-777-1144' },
+    { id:'u5', name:'Art Pongsakorn',nickname:'อาร์ต', presence:'online',  skills:['MariaDB','API','Cron'],     role:'Back-end Dev',   color:'#22C793', email:'art@mnggroups.co',    phone:'095-888-2211' },
+    { id:'u6', name:'Fah Chanya',    nickname:'ฟ้า',   presence:'away',    skills:['QA','E2E','UAT'],           role:'QA Tester',      color:'#FFB020', email:'fah@mnggroups.co',    phone:'097-333-4455' },
   ];
 
   const projects = [
-    { id:'p1', name:'Calmat — Chat โทรศัพท์/Facebook/LINE', short:'Calmat', client:'Calmat Co., Ltd.', grad:'g-blue',
+    { id:'p1', code:'CAL', name:'Calmat — Chat โทรศัพท์/Facebook/LINE', short:'Calmat', client:'Calmat Co., Ltd.', grad:'g-blue',
       color:'#2F6BF0', status:'doing', progress:62, budget:180000, spent:111000, start:'2026-10-05', end:'2026-11-06',
       owner:'u1', members:['u1','u3','u4','u6'], desc:'ระบบแชตรวม 3 ช่องทาง (โทรศัพท์ / Facebook / LINE OA) ครบ 29 หน้า พร้อม live browser verified' },
-    { id:'p2', name:'Chef-jeed v1 + v2 — deploy + upload images', short:'Chef-jeed', client:'Chef-jeed', grad:'g-purple',
+    { id:'p2', code:'CFJ', name:'Chef-jeed v1 + v2 — deploy + upload images', short:'Chef-jeed', client:'Chef-jeed', grad:'g-purple',
       color:'#6C5CE7', status:'done', progress:100, budget:240000, spent:228000, start:'2026-09-10', end:'2026-10-15',
       owner:'u3', members:['u3','u5'], desc:'Deploy production + upload รูปภาพสินค้า v1 และ v2' },
-    { id:'p3', name:'Pool Dashboard — table layout + auto-reset', short:'Pool Dashboard', client:'168 Pool Villa', grad:'g-green',
+    { id:'p3', code:'POL', name:'Pool Dashboard — table layout + auto-reset', short:'Pool Dashboard', client:'168 Pool Villa', grad:'g-green',
       color:'#14B890', status:'doing', progress:78, budget:120000, spent:86000, start:'2026-10-01', end:'2026-10-31',
       owner:'u4', members:['u4','u5'], desc:'โต๊ะพูล layout + auto-reset รอบคิว + หน้าจอสาธารณะ' },
-    { id:'p4', name:'LoveIT — ข่าว 5 การ์ด + Cron 2 ชั่วโมง', short:'LoveIT', client:'LoveIT Thailand', grad:'g-pink',
+    { id:'p4', code:'LVT', name:'LoveIT — ข่าว 5 การ์ด + Cron 2 ชั่วโมง', short:'LoveIT', client:'LoveIT Thailand', grad:'g-pink',
       color:'#F25C8B', status:'review', progress:90, budget:95000, spent:74000, start:'2026-10-08', end:'2026-10-27',
       owner:'u2', members:['u2','u4','u6'], desc:'ออกแบบการ์ดข่าว 5 แบบ + cron ดึงข่าวทุก 2 ชั่วโมง' },
-    { id:'p5', name:'MNG Smart Dashboard v2', short:'MNG Dashboard', client:'Internal — MNG Groups', grad:'g-orange',
+    { id:'p5', code:'ERP', name:'MNG Smart Dashboard v2', short:'MNG Dashboard', client:'Internal — MNG Groups', grad:'g-orange',
       color:'#F2762E', status:'doing', progress:35, budget:0, spent:0, start:'2026-10-15', end:'2026-12-15',
-      owner:'u1', members:['u1','u2','u3','u4','u5','u6'], desc:'อัปเกรด Smart Dashboard: Work Tracking + Calendar ERP เต็มจอ' },
-    { id:'p6', name:'APH Interface — API Connector', short:'APH Interface', client:'APH Logistics', grad:'g-teal',
+      owner:'u1', members:['u1','u2','u3','u4','u5','u6'], desc:'อัปเกรด Smart Dashboard: Work Tracking + Calendar ERP เต็มจอ + Agency OS' },
+    { id:'p6', code:'APH', name:'APH Interface — API Connector', short:'APH Interface', client:'APH Logistics', grad:'g-teal',
       color:'#17A2B8', status:'todo', progress:8, budget:150000, spent:9000, start:'2026-10-27', end:'2026-12-04',
       owner:'u5', members:['u5','u3'], desc:'เชื่อม API ขนส่ง APH: booking, tracking, webhook สถานะ' },
-    { id:'p7', name:'SGI Corporate Website', short:'SGI Website', client:'SGI Group', grad:'g-indigo',
+    { id:'p7', code:'SGI', name:'SGI Corporate Website', short:'SGI Website', client:'SGI Group', grad:'g-indigo',
       color:'#4B5ED9', status:'review', progress:84, budget:210000, spent:152000, start:'2026-09-21', end:'2026-10-30',
       owner:'u2', members:['u2','u4'], desc:'เว็บไซต์องค์กร SGI หลายภาษา TH/EN + CMS' },
-    { id:'p8', name:'Client Portal + Billing', short:'Client Portal', client:'Internal — MNG Groups', grad:'g-slate',
+    { id:'p8', code:'PRT', name:'Client Portal + Billing', short:'Client Portal', client:'Internal — MNG Groups', grad:'g-slate',
       color:'#5A6280', status:'todo', progress:0, budget:0, spent:0, start:'2026-11-10', end:'2027-01-29',
       owner:'u1', members:['u1','u3','u5'], desc:'พอร์ทัลลูกค้า: ติดตามโปรเจกต์ + ใบแจ้งหนี้ + แจ้งซ่อม' },
   ];
@@ -142,5 +142,91 @@ window.SEED = (() => {
     workload:[['Calmat',46,'#2F6BF0'],['Chef-jeed',14,'#6C5CE7'],['Pool Dash',31,'#14B890'],['LoveIT',27,'#F25C8B'],['MNG Dash',52,'#F2762E'],['APH',4,'#17A2B8'],['SGI',33,'#4B5ED9']],
   };
 
-  return { team, projects, clients, tasks, eventCats, events, invoices, activity, trend };
+  // Upgrade task keys to <PROJ_CODE>-10xx + logged hours + sample AI co-pilots
+  const pCodeMap = Object.fromEntries(projects.map(p => [p.id, p.code || 'MNG']));
+  const aiSamples = { t1:'ai3', t3:'ai1', t4:'ai2', t8:'ai1', t11:'ai3', t15:'ai2', t19:'ai4' };
+  tasks.forEach((t, idx) => {
+    const num = (t.code || '').split('-')[1] || String(1001 + idx);
+    t.code = `${pCodeMap[t.project] || 'MNG'}-${num}`;
+    if (t.spent == null) t.spent = Math.round((t.est || 6) * ((t.progress || 0) / 100) * 10) / 10;
+    if (!t.aiAgentId && aiSamples[t.id]) t.aiAgentId = aiSamples[t.id];
+  });
+
+  const td = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
+  const relDate = (offset) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const aiAgents = [
+    { id:'ai1', code:'NOVA',  name:'NOVA',  role:'AI Project & Sprint Planner', model:'Claude 3.7 Sonnet', color:'#6C5CE7', autonomy:92, paused:false, runs:148, successRate:99.2, tokensToday:18420, skills:['Sprint Plan','Risk Alert','Stand-up Summary'], prompt:'วิเคราะห์ความเสี่ยงเดดไลน์และกระจายภาระงานให้สมดุล' },
+    { id:'ai2', code:'PIXEL', name:'PIXEL', role:'AI Creative & UX Copywriter', model:'GPT-4.1',           color:'#FF6B9D', autonomy:88, paused:false, runs:112, successRate:98.4, tokensToday:14200, skills:['UX Microcopy','Campaign Copy','TH/EN Copy'], prompt:'ช่วยร่าง UX writing และข้อความแคมเปญสองภาษา' },
+    { id:'ai3', code:'BYTE',  name:'BYTE',  role:'AI Code & QA Reviewer',       model:'Claude 3.7 Sonnet', color:'#3BA7FF', autonomy:90, paused:false, runs:204, successRate:99.5, tokensToday:26850, skills:['Code Review','SQL Audit','Test Cases'], prompt:'ตรวจเช็กโค้ด API และสร้างชุดทดสอบ QA อัตโนมัติ' },
+    { id:'ai4', code:'ECHO',  name:'ECHO',  role:'AI Client Comms & MoM',       model:'Gemini 2.5 Pro',    color:'#22C793', autonomy:84, paused:false, runs:89,  successRate:97.8, tokensToday:11300, skills:['Meeting Minutes','Client Update','Proposal Draft'], prompt:'สรุปรายงานการประชุมและร่างอัปเดตรายสัปดาห์ส่งลูกค้า' },
+    { id:'ai5', code:'ORBIT', name:'ORBIT', role:'AI Finance & Ops Analyst',    model:'GPT-4.1 Mini',      color:'#FFB020', autonomy:86, paused:false, runs:67,  successRate:99.0, tokensToday:8940,  skills:['Invoice Follow-up','Budget Burn','Cashflow'], prompt:'ติดตามบิลค้างชำระและวิเคราะห์งบประมาณโปรเจกต์' },
+  ];
+
+  const aiRuns = [
+    { id:'run1', agentId:'ai1', taskId:'t1', action:'วิเคราะห์ความเสี่ยง Sprint & เดดไลน์', detail:'ตรวจพบงานเร่งด่วนใกล้เดดไลน์ แนะนำเกลี่ยโหลดงานช่วงบ่ายให้สมดุล', durationSec:4, tokens:940, status:'ok', at:`${td} 09:42` },
+    { id:'run2', agentId:'ai3', taskId:'t1', action:'Code & Webhook Queue Audit', detail:'ตรวจ retry queue ของ LINE OA webhook รองรับ burst 250 msg/s ผ่านเกณฑ์ QA', durationSec:6, tokens:1280, status:'ok', at:`${td} 09:15` },
+    { id:'run3', agentId:'ai2', taskId:'t4', action:'ร่าง UX Copy การ์ดข่าว LoveIT 5 สไตล์', detail:'สรุปหัวข้อและ microcopy ทั้งโหมดสว่างและมืดครบ 5 รูปแบบ', durationSec:3, tokens:760, status:'ok', at:`${relDate(-1)} 16:30` },
+    { id:'run4', agentId:'ai5', taskId:null, action:'ตรวจสอบใบแจ้งหนี้ค้างชำระประจำสัปดาห์', detail:'แจ้งเตือน INV-2026-042 เกินกำหนดชำระ พร้อมร่างอีเมลติดตามลูกค้า SGI', durationSec:3, tokens:610, status:'ok', at:`${relDate(-1)} 11:05` },
+  ];
+
+  const channels = [
+    { id:'ch1', slug:'general',        name:'general',        emoji:'📢', topic:'ประกาศกลางและอัปเดตประจำวันของทีม MNG Groups' },
+    { id:'ch2', slug:'dev-ops',        name:'dev-ops',        emoji:'💻', topic:'พูดคุยงานพัฒนา API, Deploy, Database และแก้บั๊ก' },
+    { id:'ch3', slug:'design-review',  name:'design-review',  emoji:'🎨', topic:'ส่งดราฟต์ UI/UX, การ์ดข่าว และตรวจงานดีไซน์' },
+    { id:'ch4', slug:'client-updates', name:'client-updates', emoji:'🤝', topic:'สรุปความคืบหน้าลูกค้า นัดหมาย Demo และ UAT' },
+    { id:'ch5', slug:'ai-feed',        name:'ai-feed',        emoji:'✨', topic:'รายงานผลการทำงานอัตโนมัติจากทีม AI Workforce' },
+  ];
+
+  const messages = [
+    { id:'m1', channelId:'ch1', senderId:'u1', senderName:'Worapot (เอก)', kind:'text', body:'สวัสดีตอนเช้าทีม MNG! วันนี้เรามี Sprint Review บ่ายสอง และเตรียมส่งมอบการ์ดข่าว LoveIT นะครับ 🚀', pinned:true, reactions:{'🔥':['u2','u3'],'👍':['u4','u5']}, at:`${td} 09:05` },
+    { id:'m2', channelId:'ch1', senderId:'u3', senderName:'Bank Kritsada', kind:'text', body:'รับทราบครับพี่เอก ตอนนี้ระบบ webhook retry เทสต์ผ่านแล้ว เดี๋ยวอัปขึ้น staging ก่อนเที่ยงครับ', pinned:false, reactions:{'✅':['u1']}, at:`${td} 09:12` },
+    { id:'m3', channelId:'ch2', senderId:'u5', senderName:'Art Pongsakorn', kind:'text', body:'อัปเดตฐานข้อมูล MariaDB แยก 2 pool (auth + works) พร้อม health latency เรียบร้อยครับ ⚡', pinned:true, reactions:{'🎉':['u1','u3']}, at:`${td} 09:20` },
+    { id:'m4', channelId:'ch3', senderId:'u2', senderName:'Nuna Sirima', kind:'text', body:'ส่งดราฟต์การ์ดข่าว LoveIT แบบที่ 3 และ 5 ปรับโทนสีให้คมขึ้นแล้ว รบกวนพี่เอกช่วยดูหน่อยนะคะ 🎨', pinned:false, reactions:{'❤️':['u1','u4']}, at:`${td} 09:35` },
+    { id:'m5', channelId:'ch4', senderId:'u6', senderName:'Fah Chanya', kind:'text', body:'เตรียมสคริปต์ UAT เว็บ SGI ครบ 32 เคสแล้ว พร้อมรันรอบสุดท้ายกับลูกค้าวันพฤหัสนี้ค่ะ', pinned:false, reactions:{'👍':['u1','u2']}, at:`${td} 09:40` },
+    { id:'m6', channelId:'ch5', senderId:'ai1', senderName:'NOVA (AI)', kind:'ai', body:'✨ <b>สรุปภาพรวมเช้าวันนี้</b> — มีงานกำลังทำ 8 ชิ้น ใกล้ครบกำหนดใน 3 วัน 2 ชิ้น แนะนำโฟกัส CAL-1031 และ ERP-1042 ก่อนเที่ยง', pinned:false, reactions:{'👍':['u1']}, at:`${td} 09:45` },
+  ];
+
+  const rooms = [
+    { id:'rm1', name:'Boardroom ชั้น 4 (ห้องประชุมใหญ่)',   kind:'room',   zone:'ชั้น 4 · โซนหน้า', capacity:12, color:'#6C5CE7', equip:['จอ 4K 75"','กล้อง Conference','Whiteboard'] },
+    { id:'rm2', name:'Creative Studio A (ถ่ายภาพ/ไฟ)',      kind:'studio', zone:'ชั้น 2 · สตูดิโอ', capacity:8,  color:'#FF6B9D', equip:['ฉาก Cyclorama','ไฟ Aputure 300d','ไมค์ไร้สาย'] },
+    { id:'rm3', name:'Podcast & Sound Booth',               kind:'studio', zone:'ชั้น 2 · ห้องอัด', capacity:4,  color:'#3BA7FF', equip:['Rodecaster Pro','ไมค์ Shure SM7B x3','เก็บเสียง'] },
+    { id:'rm4', name:'Focus Pod 1 (ห้องคุยงานด่วน)',         kind:'room',   zone:'ชั้น 3 · โซน Dev', capacity:4,  color:'#22C793', equip:['จอ Monitor 27"','ปลั๊ก USB-C'] },
+    { id:'rm5', name:'ชุดออกกอง Sony FX3 + เลนส์ G-Master', kind:'gear',   zone:'ตู้เก็บอุปกรณ์',    capacity:1,  color:'#FFB020', equip:['Sony FX3','24-70mm GM II','Gimbal RS4'] },
+  ];
+
+  const bookings = [
+    { id:'bk1', roomId:'rm1', title:'Sprint Planning & Review ทีม MNG',          date:td,          start:'10:00', end:'11:30', hostId:'u1', members:['u1','u2','u3','u5'], note:'เตรียมสไลด์สรุปความคืบหน้า' },
+    { id:'bk2', roomId:'rm2', title:'ถ่ายภาพสินค้าโปรเจกต์ Chef-jeed Set ใหม่', date:td,          start:'13:30', end:'16:00', hostId:'u2', members:['u2','u4'],           note:'เซ็ตไฟ Warm Daylight' },
+    { id:'bk3', roomId:'rm4', title:'Pair Programming — LINE Webhook Retry',     date:td,          start:'15:00', end:'16:30', hostId:'u3', members:['u3','u5'],           note:'ทดสอบโหลด 250 msg/s' },
+    { id:'bk4', roomId:'rm1', title:'Demo ระบบแชตให้ลูกค้า Calmat รอบถัดไป',     date:relDate(1),  start:'10:30', end:'12:00', hostId:'u1', members:['u1','u3','u4'],      note:'ประชุมผ่าน Zoom + จอใหญ่' },
+  ];
+
+  const checkins = [
+    { id:'ck1', memberId:'u1', date:td,         clockIn:'09:02', clockOut:'',      mode:'office', note:'เข้าออฟฟิศ ประชุมเช้า' },
+    { id:'ck2', memberId:'u2', date:td,         clockIn:'09:15', clockOut:'',      mode:'wfh',    note:'WFH ปั่นงานดีไซน์การ์ดข่าว LoveIT' },
+    { id:'ck3', memberId:'u3', date:td,         clockIn:'08:54', clockOut:'',      mode:'office', note:'เตรียมเทสต์ระบบ LINE OA' },
+    { id:'ck4', memberId:'u4', date:td,         clockIn:'09:22', clockOut:'',      mode:'office', note:'ทำหน้า UI 29 หน้า' },
+    { id:'ck5', memberId:'u5', date:td,         clockIn:'09:10', clockOut:'',      mode:'wfh',    note:'ดูแลเซิร์ฟเวอร์และฐานข้อมูล' },
+    { id:'ck6', memberId:'u1', date:relDate(-1),clockIn:'08:58', clockOut:'18:15', mode:'office', note:'สรุปแผน Sprint' },
+    { id:'ck7', memberId:'u1', date:relDate(-2),clockIn:'09:04', clockOut:'18:30', mode:'wfh',    note:'รีวิวงานลูกค้า' },
+  ];
+
+  const leaves = [
+    { id:'lv1', memberId:'u6', kind:'personal', startDate:relDate(2), endDate:relDate(2), days:1, reason:'ติดต่อธุระราชการช่วงเช้า-บ่าย', status:'pending',  approvedBy:'' },
+    { id:'lv2', memberId:'u2', kind:'wfh',      startDate:relDate(3), endDate:relDate(4), days:2, reason:'ขอปฏิบัติงาน WFH โฟกัสงานออกแบบ UI ชุดใหญ่', status:'approved', approvedBy:'Worapot' },
+    { id:'lv3', memberId:'u4', kind:'annual',   startDate:relDate(9), endDate:relDate(10),days:2, reason:'ลาพักร้อนประจำปี', status:'approved', approvedBy:'Worapot' },
+  ];
+
+  return {
+    team, projects, clients, tasks, eventCats, events, invoices, activity, trend,
+    aiAgents, aiRuns, channels, messages, rooms, bookings, checkins, leaves,
+  };
 })();
