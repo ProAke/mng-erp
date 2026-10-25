@@ -6,7 +6,7 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-PORT="${PORT:-8080}"
+PORT="${PORT:-4050}"
 BASE="http://127.0.0.1:$PORT"
 PID=""
 
