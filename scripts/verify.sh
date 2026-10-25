@@ -31,7 +31,9 @@ hr
 echo "== 2. test =="
 hr
 if [ -x node_modules/.bin/vitest ]; then
-  if ./node_modules/.bin/vitest run > /tmp/verify-test.log 2>&1; then
+  # ใช้ `npm run test` (ไม่ใช่ ./node_modules/.bin/vitest ตรง) — npm resolve node
+  # และ rollup native binary ถูกต้อง ไม่พังเมื่อ PATH เปลี่ยน (เช่นใน git hook)
+  if npm run test > /tmp/verify-test.log 2>&1; then
     ok "vitest ผ่านทั้งหมด"
   else
     bad "vitest ล้มเหลว — ดู /tmp/verify-test.log"

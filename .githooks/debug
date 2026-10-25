@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# TEMP debug hook — captures the real environment during a git commit
+exec > /tmp/hook-env.log 2>&1
+echo "=== date ==="; date
+echo "=== pwd ==="; pwd
+echo "=== PATH ==="; echo "$PATH"
+echo "=== which npm/node ==="; which -a npm node
+echo "=== npm version ==="; npm --version 2>&1
+echo "=== node version ==="; node --version 2>&1
+echo "=== staged ==="; git diff --cached --name-only
+echo "=== npm run verify ==="
+cd "$(git rev-parse --show-toplevel)" && npm run verify
+echo "verify EXIT=$?"
+exit 0
