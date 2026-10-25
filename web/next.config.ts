@@ -1,10 +1,12 @@
 import type { NextConfig } from 'next'
 
-const API_TARGET = process.env.API_TARGET || 'https://mng.uarea.in'
-
 const nextConfig: NextConfig = {
-  cacheComponents: true,
-  partialPrefetching: true,
+  output: 'export',
+  trailingSlash: true,
+  images: {
+    unoptimized: true,
+  },
+  // Turbopack config for dev only — kept minimal
   turbopack: {
     rules: {
       '*.css': {
@@ -14,8 +16,7 @@ const nextConfig: NextConfig = {
     },
   },
   async rewrites() {
-    // proxy /api/* ไป Express backend (dev ใช้ตัวนี้แทน CORS)
-    return [{ source: '/api/:path*', destination: `${API_TARGET}/api/:path*` }]
+    return [{ source: '/api/:path*', destination: 'https://mng.uarea.in/api/:path*' }]
   },
 }
 
