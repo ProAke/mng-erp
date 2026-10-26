@@ -759,12 +759,12 @@ function renderFinance(){
     </div>
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>เลขที่</th><th>รายการ</th><th>ลูกค้า</th><th>ยอดก่อน VAT</th><th>VAT 7%</th><th>รวมสุทธิ</th><th>ครบกำหนด</th><th>สถานะ</th><th></th></tr></thead>
-      <tbody>${list.map(i=>{const c=Store.clientOf({client:i.client} );
-        const cl = Store.data.clients.find(x=>x.id===i.client);
+      <tbody>${list.map(i=>{
+        const cl = Store.data.clients.find(x=>x.id===i.client) || { id:'', name:'ไม่ระบุลูกค้า', short:'—', color:'#8a8fb1' };
         return `<tr data-act="open-invoice" data-id="${i.id}">
         <td class="t-code">${i.no}</td>
         <td><div class="t-title">${esc(i.title)}</div><div class="t-sub">ออก ${fmtD(i.issue)}</div></td>
-        <td><span class="badge" style="background:${cl.color}18;color:${cl.color}">${cl.short}</span></td>
+        <td><span class="badge" style="background:${cl.color}18;color:${cl.color}">${esc(cl.short)}</span></td>
         <td class="money">${money(i.amount)}</td><td>${money(i.vat)}</td>
         <td class="money" style="color:var(--purple)">${money(i.amount+i.vat)}</td>
         <td><b style="color:${i.status==='overdue'?'var(--red)':'inherit'}">${fmtD(i.due,{short:true})}</b></td>
@@ -854,28 +854,40 @@ function renderTeam(){
 }
 
 /* ============================================================
-   CLIENTS
+   CLIENTS (CRM — Connected to MariaDB erp_clients)
    ============================================================ */
 function renderClients(){
   const view=$('#view'), side=$('#side');
-  side.innerHTML = sideSearch('ค้นหาลูกค้า…','clients') +
-    promoCard('ฐานลูกค้า MNG','ดูแลลูกค้า 6 ราย พร้อมยอดขายสะสมและโปรเจกต์ที่กำลังทำ','เพิ่มลูกค้า','invite');
+  side.innerHTML = sideSearch('ค้นหาลูกค้า / ผู้ติดต่อ / อีเมล…','clients') +
+    promoCard('ฐานลูกค้า MNG','ดูแลลูกค้าทั้งหมดในฐานข้อมูล erp_clients พร้อมยอดขายสะสมและโปรเจกต์ที่กำลังทำ','+ เพิ่มลูกค้าใหม่','new-client');
   wireSideCommon(view);
   const q=(Store.ui.q.clients||'').toLowerCase();
-  const list = Store.data.clients.filter(c=>!q||c.name.toLowerCase().includes(q)||c.contact.toLowerCase().includes(q));
-  view.innerHTML = `<div class="client-grid">${list.map(c=>{
+  const list = Store.data.clients.filter(c=>!q||`${c.name} ${c.short||''} ${c.contact||''} ${c.email||''} ${c.phone||''}`.toLowerCase().includes(q));
+  view.innerHTML = `
+    <div class="sec-head">
+      <div>
+        <h2>ฐานลูกค้า (CRM)</h2>
+        <div class="sub">ลูกค้าทั้งหมด ${Store.data.clients.length} ราย · คลิกการ์ดเพื่อดูรายละเอียด แก้ไข หรือออกใบแจ้งหนี้</div>
+      </div>
+      <div class="sec-actions">
+        <button class="btn btn-primary" data-act="new-client">${IC.plus} เพิ่มลูกค้าใหม่</button>
+      </div>
+    </div>
+    <div class="client-grid">${list.length ? list.map(c=>{
     const projs=Store.data.projects.filter(p=>p.client===c.name|| (Store.clientOf(p)||{}).id===c.id);
     const active=projs.filter(p=>p.status==='doing'||p.status==='review').length;
     const rev=Store.data.invoices.filter(i=>i.client===c.id&&i.status==='paid').reduce((s,i)=>s+i.amount,0);
-    return `<div class="client-card">
-      <div class="cc-top"><div class="cc-logo" style="background:linear-gradient(135deg,${c.color},${c.color}bb)">${initials(c.short)}</div>
-        <div><b>${esc(c.name)}</b><small>ลูกค้าตั้งแต่ ${fmtD(c.since)}</small></div></div>
-      <div class="cc-row">${IC.user} ${esc(c.contact)}</div>
-      <div class="cc-row">${IC.phone} ${esc(c.phone)}</div>
-      <div class="cc-row">${IC.mail} ${esc(c.email)}</div>
-      <div class="cc-row">${IC.pin} ${esc(c.addr)}</div>
+    return `<div class="client-card" style="cursor:pointer" data-act="open-client" data-id="${c.id}">
+      <div class="cc-top"><div class="cc-logo" style="background:linear-gradient(135deg,${c.color},${c.color}bb)">${initials(c.short||c.name)}</div>
+        <div style="flex:1;min-width:0"><b>${esc(c.name)}</b><small>ลูกค้าตั้งแต่ ${fmtD(c.since)}</small></div>
+        <button class="icon-btn" style="width:30px;height:30px" title="แก้ไขข้อมูลลูกค้า" data-act="edit-client" data-id="${c.id}">✏️</button>
+      </div>
+      <div class="cc-row">${IC.user} ${esc(c.contact||'—')}</div>
+      <div class="cc-row">${IC.phone} ${esc(c.phone||'—')}</div>
+      <div class="cc-row">${IC.mail} ${esc(c.email||'—')}</div>
+      <div class="cc-row">${IC.pin} ${esc(c.addr||'—')}</div>
       <div class="cc-foot"><span>โปรเจกต์ที่กำลังทำ <b>${active}</b></span><span>ยอดเก็บแล้ว <b style="color:var(--purple)">${moneyK(rev)}</b></span></div>
-    </div>`;}).join('')}</div>`;
+    </div>`;}).join('') : `<div class="empty-state" style="grid-column:1/-1"><p>ไม่พบข้อมูลลูกค้า</p></div>`}</div>`;
 }
 
 /* ============================================================
@@ -993,24 +1005,49 @@ function renderSettings(){
         : '<p style="font-size:12px;color:var(--muted)">คลังว่าง — โปรเจกต์ที่ "เก็บเข้าคลัง" จากหน้าโปรเจกต์จะมาอยู่ที่นี่พร้อมปุ่มกู้คืน</p>'}
     </div>` : '';
 
+  const dbAudit = Store.data._dbAudit;
+  const dbAuditSection = `
+    <div class="card card-pad" style="grid-column:1/-1">
+      <div class="card-head" style="padding:0 0 8px">
+        <div class="card-title">🗄 สถานะการเชื่อมต่อฐานข้อมูลจริง (MariaDB Live Audit)
+          <span class="badge ${Remote.on ? 'b-green' : 'b-yellow'}">${Remote.on ? 'เชื่อมต่อ MariaDB จริง' : 'โหมดสาธิต (localStorage)'}</span>
+        </div>
+        ${Remote.on ? `<button class="btn btn-ghost btn-sm" data-act="run-db-audit">🔄 ตรวจสอบตารางฐานข้อมูลสด</button>` : ''}
+      </div>
+      <p style="font-size:12px;color:var(--muted)">ตรวจสอบการเชื่อมต่อทั้ง 2 ฐานข้อมูลจริง (<b>pacific_mng</b> สำหรับบัญชีผู้ใช้ + <b>pacific_mngworks</b> สำหรับงาน โปรเจกต์ การเงิน แชต AI และ HR ครบทุกตาราง)</p>
+      ${!Remote.on
+        ? `<div style="margin-top:10px;font-size:12.5px;color:var(--ink-2)">ขณะนี้อยู่ในโหมดสาธิต — เข้าสู่ระบบด้วยบัญชีจริงเพื่อซิงก์กับ MariaDB อัตโนมัติ</div>`
+        : dbAudit
+          ? `<div style="margin-top:8px;font-size:12px;color:var(--mint);font-weight:600">✓ ตรวจสอบสำเร็จทั้ง ${dbAudit.modules.length} ตาราง · Latency ${dbAudit.latencyMs} ms</div>
+             <div class="db-audit-grid">
+               ${dbAudit.modules.map(m => `<div class="db-audit-item">
+                 <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.ok ? '🟢' : '🔴'} ${esc(m.label)}</span>
+                 <b>${m.rows}</b>
+               </div>`).join('')}
+             </div>`
+          : `<div style="margin-top:10px;font-size:12px;color:var(--muted)">กำลังดึงจำนวนแถวจริงจากตาราง MariaDB…</div>`}
+    </div>`;
+
   view.innerHTML = `<div class="set-grid">
+    ${dbAuditSection}
     ${adminSection}
     <div class="card card-pad">
       <div class="card-title" style="margin-bottom:8px">${IC.user} โปรไฟล์ & องค์กร</div>
       <div style="display:flex;gap:14px;align-items:center;margin:14px 0 18px">
         <div class="av av-xl" style="background:linear-gradient(135deg,#ffb26b,#ff6b9d)">${esc(initials(me.name||'W'))}</div>
-        <div><b style="font-size:15px">${esc(me.name)} — ${ROLE_TH[me.role]||'ผู้ใช้'}</b><div style="font-size:12px;color:var(--muted)">${esc(me.email)} · MNG Groups</div></div>
+        <div><b style="font-size:15px">${esc(me.name)} — ${ROLE_TH[me.role]||'ผู้ใช้'}</b><div style="font-size:12px;color:var(--muted)">${esc(me.email)} · ${esc(st.orgName||'MNG Groups')}</div></div>
       </div>
       <div class="form-grid">
-        <div class="f-group"><label>ชื่อองค์กร</label><input value="MNG Groups" id="setOrg"></div>
+        <div class="f-group"><label>ชื่อองค์กร</label><input value="${esc(st.orgName||'MNG Groups')}" id="setOrg"></div>
         <div class="f-group"><label>โดเมน</label><input value="mng.uarea.in" disabled></div>
-        <div class="f-group full"><label>คำอธิบาย</label><input value="Smart Dashboard & Work Tracking System" id="setDesc"></div>
+        <div class="f-group full"><label>คำอธิบายระบบ</label><input value="${esc(st.orgDesc||'Smart Dashboard & Work Tracking System')}" id="setDesc"></div>
+        <div class="f-group full"><label>🗂 ลิงก์โฟลเดอร์ Google Drive กลางของทีม (ใช้ในหน้าแชตทีม)</label><input type="url" value="${esc(st.driveFolder||'https://drive.google.com/drive/u/0/my-drive')}" id="setDriveFolder"></div>
       </div>
       <div class="card-title" style="margin:22px 0 4px">${IC.bell} การแจ้งเตือน</div>
       <div class="set-row"><div class="sr-info"><b>แจ้งเตือนงานใกล้เดดไลน์</b><small>ล่วงหน้า 3 วัน</small></div><button class="switch ${st.n1?'on':''}" data-set="n1"></button></div>
-      <div class="set-row"><div class="sr-info"><b>แจ้งเตือนใบแจ้งหนี้เกินกำหนด</b><small>ทุกเช้น 09:00</small></div><button class="switch ${st.n2?'on':''}" data-set="n2"></button></div>
+      <div class="set-row"><div class="sr-info"><b>แจ้งเตือนใบแจ้งหนี้เกินกำหนด</b><small>ทุกเช้า 09:00</small></div><button class="switch ${st.n2?'on':''}" data-set="n2"></button></div>
       <div class="set-row"><div class="sr-info"><b>สรุปรายวันทางอีเมล</b><small>ส่ง 08:00 ทุกวันจันทร์</small></div><button class="switch ${st.n3?'on':''}" data-set="n3"></button></div>
-      <button class="btn btn-primary" style="margin-top:16px" data-act="save-settings">บันทึกการตั้งค่า</button>
+      <button class="btn btn-primary" style="margin-top:16px" data-act="save-settings">บันทึกการตั้งค่าลงฐานข้อมูล</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:18px">
       <div class="card card-pad">
@@ -1046,7 +1083,8 @@ function renderSettings(){
   </div>`;
   $$('#themeDots .theme-dot').forEach(d=>d.onclick=()=>{st.theme=d.dataset.theme; Store.save(); Remote.push('/settings','PUT',st); App.applyTheme(); renderSettings(); toast('เปลี่ยนธีมสีแล้ว');});
   $$('[data-set]', view).forEach(sw=>sw.onclick=()=>{st[sw.dataset.set]=!st[sw.dataset.set]; sw.classList.toggle('on'); Store.save(); Remote.push('/settings','PUT',st);});
-  // lazy-load รายชื่อผู้ใช้ + คลังโปรเจกต์ (admin เท่านั้น) — ครั้งแรกที่เปิดหน้า settings
+  // lazy-load รายชื่อผู้ใช้ + คลังโปรเจกต์ + DB Audit
+  if(Remote.on && Store.data._dbAudit===undefined && typeof runDbAudit==='function') runDbAudit(true);
   if(isAdm && Store.data.authUsers===undefined) loadAuthUsers().catch(()=>{ Store.data.authUsers=[]; });
   if(isAdm && Store.data.archProjects===undefined) loadArchivedProjects().catch(()=>{ Store.data.archProjects=[]; });
 }

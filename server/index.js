@@ -1,5 +1,6 @@
 /* MNG ERP — server entry: static SPA + REST API backed by MariaDB
    Compatible with Phusion Passenger (Plesk IN_PASSENGER=1) and standalone Node */
+const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const cfg = require('./config');
@@ -8,7 +9,7 @@ const auth = require('./auth');
 const api = require('./routes');
 
 const app = express();
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '15mb' }));
 
 const setNoStore = (res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
@@ -81,10 +82,22 @@ app.post('/api/auth/logout', async (req, res) => {
 app.use('/api/users', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, require('./users'));
 app.use('/api', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, api);
 
-/* ---------- static SPA ---------- */
+/* ---------- static SPA + safe /uploads ---------- */
 const root = path.join(__dirname, '..');
+const uploadsDir = path.join(root, 'uploads');
+try { fs.mkdirSync(uploadsDir, { recursive: true }); } catch {}
+
 // Prevent serving internal backend/test/source directories over HTTP
 app.use(['/server', '/tests', '/web', '/node_modules'], (_req, res) => res.status(404).end());
+
+// Serve uploaded Chat/Drive files safely (nosniff + sandbox CSP so uploads never execute scripts)
+app.use('/uploads', express.static(uploadsDir, {
+  dotfiles: 'ignore',
+  setHeaders: (res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox");
+  },
+}));
 
 // no-cache ทุกไฟล์ — ป้องกัน browser cache ไฟล์เก่า
 app.use(express.static(root, { dotfiles: 'ignore', extensions: ['html'], setHeaders: (res) => setNoStore(res) }));

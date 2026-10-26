@@ -92,13 +92,82 @@ const shapeClient = r => ({
   addr: r.addr || '', since: r.since || '2026-01-01',
 });
 const shapeInvoice = r => ({
-  id: 'i' + r.id, no: r.no, client: 'c' + r.client_id, title: r.title,
+  id: 'i' + r.id, no: r.no, client: r.client_id ? 'c' + r.client_id : null, title: r.title,
   amount: +r.amount, vat: +r.vat, issue: r.issue, due: r.due,
   paid: r.paid || undefined, status: r.status, items: J(r.items, []),
 });
+const shapeChannel = r => ({
+  id: 'ch' + r.id,
+  slug: r.slug,
+  name: r.name,
+  emoji: r.emoji || '💬',
+  topic: r.topic || '',
+  type: r.chan_type || 'group',
+  members: J(r.members, []),
+  projectId: r.project_id ? 'p' + r.project_id : null,
+  pinned: !!r.pinned,
+  unread: 0,
+});
+const shapeMessage = r => ({
+  id: 'm' + r.id,
+  channelId: 'ch' + r.channel_id,
+  senderId: r.sender_id || 'u1',
+  authorId: r.sender_id || 'u1',
+  senderName: r.sender_name || '',
+  kind: r.kind || 'text',
+  body: r.body,
+  text: r.body,
+  replyTo: r.reply_to ? 'm' + r.reply_to : null,
+  attachmentUrl: r.attachment_url || null,
+  attachmentName: r.attachment_name || null,
+  attachmentType: r.attachment_type || null,
+  attachmentSize: +r.attachment_size || 0,
+  pinned: !!r.pinned,
+  reactions: J(r.reactions, {}),
+  editedAt: r.edited_at ? String(r.edited_at).slice(0, 16) : null,
+  at: String(r.created_at || '').slice(0, 16),
+});
+const shapeFile = r => ({
+  id: 'f' + r.id,
+  channelId: r.channel_id ? 'ch' + r.channel_id : null,
+  projectId: r.project_id ? 'p' + r.project_id : null,
+  taskId: r.task_id ? 't' + r.task_id : null,
+  uploaderId: r.uploader_id || 'u1',
+  uploaderName: r.uploader_name || '',
+  name: r.name,
+  mime: r.mime || 'application/octet-stream',
+  size: +r.size || 0,
+  url: r.url,
+  source: r.source || 'upload',
+  at: String(r.created_at || '').slice(0, 16),
+});
 
-async function logActivity(text, teamId) {
-  try { await workPool.query('INSERT INTO erp_activity (team_id, text) VALUES (?,?)', [teamId || 1, text]); } catch {}
+const bkkDate = () => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',
+}).format(new Date());
+
+async function resolveActorTeamId(req) {
+  if (!req?.user) return 1;
+  try {
+    if (req.user.email) {
+      const [rows] = await workPool.query('SELECT id FROM erp_team WHERE LOWER(email) = LOWER(?) LIMIT 1', [req.user.email]);
+      if (rows.length) return rows[0].id;
+    }
+    if (req.user.user_id) {
+      const [rows] = await workPool.query('SELECT id FROM erp_team WHERE auth_user_id = ? LIMIT 1', [req.user.user_id]);
+      if (rows.length) return rows[0].id;
+    }
+  } catch {}
+  return 1;
+}
+
+async function logActivity(text, teamIdOrReq) {
+  try {
+    const tid = (teamIdOrReq && typeof teamIdOrReq === 'object' && 'user' in teamIdOrReq)
+      ? await resolveActorTeamId(teamIdOrReq)
+      : (teamIdOrReq || 1);
+    await workPool.query('INSERT INTO erp_activity (team_id, text) VALUES (?,?)', [tid, text]);
+  } catch {}
 }
 
 /* ---------------- BOOTSTRAP (one round-trip for the SPA) ---------------- */
@@ -115,12 +184,13 @@ router.get('/bootstrap', async (req, res) => {
     const [setR]    = await workPool.query('SELECT data FROM erp_settings WHERE id = 1');
 
     // Agency OS collections (graceful fallback if any table empty)
-    let aiAgentR = [], aiRunR = [], chanR = [], msgR = [], roomR = [], bookR = [], checkinR = [], leaveR = [];
+    let aiAgentR = [], aiRunR = [], chanR = [], msgR = [], fileR = [], roomR = [], bookR = [], checkinR = [], leaveR = [];
     try {
       [aiAgentR] = await workPool.query('SELECT * FROM erp_ai_agents ORDER BY id');
-      [aiRunR]   = await workPool.query('SELECT * FROM erp_ai_runs ORDER BY id DESC LIMIT 40');
-      [chanR]    = await workPool.query('SELECT * FROM erp_channels ORDER BY id');
-      [msgR]     = await workPool.query('SELECT * FROM erp_messages ORDER BY id ASC LIMIT 200');
+      [aiRunR]   = await workPool.query('SELECT * FROM erp_ai_runs ORDER BY id DESC LIMIT 50');
+      [chanR]    = await workPool.query('SELECT * FROM erp_channels ORDER BY COALESCE(pinned,0) DESC, id ASC');
+      [msgR]     = await workPool.query('SELECT * FROM erp_messages ORDER BY id ASC LIMIT 400');
+      [fileR]    = await workPool.query('SELECT * FROM erp_files ORDER BY id DESC LIMIT 120');
       [roomR]    = await workPool.query('SELECT * FROM erp_rooms ORDER BY id');
       [bookR]    = await workPool.query('SELECT * FROM erp_bookings ORDER BY date, start');
       [checkinR] = await workPool.query('SELECT * FROM erp_checkins ORDER BY date DESC, id DESC LIMIT 90');
@@ -152,12 +222,27 @@ router.get('/bootstrap', async (req, res) => {
       .filter(w => w[1] > 0.5).sort((a, b) => b[1] - a[1]).slice(0, 8)
       .map(w => [w[0], Math.round(w[1]), w[2]]);
 
+    const matchedMe = team.find(r =>
+      (req.user?.email && r.email && r.email.toLowerCase() === req.user.email.toLowerCase()) ||
+      (req.user?.user_id && r.auth_user_id === req.user.user_id)
+    );
+    const rawSettings = J(setR[0]?.data, {}) || {};
+    const mergedSettings = {
+      theme: '#6C5CE7',
+      n1: true, n2: true, n3: false,
+      orgName: 'MNG Groups',
+      orgDesc: 'Smart Dashboard & Work Tracking System',
+      driveFolder: 'https://drive.google.com/drive/u/0/my-drive',
+      ...rawSettings,
+    };
+
     res.json({
       user: req.user,
       team: team.map(r => ({
         id: 'u' + r.id, name: r.name, nickname: r.nickname || '',
         presence: r.presence || 'online', skills: J(r.skills, []),
-        role: r.role, color: r.color, email: r.email || '', phone: r.phone || '', me: !!r.is_me,
+        role: r.role, color: r.color, email: r.email || '', phone: r.phone || '',
+        me: matchedMe ? r.id === matchedMe.id : !!r.is_me,
         authUserId: authByEmail[r.email]?.id || null, authRole: authByEmail[r.email]?.role || null, authStatus: authByEmail[r.email]?.status || null
       })),
       projects, tasks,
@@ -178,12 +263,9 @@ router.get('/bootstrap', async (req, res) => {
         durationSec: +r.duration_sec || 3, tokens: +r.tokens || 0,
         status: r.status || 'ok', at: String(r.created_at || '').slice(0, 16),
       })),
-      channels: chanR.map(r => ({ id: 'ch' + r.id, slug: r.slug, name: r.name, emoji: r.emoji || '💬', topic: r.topic || '' })),
-      messages: msgR.map(r => ({
-        id: 'm' + r.id, channelId: 'ch' + r.channel_id, senderId: r.sender_id || 'u1',
-        senderName: r.sender_name || '', kind: r.kind || 'text', body: r.body,
-        pinned: !!r.pinned, reactions: J(r.reactions, {}), at: String(r.created_at || '').slice(0, 16),
-      })),
+      channels: chanR.map(shapeChannel),
+      messages: msgR.map(shapeMessage),
+      files: fileR.map(shapeFile),
       rooms: roomR.map(r => ({
         id: 'rm' + r.id, name: r.name, kind: r.kind || 'room', zone: r.zone || '',
         capacity: +r.capacity || 6, color: r.color || '#6C5CE7', equip: J(r.equip, []),
@@ -203,7 +285,7 @@ router.get('/bootstrap', async (req, res) => {
         reason: r.reason || '', status: r.status || 'pending', approvedBy: r.approved_by || '',
       })),
       eventCats: EVENT_CATS,
-      settings: J(setR[0]?.data, {}) || {},
+      settings: mergedSettings,
       trend: {
         months: ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'],
         created: idx(createdM), completed: idx(doneM), revenue: idx(revM), workload,
@@ -333,9 +415,11 @@ router.delete('/events/:id', async (req, res) => {
 router.post('/invoices/:id/pay', async (req, res) => {
   try {
     const id = numid(req.params.id);
-    await workPool.query("UPDATE erp_invoices SET status='paid', paid=CURDATE() WHERE id=?", [id]);
-    await logActivity(`บันทึกรับชำระใบแจ้งหนี้ #${id}`, 1);
-    res.json({ ok: true });
+    const td = bkkDate();
+    const [cur] = await workPool.query('SELECT no FROM erp_invoices WHERE id=?', [id]);
+    await workPool.query("UPDATE erp_invoices SET status='paid', paid=? WHERE id=?", [td, id]);
+    await logActivity(`บันทึกรับชำระใบแจ้งหนี้ <b>${escS(cur[0]?.no || '#' + id)}</b>`, req);
+    res.json({ ok: true, paid: td });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -345,13 +429,109 @@ router.post('/invoices', async (req, res) => {
     const [[{ mx }]] = await workPool.query("SELECT MAX(CAST(SUBSTRING(no,10) AS UNSIGNED)) mx FROM erp_invoices");
     const no = 'INV-2026-0' + pad((mx || 45) + 1);
     const amt = +b.amount || 0;
-    await workPool.query(
+    const vat = b.vat != null ? +b.vat : Math.round(amt * .07);
+    const issue = b.issue || bkkDate();
+    const [r] = await workPool.query(
       `INSERT INTO erp_invoices (no, client_id, title, amount, vat, issue, due, status, items)
-       VALUES (?,?,?,?,?,CURDATE(),?,?,?)`,
-      [no, numid(b.client), b.title || 'ค่าบริการ', amt, Math.round(amt * .07), b.due || null,
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [no, b.client ? numid(b.client) : null, b.title || 'ค่าบริการ', amt, vat, issue, b.due || null,
        b.status || 'draft', JSON.stringify(b.items || [{ d: b.title || 'ค่าบริการ', q: 1, p: amt }])]);
-    await logActivity(`สร้างใบแจ้งหนี้ <b>${no}</b>`, 1);
-    res.json({ ok: true, no });
+    await logActivity(`สร้างใบแจ้งหนี้ <b>${no}</b>`, req);
+    res.json({ ok: true, id: 'i' + r.insertId, no });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.patch('/invoices/:id', async (req, res) => {
+  const id = numid(req.params.id);
+  const b = req.body || {};
+  if (!id) return res.status(400).json({ error: 'bad_id' });
+  const sets = [], vals = [];
+  if (b.client !== undefined) { sets.push('client_id=?'); vals.push(b.client ? numid(b.client) : null); }
+  if (b.title !== undefined)  { sets.push('title=?');     vals.push(String(b.title || '').trim()); }
+  if (b.amount !== undefined) {
+    const amt = +b.amount || 0;
+    sets.push('amount=?'); vals.push(amt);
+    if (b.vat === undefined) { sets.push('vat=?'); vals.push(Math.round(amt * .07)); }
+  }
+  if (b.vat !== undefined)    { sets.push('vat=?');       vals.push(+b.vat || 0); }
+  if (b.issue !== undefined)  { sets.push('issue=?');     vals.push(b.issue || null); }
+  if (b.due !== undefined)    { sets.push('due=?');       vals.push(b.due || null); }
+  if (b.status !== undefined) {
+    sets.push('status=?'); vals.push(b.status);
+    if (b.status === 'paid' && b.paid === undefined) { sets.push('paid=COALESCE(paid,?)'); vals.push(bkkDate()); }
+  }
+  if (b.paid !== undefined)   { sets.push('paid=?');      vals.push(b.paid || null); }
+  if (b.items !== undefined)  { sets.push('items=?');     vals.push(JSON.stringify(b.items || [])); }
+  if (!sets.length) return res.json({ ok: true, noop: true });
+  try {
+    vals.push(id);
+    await workPool.query(`UPDATE erp_invoices SET ${sets.join(', ')} WHERE id=?`, vals);
+    await logActivity(`แก้ไขใบแจ้งหนี้ #${id}`, req);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete('/invoices/:id', async (req, res) => {
+  const id = numid(req.params.id);
+  if (!id) return res.status(400).json({ error: 'bad_id' });
+  try {
+    const [cur] = await workPool.query('SELECT no FROM erp_invoices WHERE id=?', [id]);
+    await workPool.query('DELETE FROM erp_invoices WHERE id=?', [id]);
+    await logActivity(`ลบใบแจ้งหนี้ <b>${escS(cur[0]?.no || '#' + id)}</b>`, req);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ---------------- CLIENTS (CRM — erp_clients) ---------------- */
+router.post('/clients', async (req, res) => {
+  const b = req.body || {};
+  if (!b.name?.trim()) return res.status(400).json({ error: 'name_required' });
+  try {
+    const name = b.name.trim();
+    const short = (b.short || name).trim().slice(0, 60);
+    const [r] = await workPool.query(
+      `INSERT INTO erp_clients (name, short, color, contact, phone, email, addr, since)
+       VALUES (?,?,?,?,?,?,?,?)`,
+      [name, short, b.color || '#6C5CE7', b.contact || '', b.phone || '', b.email || '', b.addr || '', b.since || bkkDate()]
+    );
+    await logActivity(`เพิ่มข้อมูลลูกค้า <b>${escS(name)}</b>`, req);
+    res.status(201).json({ id: 'c' + r.insertId });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.patch('/clients/:id', async (req, res) => {
+  const id = numid(req.params.id);
+  const b = req.body || {};
+  if (!id) return res.status(400).json({ error: 'bad_id' });
+  const sets = [], vals = [];
+  if (b.name !== undefined && String(b.name).trim()) { sets.push('name=?'); vals.push(String(b.name).trim()); }
+  if (b.short !== undefined)   { sets.push('short=?');   vals.push(String(b.short || '').trim().slice(0, 60)); }
+  if (b.color !== undefined)   { sets.push('color=?');   vals.push(b.color || '#6C5CE7'); }
+  if (b.contact !== undefined) { sets.push('contact=?'); vals.push(b.contact || ''); }
+  if (b.phone !== undefined)   { sets.push('phone=?');   vals.push(b.phone || ''); }
+  if (b.email !== undefined)   { sets.push('email=?');   vals.push(b.email || ''); }
+  if (b.addr !== undefined)    { sets.push('addr=?');    vals.push(b.addr || ''); }
+  if (b.since !== undefined)   { sets.push('since=?');   vals.push(b.since || null); }
+  if (!sets.length) return res.json({ ok: true, noop: true });
+  try {
+    vals.push(id);
+    await workPool.query(`UPDATE erp_clients SET ${sets.join(', ')} WHERE id=?`, vals);
+    await logActivity(`แก้ไขข้อมูลลูกค้า <b>${escS(b.name || '#' + id)}</b>`, req);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+router.delete('/clients/:id', async (req, res) => {
+  if (!guardManage(req, res)) return;
+  const id = numid(req.params.id);
+  if (!id) return res.status(400).json({ error: 'bad_id' });
+  try {
+    const [cur] = await workPool.query('SELECT name FROM erp_clients WHERE id=?', [id]);
+    await workPool.query('UPDATE erp_invoices SET client_id = NULL WHERE client_id = ?', [id]).catch(() => {});
+    await workPool.query('UPDATE projects SET erp_client_id = NULL WHERE erp_client_id = ?', [id]).catch(() => {});
+    await workPool.query('DELETE FROM erp_clients WHERE id=?', [id]);
+    await logActivity(`ลบข้อมูลลูกค้า <b>${escS(cur[0]?.name || '#' + id)}</b>`, req);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -521,8 +701,58 @@ router.put('/settings', async (req, res) => {
     const data = { ...J(cur[0][0]?.data, {}), ...(req.body || {}) };
     await workPool.query('INSERT INTO erp_settings (id, data) VALUES (1, ?) ON DUPLICATE KEY UPDATE data=?',
       [JSON.stringify(data), JSON.stringify(data)]);
-    res.json({ ok: true });
+    res.json({ ok: true, settings: data });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ---------------- DATABASE CONNECTIVITY AUDIT ---------------- */
+router.get('/db/audit', async (_req, res) => {
+  const tables = [
+    ['projects', 'โปรเจกต์ (projects)'],
+    ['tasks', 'งานทั้งหมด (tasks)'],
+    ['erp_team', 'สมาชิกทีม (erp_team)'],
+    ['erp_clients', 'ลูกค้า CRM (erp_clients)'],
+    ['erp_events', 'ปฏิทินนัดหมาย (erp_events)'],
+    ['erp_invoices', 'ใบแจ้งหนี้ (erp_invoices)'],
+    ['erp_ai_agents', 'AI Workforce (erp_ai_agents)'],
+    ['erp_ai_runs', 'ประวัติรัน AI (erp_ai_runs)'],
+    ['erp_channels', 'ห้องแชต & DM (erp_channels)'],
+    ['erp_messages', 'ข้อความแชต (erp_messages)'],
+    ['erp_files', 'ไฟล์ & Drive (erp_files)'],
+    ['erp_rooms', 'ห้องประชุม & สตูดิโอ (erp_rooms)'],
+    ['erp_bookings', 'คิวจองห้อง (erp_bookings)'],
+    ['erp_checkins', 'บันทึกเช็กอิน (erp_checkins)'],
+    ['erp_leaves', 'ใบลา & WFH (erp_leaves)'],
+    ['erp_activity', 'บันทึกกิจกรรม (erp_activity)'],
+    ['erp_settings', 'การตั้งค่าระบบ (erp_settings)'],
+  ];
+  try {
+    const t0 = Date.now();
+    let authUsersCount = 0;
+    let authOk = false;
+    try {
+      const [[au]] = await authPool.query('SELECT COUNT(*) c FROM users');
+      authUsersCount = +au.c || 0;
+      authOk = true;
+    } catch {}
+    const modules = [{ table: 'pacific_mng.users', label: 'บัญชีผู้ใช้งาน (Auth DB)', rows: authUsersCount, ok: authOk }];
+    for (const [tbl, label] of tables) {
+      try {
+        const [[r]] = await workPool.query(`SELECT COUNT(*) c FROM ${tbl}`);
+        modules.push({ table: tbl, label, rows: +r.c || 0, ok: true });
+      } catch (err) {
+        modules.push({ table: tbl, label, rows: 0, ok: false, error: err.message });
+      }
+    }
+    res.json({
+      ok: modules.every(m => m.ok),
+      latencyMs: Math.max(1, Date.now() - t0),
+      checkedAt: new Date().toISOString(),
+      modules,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 /* ---------------- AGENCY OS WORKSPACE ROUTES ---------------- */
