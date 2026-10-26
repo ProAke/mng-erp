@@ -48,7 +48,7 @@ describe('Plesk Phusion Passenger & Live MariaDB Production Regressions', () => 
       const htmlRes = await fetch(`http://127.0.0.1:${port}/`);
       expect(htmlRes.status).toBe(200);
       const html = await htmlRes.text();
-      expect(html).toContain('agency-os.js?v=6');
+      expect(html).toMatch(/agency-os\.js\?v=\d+/);
 
       // Verify /hub is excluded from SPA catch-all
       const hubRes = await fetch(`http://127.0.0.1:${port}/hub`);

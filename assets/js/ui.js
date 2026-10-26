@@ -214,42 +214,32 @@ function lineChart({series, labels, height=230, colors=['#8E7CF3','#22C793'], ar
 }
 
 /* --- donut chart --- */
-function donutChart({items, size=170, hole=.68, centerTop='', centerBottom=''}){
-  const svg = el('svg', {viewBox:`0 0 ${size} ${size}`});
+function donutChart({items, size=156, hole=.70, centerTop='', centerBottom=''}){
+  const svg = el('svg', {viewBox:`0 0 ${size} ${size}`, style:`width:${size}px;height:${size}px;flex:none`});
   const cx=size/2, cy=size/2, r=size/2-6, ir=r*hole;
+  const nonZero = items.filter(i=>i.value>0).length;
   const total = items.reduce((s,i)=>s+i.value,0) || 1;
+  svg.appendChild(el('circle', {cx, cy, r:(r+ir)/2, fill:'none', stroke:'#eef0f8', 'stroke-width':r-ir}));
   let angle = -Math.PI/2;
   const P = (a, rad)=>[cx+Math.cos(a)*rad, cy+Math.sin(a)*rad];
   items.forEach(it=>{
-    const sweep = it.value/total * Math.PI*2;
-    if(sweep<=0) return;
-    const a0=angle, a1=angle+sweep, gap = items.length>1 ? .035 : 0;
+    const rawSweep = it.value/total * Math.PI*2;
+    if(rawSweep<=0) return;
+    const sweep = nonZero===1 ? Math.PI*2 - 0.002 : rawSweep;
+    const a0=angle, a1=angle+sweep, gap = nonZero>1 ? .032 : 0;
     const [x0,y0]=P(a0+gap, r), [x1,y1]=P(a1-gap, r), [x2,y2]=P(a1-gap, ir), [x3,y3]=P(a0+gap, ir);
-    const large = sweep > Math.PI ? 1 : 0;
+    const large = (sweep - gap*2) > Math.PI ? 1 : 0;
     svg.appendChild(el('path', {
       d:`M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} L ${x2} ${y2} A ${ir} ${ir} 0 ${large} 0 ${x3} ${y3} Z`,
-      fill: it.color, style:'cursor:pointer', opacity:.94
+      fill: it.color, style:'cursor:pointer', opacity:.96
     })).appendChild(el('title')).textContent = `${it.label}: ${it.value}`;
     it._mid = (a0+a1)/2;
-    angle = a1;
+    angle += rawSweep;
   });
-  const t1 = el('text', {x:cx, y:cy-3, 'text-anchor':'middle','font-size':21,'font-weight':700, fill:'#23264d'});
+  const t1 = el('text', {x:cx, y:cy-2, 'text-anchor':'middle','font-size':22,'font-weight':700, fill:'#23264d'});
   t1.textContent = centerTop; svg.appendChild(t1);
-  const t2 = el('text', {x:cx, y:cy+16, 'text-anchor':'middle','font-size':10, fill:'#8a8fb1'});
+  const t2 = el('text', {x:cx, y:cy+15, 'text-anchor':'middle','font-size':10.5, fill:'#8a8fb1'});
   t2.textContent = centerBottom; svg.appendChild(t2);
-  setTimeout(()=>{ // pct labels
-    items.forEach(it=>{
-      const pct = Math.round(it.value/total*100);
-      if(pct<6) return;
-      const [x,y] = P(it._mid, (r+ir)/2);
-      // luminance-aware label color
-      const hex = it.color.replace('#','');
-      const r8=parseInt(hex.slice(0,2),16), g8=parseInt(hex.slice(2,4),16), b8=parseInt(hex.slice(4,6),16);
-      const lum = (0.299*r8+0.587*g8+0.114*b8)/255;
-      const t = el('text', {x, y:y+3.5, 'text-anchor':'middle','font-size':10.5,'font-weight':700, fill: lum>0.72?'#6b6f92':'#fff'});
-      t.textContent = pct+'%'; svg.appendChild(t);
-    });
-  });
   return svg;
 }
 
@@ -311,7 +301,7 @@ const STATUS_META = {
   done:   {label:'เสร็จแล้ว',   color:'#22C793', badge:'b-green'},
 };
 const PRIO_META = {
-  urgent:{label:'เร่งด่วน', cls:'p-urgent'},
+  urgent:{label:'ด่วนมาก',  cls:'p-urgent'},
   high:  {label:'สูง',      cls:'p-high'},
   med:   {label:'ปานกลาง',  cls:'p-med'},
   low:   {label:'ต่ำ',      cls:'p-low'},
@@ -332,3 +322,14 @@ const statusBadge = st => { const m=STATUS_META[st]||STATUS_META.todo; return `<
 const prioBadge  = p  => { const m=PRIO_META[p]||PRIO_META.med;  return `<span class="prio ${m.cls}">${m.label}</span>`; };
 const invBadge   = st => { const m=INV_META[st]||INV_META.draft;  return `<span class="badge ${m.badge}">${m.label}</span>`; };
 const presenceBadge = p => { const m=PRESENCE_META[p]||PRESENCE_META.online; return `<span class="badge ${m.badge}"><span class="dot" style="background:${m.color}"></span>${m.label}</span>`; };
+
+function pdKpi({ icon, grad, num, label, pill='', pillCls='k-violet', act='' }){
+  return `<div class="kpi ${act?'clickable':''}" ${act?`data-act="${act}"`:''}>
+    <div class="kpi-top">
+      <div class="k-ico" style="background:${grad};color:#fff">${icon}</div>
+      ${pill ? `<span class="k-trend ${pillCls}">${pill}</span>` : ''}
+    </div>
+    <div class="k-num">${num}</div>
+    <div class="k-lbl">${label}</div>
+  </div>`;
+}

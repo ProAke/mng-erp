@@ -153,4 +153,34 @@ describe('MNG ERP (ci-workflow base) + Agency OS (i.playdigital.co.th) integrati
     vm.runInContext(`Pomo.reset();`, ctx)
     expect(vm.runInContext(`Pomo.running`, ctx)).toBe(false)
   })
+
+  it('matches i.playdigital.co.th layout, color palette, typography, and Dashboard sections', () => {
+    const stylesCss = fs.readFileSync(path.join(rootDir, 'assets/css/styles.css'), 'utf8')
+    expect(stylesCss).toContain('--bg:#f6f7fc')
+    expect(stylesCss).toContain('--ink:#23264d')
+    expect(stylesCss).toContain('--violet:#6c5ce7')
+    expect(stylesCss).toContain('--mint:#22c793')
+    expect(stylesCss).toContain('--amber:#ffb020')
+    expect(stylesCss).toContain('--red:#ff5c7a')
+    expect(stylesCss).toContain("'Prompt'")
+    expect(stylesCss).toContain('width:100vw; height:100vh')
+
+    vm.runInContext(`location.hash = '#/dashboard'; App.route();`, ctx)
+    const dashHtml = dom.window.document.querySelector('#view')?.innerHTML || ''
+    for (const section of [
+      'โปรเจกต์ที่กำลังทำ',
+      'AI กำลังทำงาน',
+      'งานเร่งด่วน',
+      'แนวโน้มงาน &amp; รายได้',
+      'โปรเจกต์เด่น',
+      'ปฏิทินสัปดาห์นี้',
+      'สถานะงานทั้งหมด',
+      'ภาระงานทีม',
+      'AI utilization',
+      'กิจกรรมล่าสุด',
+      'วันนี้ ·',
+    ]) {
+      expect(dashHtml).toContain(section)
+    }
+  })
 })

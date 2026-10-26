@@ -170,19 +170,19 @@ const Store = {
    ============================================================ */
 const App = {
   routes: {
-    dashboard:{ title:'ภาพรวมวันนี้ 🔥',       sub:'ยินดีต้อนรับสู่ MNG ERP · Agency OS', icon:IC.dash,   label:'แดชบอร์ด', render:renderDashboard },
-    calendar: { title:'ปฏิทินงานเต็มจอ 🔥',     sub:'MNG Groups / Work Tracking',          icon:IC.cal,    label:'ปฏิทิน',   render:renderCalendar,  badge:()=>Store.data.events.filter(e=>e.date===todayS()).length },
-    tasks:    { title:'บอร์ดงาน (Kanban)',      sub:'MNG Groups / Work Everyday',          icon:IC.task,   label:'งาน',      render:renderTasks,     badge:()=>Store.data.tasks.filter(t=>t.status!=='done').length },
-    projects: { title:'โปรเจกต์ทั้งหมด',        sub:'ทุกโปรเจกต์ของ MNG Groups',           icon:IC.proj,   label:'โปรเจกต์', render:renderProjects },
-    ai:       { title:'ศูนย์ควบคุม AI Workforce',sub:'AI Co-pilot · Autonomy · Live Logs', icon:IC.bot,    label:'AI Hub',   render:renderAI,        badge:()=>(Store.data.aiAgents||[]).filter(a=>!a.paused).length },
-    chat:     { title:'แชตทีม & #ai-feed 💬',   sub:'สื่อสารภายในทีมแบบเรียลไทม์',        icon:IC.chat,   label:'แชตทีม',   render:renderChat },
-    hr:       { title:'ลงเวลาเข้างาน & ใบลา 🌿', sub:'HR · Daily Check-in · WFH',           icon:IC.hr,     label:'ลงเวลา',   render:renderHR,        badge:()=>(Store.data.leaves||[]).filter(l=>l.status==='pending').length },
-    rooms:    { title:'จองห้องประชุม & สตูดิโอ', sub:'ป้องกันคิวชนอัตโนมัติ (Conflict Guard)', icon:IC.room, label:'จองห้อง',  render:renderRooms },
-    finance:  { title:'การเงิน & ใบแจ้งหนี้',   sub:'รายรับ · รอเก็บ · VAT 7%',            icon:IC.money,  label:'การเงิน',  render:renderFinance },
-    team:     { title:'ทีมงาน Human + AI',      sub:'สถานะสด · ทักษะ · โหลดงานรายบุคคล',   icon:IC.team,   label:'ทีม',      render:renderTeam },
-    clients:  { title:'ลูกค้า (CRM)',           sub:'ฐานลูกค้าและยอดขายสะสม',              icon:IC.client, label:'ลูกค้า',   render:renderClients },
-    reports:  { title:'รายงานผู้บริหาร',        sub:'สรุปผลงาน · รายได้ · โหลดงาน',        icon:IC.report, label:'รายงาน',   render:renderReports },
-    settings: { title:'ตั้งค่าระบบ',            sub:'โปรไฟล์ · ธีม · ข้อมูลสำรอง',         icon:IC.gear,   label:'ตั้งค่า',  render:renderSettings },
+    dashboard:{ title:'ภาพรวมวันนี้',           sub:'MNG Workspace · ปฏิทิน · งาน · AI Workforce', icon:IC.dash,   label:'แดชบอร์ด', render:renderDashboard },
+    calendar: { title:'ปฏิทินงาน',              sub:'ตารางนัดหมาย เดดไลน์งาน และคิวจองห้อง',       icon:IC.cal,    label:'ปฏิทิน',   render:renderCalendar,  badge:()=>Store.data.events.filter(e=>e.date===todayS()).length },
+    tasks:    { title:'บอร์ดงาน',               sub:'ติดตามงานแบบ Kanban และตาราง',                icon:IC.task,   label:'งาน',      render:renderTasks,     badge:()=>Store.data.tasks.filter(t=>t.status!=='done').length },
+    projects: { title:'โปรเจกต์ทั้งหมด',        sub:'ภาพรวมความคืบหน้าและงบประมาณ',                icon:IC.proj,   label:'โปรเจกต์', render:renderProjects },
+    ai:       { title:'AI Workforce',           sub:'เอเจนต์อัตโนมัติ · คำสั่งงาน · บันทึก Token',  icon:IC.bot,    label:'AI Hub',   render:renderAI,        badge:()=>(Store.data.aiAgents||[]).filter(a=>!a.paused).length },
+    chat:     { title:'แชตทีม & #ai-feed',      sub:'ห้องสนทนาทีมและการแจ้งเตือนจาก AI',           icon:IC.chat,   label:'แชตทีม',   render:renderChat },
+    hr:       { title:'ลงเวลาเข้างาน & ใบลา',    sub:'เช็กอินรายวัน · WFH · อนุมัติใบลา',           icon:IC.hr,     label:'ลงเวลา',   render:renderHR,        badge:()=>(Store.data.leaves||[]).filter(l=>l.status==='pending').length },
+    rooms:    { title:'จองห้องประชุม & สตูดิโอ', sub:'ตารางห้องประชุม สตูดิโอ และอุปกรณ์ออกกอง',    icon:IC.room,   label:'จองห้อง',  render:renderRooms },
+    finance:  { title:'การเงิน & ใบแจ้งหนี้',   sub:'รายรับ · รอเก็บ · VAT 7%',                    icon:IC.money,  label:'การเงิน',  render:renderFinance },
+    team:     { title:'ทีมงาน & ภาระงาน',       sub:'ทีมมนุษย์และ AI · สถานะสด · โหลดงาน',         icon:IC.team,   label:'ทีม',      render:renderTeam },
+    clients:  { title:'ลูกค้า (CRM)',           sub:'ฐานข้อมูลลูกค้าและประวัติโครงการ',            icon:IC.client, label:'ลูกค้า',   render:renderClients },
+    reports:  { title:'รายงานผู้บริหาร',        sub:'วิเคราะห์แนวโน้มงาน รายได้ และชั่วโมงทีม',    icon:IC.report, label:'รายงาน',   render:renderReports },
+    settings: { title:'ตั้งค่าระบบ',            sub:'โปรไฟล์ · ธีมสี · สำรองข้อมูล',               icon:IC.gear,   label:'ตั้งค่า',  render:renderSettings },
   },
 
   async init(){
@@ -209,7 +209,7 @@ const App = {
     this.renderRail();
     this.bindGlobal();
     window.addEventListener('hashchange', ()=>this.route());
-    if(!location.hash) location.hash = '#/calendar';
+    if(!location.hash) location.hash = '#/dashboard';
     this.route();
     if(this._bootToast){ toast(this._bootToast[0], this._bootToast[1]); this._bootToast = null; }
     if(Remote.on) setTimeout(()=>toast('เชื่อมต่อฐานข้อมูลจริงแล้ว ✓ ข้อมูลจาก MariaDB pacific_mngworks'), 350);
@@ -282,16 +282,17 @@ const App = {
   },
 
   applyTheme(){
-    const t = Store.data.settings.theme || '#6C5CE7';
+    const t = Store.data.settings.theme || '#6c5ce7';
     document.documentElement.style.setProperty('--purple', t);
+    document.documentElement.style.setProperty('--violet', t);
   },
 
   go(name){ location.hash = '#/'+name; },
   refresh(){ this.renderRail(); this.route(); },
 
   route(){
-    const name = (location.hash.replace('#/','')||'calendar').split('?')[0];
-    const r = this.routes[name] || this.routes.calendar;
+    const name = (location.hash.replace('#/','')||'dashboard').split('?')[0];
+    const r = this.routes[name] || this.routes.dashboard;
     Store.ui.route = name;
     // reset view scroll mode
     const view = $('#view');

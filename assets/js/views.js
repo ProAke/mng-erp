@@ -24,18 +24,31 @@ function promoCard(title, text, btn, act){
 }
 
 /* ============================================================
-   DASHBOARD
+   DASHBOARD — PlayDigital Layout (matched to i.playdigital.co.th)
    ============================================================ */
 function renderDashboard(){
+  ensureAgencyData();
   const view = $('#view'), side = $('#side');
   const ui = Store.ui;
   const q = (ui.q.dash||'').toLowerCase();
+  const td = todayS();
 
   /* ----- side ----- */
   const openTasks = Store.data.tasks.filter(t=>t.status!=='done');
+  const ckToday = Store.data.checkins.filter(c=>c.date===td).length;
+  const bkToday = Store.data.bookings.filter(b=>b.date===td).length;
+
   side.innerHTML =
     sideSearch('ค้นหางาน หรือโปรเจกต์…','dash') +
-    sideChips('โปรเจกต์', Store.data.projects.map(p=>({id:p.id,label:p.short,color:p.color,count:Store.data.tasks.filter(t=>t.project===p.id&&t.status!=='done').length})),
+    `<div class="side-block"><h3>ทางลัดระบบงาน</h3>
+      <div class="side-quick-grid">
+        <button class="side-quick-btn" data-act="nav:hr">🌿 เช็กอิน (${ckToday}/${Store.data.team.length})</button>
+        <button class="side-quick-btn" data-act="nav:chat">💬 แชตทีม</button>
+        <button class="side-quick-btn" data-act="nav:rooms">🚪 จองห้อง (${bkToday})</button>
+        <button class="side-quick-btn" data-act="nav:finance">💳 การเงิน</button>
+      </div>
+    </div>` +
+    sideChips('โปรเจกต์', Store.data.projects.map(p=>({id:p.id,label:p.code||p.short,color:p.color,count:Store.data.tasks.filter(t=>t.project===p.id&&t.status!=='done').length})),
       ui.f.dashProjects,'dashProjects') +
     sideChips('สถานะงาน', Object.entries(STATUS_META).map(([k,v])=>({id:k,label:v.label,color:v.color,count:Store.data.tasks.filter(t=>t.status===k).length})),
       ui.f.dashStatus,'dashStatus') +
@@ -57,170 +70,321 @@ function renderDashboard(){
     const match = t => (!fProj.size || fProj.has(t.project)) && (!fStat.size || fStat.has(t.status)) &&
       (!q || (t.title+t.code).toLowerCase().includes(q));
 
-    /* KPIs */
+    /* KPIs (exact 4 PlayDigital cards) */
     const doing = Store.data.projects.filter(p=>p.status==='doing').length;
     const overdue = openTasks.filter(t=>daysLeft(t.due)<0).length;
     const dueSoon = openTasks.filter(t=>{const d=daysLeft(t.due); return d>=0&&d<=3;}).length;
-    const receivable = Store.data.invoices.filter(i=>['pending','overdue'].includes(i.status)).reduce((s,i)=>s+i.amount+i.vat,0);
-    const completedWk = Store.data.tasks.filter(t=>t.status==='done' && daysLeft(t.due)>-7).length;
+    const completedWk = Store.data.tasks.filter(t=>t.status==='done' && daysLeft(t.due)>=-7).length;
+
+    const agents = [...(Store.data.aiAgents||[])].sort((a,b)=>String(a.code).localeCompare(String(b.code)));
+    const aiActive = agents.filter(a=>!a.paused).length;
+    const aiRunsToday = Math.max((Store.data.aiRuns||[]).length, agents.reduce((s,a)=>s+Math.min(5, +a.runs||0), 0));
+    const aiDoneCnt = Store.data.tasks.filter(t=>t.aiAgentId && t.status==='done').length;
 
     /* featured: top open projects */
     const feats = Store.data.projects
       .filter(p=>p.status!=='done' && p.budget>=ui.f.dashBudget)
       .sort((a,b)=>b.progress-a.progress).slice(0,3);
 
-    /* hot list */
+    /* urgent / hot list */
     const hot = Store.data.tasks.filter(t=>match(t)&&t.status!=='done')
-      .sort((a,b)=>({urgent:0,high:1,med:2,low:3}[a.priority]-{urgent:0,high:1,med:2,low:3}[b.priority]) || a.due.localeCompare(b.due)).slice(0,5);
+      .sort((a,b)=>({urgent:0,high:1,med:2,low:3}[a.priority]-{urgent:0,high:1,med:2,low:3}[b.priority]) || (a.due||'9999-12-31').localeCompare(b.due||'9999-12-31')).slice(0,5);
 
     const stCount = Object.keys(STATUS_META).map(k=>Store.data.tasks.filter(t=>t.status===k).length);
-
-    ensureAgencyData();
-    const td = todayS();
-    const aiActive = Store.data.aiAgents.filter(a=>!a.paused).length;
-    const aiRunsCnt = Store.data.aiAgents.reduce((s,a)=>s+(+a.runs||0),0);
-    const ckToday = Store.data.checkins.filter(c=>c.date===td).length;
-    const bkToday = Store.data.bookings.filter(b=>b.date===td).length;
-    const msgCnt = Store.data.messages.length;
+    const todayEvCnt = Store.data.events.filter(e=>e.date===td).length;
+    const urgentCnt = openTasks.filter(t=>t.priority==='urgent'||daysLeft(t.due)<=0).length;
+    const nowD = s2d(td);
 
     view.innerHTML = `
+      <!-- Row 1: 4 PlayDigital KPI Cards -->
       <div class="kpi-grid">
-        ${kpiCard(IC.proj,'g-blue','linear-gradient(135deg,#3BA7FF,#2F6BF0)', doing, 'โปรเจกต์ที่กำลังทำ', '+2 เดือนนี้')}
-        ${kpiCard(IC.task,'','linear-gradient(135deg,#A06BF5,#6C5CE7)', openTasks.length, `งานคงค้าง ${overdue?`<small style="color:var(--red)">(${overdue} ล่าช้า)</small>`:''}`, completedWk+' ปิดในสัปดาห์')}
-        ${kpiCard(IC.alarm,'','linear-gradient(135deg,#FF9A5A,#FF6B5C)', dueSoon, 'ใกล้เดดไลน์ (≤ 3 วัน)', dueSoon?'ต้องเร่ง':'โล่งแล้ว')}
-        ${kpiCard(IC.money,'','linear-gradient(135deg,#FF6B9D,#B950F0)', money(receivable), 'ยอดรอเก็บ (รวม VAT)', Store.data.invoices.filter(i=>i.status==='overdue').length+' ใบเกินกำหนด')}
+        ${pdKpi({
+          icon: IC.proj, grad: 'var(--grad-cyan)',
+          num: doing, label: 'โปรเจกต์ที่กำลังทำ',
+          pill: `+${Store.data.projects.length} ทั้งหมด`, pillCls: 'k-violet', act: 'nav:projects'
+        })}
+        ${pdKpi({
+          icon: IC.task, grad: 'var(--grad-violet)',
+          num: openTasks.length,
+          label: `งานคงค้าง${overdue ? ` · <span style="color:var(--red);font-weight:600">${overdue} เลยกำหนด</span>` : ''}`,
+          pill: `${completedWk} ปิดแล้ว`, pillCls: 'k-neutral', act: 'nav:tasks'
+        })}
+        ${pdKpi({
+          icon: IC.alarm, grad: 'var(--grad-amber)',
+          num: dueSoon, label: 'ใกล้เดดไลน์ (≤ 3 วัน)',
+          pill: dueSoon ? 'ต้องเร่ง' : 'โล่ง', pillCls: dueSoon ? 'k-warn' : 'k-up', act: 'nav:tasks'
+        })}
+        ${pdKpi({
+          icon: IC.bot, grad: 'var(--grad-mint)',
+          num: agents.length,
+          label: `AI agents · <span style="color:#0f9d6e;font-weight:600">${aiActive} กำลังทำงาน</span>`,
+          pill: `${aiRunsToday} runs วันนี้`, pillCls: 'k-violet', act: 'nav:ai'
+        })}
       </div>
 
-      <div class="aos-pulse">
-        <div class="aos-tile" data-act="nav:ai">
-          <div class="aos-ico" style="background:#efeaff;color:#6C5CE7">🤖</div>
-          <div class="aos-meta">
-            <div class="aos-lbl">AI Workforce</div>
-            <div class="aos-val">${aiActive}/${Store.data.aiAgents.length} พร้อมทำงาน</div>
-            <div class="aos-sub">ทำสำเร็จสะสม ${aiRunsCnt} ภารกิจ</div>
+      <!-- Row 2: AI กำลังทำงาน Live Strip -->
+      <div class="ai-live-banner">
+        <div class="ai-live-head">
+          <div class="ai-live-title">
+            <span class="ai-live-dot" style="${aiActive?'':'background:var(--amber);box-shadow:0 0 0 3px var(--yellow-soft)'}"></span>
+            <b>AI กำลังทำงาน</b>
+            <span>เอเจนต์ลงมือทำงานเหมือนคน — มีงาน มี log มี token</span>
           </div>
+          <button class="btn btn-ghost btn-sm" data-act="nav:ai">เปิด AI Workforce</button>
         </div>
-        <div class="aos-tile" data-act="nav:chat">
-          <div class="aos-ico" style="background:#e6f4ff;color:#1b7fe0">💬</div>
-          <div class="aos-meta">
-            <div class="aos-lbl">แชตทีม & #ai-feed</div>
-            <div class="aos-val">${Store.data.channels.length} ห้องสนทนา</div>
-            <div class="aos-sub">${msgCnt} ข้อความซิงก์สดในทีม</div>
-          </div>
-        </div>
-        <div class="aos-tile" data-act="nav:hr">
-          <div class="aos-ico" style="background:#e4fbf2;color:#119e6e">🌿</div>
-          <div class="aos-meta">
-            <div class="aos-lbl">เช็กอินเข้างานวันนี้</div>
-            <div class="aos-val">${ckToday}/${Store.data.team.length} คน</div>
-            <div class="aos-sub">ใบลารออนุมัติ ${Store.data.leaves.filter(l=>l.status==='pending').length} รายการ</div>
-          </div>
-        </div>
-        <div class="aos-tile" data-act="nav:rooms">
-          <div class="aos-ico" style="background:#fff4dc;color:#d68900">🚪</div>
-          <div class="aos-meta">
-            <div class="aos-lbl">ห้องประชุม & สตูดิโอ</div>
-            <div class="aos-val">จองวันนี้ ${bkToday} คิว</div>
-            <div class="aos-sub">ทรัพยากรพร้อมใช้ ${Store.data.rooms.length} รายการ</div>
-          </div>
+        <div class="ai-strip-grid">
+          ${agents.map(a => {
+            const curTask = Store.data.tasks.find(t => t.aiAgentId === a.id && t.status !== 'done');
+            const isLive = !a.paused;
+            return `<div class="ai-strip-item ${isLive && curTask ? 'is-live' : ''}" onclick="${curTask ? `openTaskModal('${curTask.id}')` : `openAiDispatchModal('${a.id}')`}">
+              <div class="ai-strip-top">
+                <b>${esc(a.code)}</b>
+                <span class="ai-state-pill ${isLive ? 'live' : 'idle'}">${isLive ? 'live' : 'พัก'}</span>
+              </div>
+              <div class="ai-strip-sub">
+                ${!isLive ? 'พักการทำงาน'
+                  : curTask ? `กำลังทำงาน <span class="code-pill">${esc(curTask.code)}</span>`
+                  : `พร้อมรับงาน · ${esc(a.role.split(' ')[0])}`}
+              </div>
+            </div>`;
+          }).join('')}
         </div>
       </div>
 
-      <div class="section-ttl">${IC.flame} โปรเจกต์เด่น <span class="right">เหมือน Featured Jobs ใน reference — คลิกเพื่อดูรายละเอียด</span></div>
-      <div class="feat-row">
-        ${feats.map(p=>{const c=Store.clientOf(p); return `
-          <div class="feat-card ${p.grad}" data-act="open-project" data-id="${p.id}">
-            <div class="fc-top"><div class="fc-logo">${initials(p.short)}</div>
-              <div><b>${esc(p.name)}</b><small>${esc(c?c.name:'')}</small></div></div>
-            <div class="fc-tags"><span>${STATUS_META[p.status].label}</span><span>${p.members.length} คน</span><span>${Store.data.tasks.filter(t=>t.project===p.id&&t.status!=='done').length} งานคงค้าง</span></div>
-            <div class="fc-bottom"><b>${p.budget?moneyK(p.budget):'In-house'}</b><span>ส่ง ${fmtD(p.end,{short:true})}</span></div>
-            <div class="fc-prog"><div style="width:${p.progress}%"></div></div>
-          </div>`;}).join('')}
-      </div>
-
+      <!-- Row 3: งานเร่งด่วน + แนวโน้มงาน & รายได้ -->
       <div class="dash-grid">
         <div class="card">
-          <div class="card-head"><div class="card-title">${IC.flame} งานเร่งด่วน</div>
-            <button class="link-btn" data-act="nav:tasks">ดูทั้งหมด</button></div>
-          <div>${hot.length? hot.map(t=>{const p=Store.projectOf(t),u=Store.userOf(t.assignee);
-            return `<div class="trow" data-act="open-task" data-id="${t.id}">
-              <div class="tr-ico" style="background:${p.color}">${initials(p.short)}</div>
-              <div class="tr-main"><b>${esc(t.title)}</b><small>${p.short} · ${prioBadge(t.priority)} · ${t.code}</small></div>
-              <div class="tr-right"><b style="color:${daysLeft(t.due)<0?'var(--red)':'var(--ink)'}">${relDay(t.due)}</b>
-                <small>${statusBadge(t.status)} ${avatar(u)}</small></div></div>`;}).join('')
-            : `<div class="empty-state">${IC.task}<p>ไม่มีงานตามตัวกรอง</p></div>`}
+          <div class="card-head">
+            <div class="card-title">งานเร่งด่วน</div>
+            <button class="link-btn" data-act="nav:tasks">ดูทั้งหมด</button>
           </div>
+          <div>${hot.length ? hot.map(t => {
+            const p = Store.projectOf(t), u = Store.userOf(t.assignee);
+            const pCode = (p.code || initials(p.short)).slice(0, 3).toUpperCase();
+            const dl = daysLeft(t.due);
+            const dueLbl = dl < 0 ? `เลย ${-dl} วัน` : relDay(t.due);
+            return `<div class="trow" data-act="open-task" data-id="${t.id}">
+              <div class="tr-ico" style="background:${p.color}">${esc(pCode)}</div>
+              <div class="tr-main">
+                <b>${esc(t.title)}</b>
+                <small><span class="mono-code" style="color:var(--violet)">${esc(t.code)}</span> · ${prioBadge(t.priority)} · ${esc(p.name)}</small>
+              </div>
+              <div class="tr-right">
+                <b style="color:${dl<0?'var(--red)':dl===0?'#c27d00':'var(--ink)'}">${dueLbl}</b>
+                <small>${avatar(u)}</small>
+              </div>
+            </div>`;
+          }).join('') : `<div class="empty-state">${IC.task}<p>ไม่มีงานเร่งด่วนตามตัวกรอง</p></div>`}</div>
         </div>
+
         <div class="card chart-card">
-          <div class="card-head" style="padding:0 0 12px"><div class="card-title">แนวโน้มงาน & รายได้</div>
+          <div class="card-head" style="padding:0 0 12px">
+            <div class="card-title">แนวโน้มงาน & รายได้</div>
             <div class="chart-tabs" id="dashTabs">
               <button class="${ui.dashTab==='work'?'on':''}" data-tab="work">งาน</button>
-              <button class="${ui.dashTab==='revenue'?'on':''}" data-tab="revenue" style="${ui.dashTab==='revenue'?'background:var(--purple)':''}">รายได้</button>
-            </div></div>
+              <button class="${ui.dashTab==='revenue'?'on':''}" data-tab="revenue">รายได้</button>
+            </div>
+          </div>
           <div id="dashChart"></div>
           <div class="legend" id="dashLegend"></div>
         </div>
       </div>
 
-      <div class="dash-grid" style="margin-top:18px">
+      <!-- Row 4: โปรเจกต์เด่น -->
+      <div class="section-ttl">
+        โปรเจกต์เด่น <span class="sub-inline">คลิกเพื่อดูงานในโปรเจกต์</span>
+        <button class="right" data-act="nav:tasks">ไปที่บอร์ดงาน</button>
+      </div>
+      <div class="feat-row">
+        ${feats.map(p => {
+          const c = Store.clientOf(p);
+          const pCode = (p.code || initials(p.short)).slice(0, 3).toUpperCase();
+          const openCnt = Store.data.tasks.filter(t=>t.project===p.id&&t.status!=='done').length;
+          const dLeft = daysLeft(p.end);
+          return `<div class="feat-card ${p.grad}" data-act="open-project" data-id="${p.id}">
+            <div class="fc-top">
+              <div class="fc-logo">${esc(pCode)}</div>
+              <div><b>${esc(p.name)}</b><small>${esc(c ? c.name : (p.client || 'MNG Internal'))}</small></div>
+            </div>
+            <div class="fc-tags">
+              <span>${STATUS_META[p.status]?.label || 'กำลังทำ'}</span>
+              <span>${p.members.length} คน</span>
+              <span>${openCnt} งานคงค้าง</span>
+            </div>
+            <div class="fc-bottom">
+              <b>${p.budget ? money(p.budget) : 'In-house'}</b>
+              <span>ส่ง ${fmtD(p.end, {short:true})} · ${dLeft >= 0 ? `${dLeft} วัน` : `เลย ${-dLeft} วัน`}</span>
+            </div>
+            <div class="fc-prog"><div style="width:${p.progress}%"></div></div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Row 5: ปฏิทินสัปดาห์นี้ + สถานะงานทั้งหมด -->
+      <div class="dash-grid">
         <div class="card">
-          <div class="card-head"><div class="card-title">${IC.cal} ปฏิทินสัปดาห์นี้</div>
-            <button class="link-btn" data-act="nav:calendar">เปิดปฏิทินเต็มจอ</button></div>
+          <div class="card-head">
+            <div class="card-title">ปฏิทินสัปดาห์นี้</div>
+            <button class="link-btn" data-act="nav:calendar">เปิดปฏิทินเต็มจอ</button>
+          </div>
           <div id="miniWeek"></div>
         </div>
-        <div class="dash-grid" style="grid-template-columns:.9fr 1.1fr">
-          <div class="card chart-card" style="text-align:center">
-            <div class="card-title" style="justify-content:flex-start;margin-bottom:10px">สถานะงานทั้งหมด</div>
+
+        <div class="card" style="display:flex;flex-direction:column;justify-content:space-between">
+          <div class="card-head">
+            <div class="card-title">สถานะงานทั้งหมด</div>
+            <span class="badge b-grey">${Store.data.tasks.length} งาน</span>
+          </div>
+          <div class="status-split">
             <div id="dashDonut" style="display:flex;justify-content:center"></div>
-            <div class="legend" style="justify-content:center;flex-wrap:wrap">
-              ${Object.entries(STATUS_META).map(([k,v])=>`<span><i style="background:${v.color}"></i>${v.label}</span>`).join('')}
+            <div class="status-rows">
+              ${[
+                ['รอดำเนินการ', stCount[0], '#c9cde4'],
+                ['กำลังทำ',     stCount[1], '#3ba7ff'],
+                ['ตรวจแก้',     stCount[2], '#ffb020'],
+                ['เสร็จแล้ว',   stCount[3], '#22c793'],
+              ].map(([lbl, cnt, col]) => `
+                <div class="status-row">
+                  <span class="sr-left"><span class="sr-dot" style="background:${col}"></span>${lbl}</span>
+                  <b>${cnt}</b>
+                </div>
+              `).join('')}
             </div>
           </div>
-          <div class="card">
-            <div class="card-head"><div class="card-title">${IC.clock} กิจกรรมล่าสุด</div></div>
-            <div style="max-height:260px;overflow:auto">
-              ${Store.data.activity.slice(0,7).map(a=>{const u=Store.userOf(a.u);return `
-                <div class="trow" style="cursor:default"><div class="tr-ico" style="background:${u.color};border-radius:50%">${initials(u.name)}</div>
-                <div class="tr-main"><b style="font-weight:500;font-size:12.5px">${a.text}</b><small>${a.at}</small></div></div>`;}).join('')}
+          <div class="card-foot-note">
+            <span>งานเลยกำหนด <b style="color:${overdue?'var(--red)':'var(--ink)'}">${overdue}</b> · วันนี้ <b>${todayEvCnt}</b> นัด</span>
+            <button class="link-btn" data-act="nav:tasks">จัดการงาน →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 6: 3-Column Bottom Grid (ภาระงานทีม · AI utilization · กิจกรรมล่าสุด) -->
+      <div class="dash-tri-grid">
+        <div class="card" style="display:flex;flex-direction:column">
+          <div class="card-head">
+            <div class="card-title">ภาระงานทีม</div>
+            <span style="font-size:11.5px;color:var(--muted)">ชม./สัปดาห์</span>
+          </div>
+          <div class="util-list">
+            ${Store.data.team.map(u => {
+              const hrs = Store.data.tasks.filter(t=>t.assignee===u.id&&t.status!=='done')
+                .reduce((s,t)=>s+(t.est||6)*(1-(t.progress||0)/100), 0);
+              const pct = Math.min(100, Math.max(12, Math.round(hrs/40*100)));
+              const col = pct > 85 ? 'var(--red)' : pct > 68 ? 'var(--amber)' : 'var(--violet)';
+              return `<div class="util-row">
+                ${avatar(u)}
+                <div class="util-main">
+                  <div class="util-top"><span>${esc(u.name)}</span><b>${pct}%</b></div>
+                  <div class="progress"><div style="width:${pct}%;background:${col}"></div></div>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="card" style="display:flex;flex-direction:column;justify-content:space-between">
+          <div>
+            <div class="card-head">
+              <div class="card-title">AI utilization</div>
+              <span style="font-size:11.5px;color:var(--muted)">tokens วันนี้</span>
+            </div>
+            <div class="util-list">
+              ${agents.map(a => {
+                const pct = Math.min(100, Math.max(4, Math.round(((+a.tokensToday || 1200) / 30000) * 100)));
+                return `<div class="util-row" style="cursor:pointer" onclick="openAiDispatchModal('${a.id}')">
+                  <span class="util-ai-badge">AI</span>
+                  <div class="util-main">
+                    <div class="util-top"><span style="font-family:var(--font-mono);font-weight:600">${esc(a.code)}</span><b>${pct}%</b></div>
+                    <div class="progress"><div style="width:${pct}%;background:${a.color || 'var(--violet)'}"></div></div>
+                  </div>
+                </div>`;
+              }).join('')}
             </div>
           </div>
+          <div class="card-foot-note">
+            <span>งานที่ AI ปิดแล้ว <b>${aiDoneCnt}</b> · run วันนี้ <b>${aiRunsToday}</b></span>
+            <button class="link-btn" data-act="nav:ai">AI Hub</button>
+          </div>
+        </div>
+
+        <div class="card" style="display:flex;flex-direction:column">
+          <div class="card-head">
+            <div class="card-title">กิจกรรมล่าสุด</div>
+          </div>
+          <div style="max-height:286px;overflow-y:auto">
+            ${Store.data.activity.slice(0, 7).map(a => {
+              const isAi = String(a.text||'').includes('🤖') || String(a.u||'').startsWith('ai');
+              const u = Store.userOf(a.u);
+              return `<div class="trow" style="padding:10px 18px;cursor:default">
+                ${isAi
+                  ? `<span class="util-ai-badge">AI</span>`
+                  : `<div class="av" style="background:${u.color}">${initials(u.name)}</div>`}
+                <div class="tr-main">
+                  <b style="font-weight:500;font-size:12.5px;white-space:normal;line-height:1.4">${a.text}</b>
+                  <small>${esc(isAi ? 'AI Workforce' : u.name.split(' ')[0])} · ${esc(a.at)}</small>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 7: Bottom Today Dock (matches i.playdigital.co.th) -->
+      <div class="today-dock">
+        <div class="today-dock-left">
+          <div class="today-dock-ico">📅</div>
+          <div>
+            <b>วันนี้ · ${TH_DOW[nowD.getDay()]} ${nowD.getDate()} ${TH_MONTHS[nowD.getMonth()]} ${nowD.getFullYear()+543}</b>
+            <span>นัดหมาย ${todayEvCnt} รายการ · งานด่วน ${urgentCnt} · AI กำลังทำงาน ${aiActive} ตัว</span>
+          </div>
+        </div>
+        <div class="today-dock-actions">
+          <button class="btn btn-ghost btn-sm" data-act="new-event">${IC.plus} เพิ่มนัด</button>
+          <button class="btn btn-primary btn-sm" data-act="nav:calendar">เปิดปฏิทิน</button>
         </div>
       </div>`;
 
     // charts
     const tr = Store.data.trend;
     if(ui.dashTab==='work'){
-      $('#dashChart').appendChild(lineChart({series:[tr.created,tr.completed],labels:tr.months,legend:['สร้างใหม่','ปิดงาน'],yFmt:v=>Math.round(v)+' งาน'}));
-      $('#dashLegend').innerHTML = `<span><i style="background:#8E7CF3"></i>สร้างใหม่</span><span><i style="background:#22C793"></i>ปิดงานแล้ว</span>`;
+      $('#dashChart').appendChild(lineChart({series:[tr.created,tr.completed],labels:tr.months,colors:['#8e7cf3','#22c793'],legend:['งานสร้างใหม่','ปิดงานแล้ว'],yFmt:v=>Math.round(v)}));
+      $('#dashLegend').innerHTML = `<span><i style="background:#8e7cf3"></i>งานสร้างใหม่</span><span><i style="background:#22c793"></i>ปิดงานแล้ว</span>`;
     } else {
-      $('#dashChart').appendChild(barChart({data:tr.revenue,labels:tr.months,highlight:9,yFmt:v=>'฿'+v+'k'}));
-      $('#dashLegend').innerHTML = `<span><i style="background:#6C5CE7"></i>รายได้ต่อเดือน (พันบาท) — ปี 2569</span>`;
+      $('#dashChart').appendChild(barChart({data:tr.revenue,labels:tr.months,color:'#6c5ce7',highlight:9,yFmt:v=>'฿'+v+'k'}));
+      $('#dashLegend').innerHTML = `<span><i style="background:#6c5ce7"></i>รายได้ต่อเดือน (พันบาท) — ปี 2569</span>`;
     }
     $$('#dashTabs button').forEach(b=>b.onclick=()=>{ui.dashTab=b.dataset.tab; renderDashboardMain();});
-    $('#dashDonut').appendChild(donutChart({items:[
-        {label:'รอดำเนินการ',value:stCount[0],color:'#c9cde4'},{label:'กำลังทำ',value:stCount[1],color:'#3BA7FF'},
-        {label:'ตรวจแก้',value:stCount[2],color:'#FFB020'},{label:'เสร็จแล้ว',value:stCount[3],color:'#22C793'}],
-      centerTop:Store.data.tasks.length, centerBottom:'งานทั้งหมด'}));
+    $('#dashDonut').appendChild(donutChart({
+      size: 148,
+      items:[
+        {label:'รอดำเนินการ',value:stCount[0],color:'#c9cde4'},
+        {label:'กำลังทำ',value:stCount[1],color:'#3ba7ff'},
+        {label:'ตรวจแก้',value:stCount[2],color:'#ffb020'},
+        {label:'เสร็จแล้ว',value:stCount[3],color:'#22c793'},
+      ],
+      centerTop: Store.data.tasks.length,
+      centerBottom: 'งานในระบบ'
+    }));
     renderMiniWeek($('#miniWeek'));
-  }
-
-  function kpiCard(icon, _g, grad, num, label, trend){
-    return `<div class="kpi"><div class="k-ico" style="background:${grad};color:#fff">${icon}</div>
-      <div><div class="k-num">${num}</div><div class="k-lbl">${label}</div></div>
-      <span class="k-trend k-up">${trend}</span></div>`;
   }
 }
 
 function renderMiniWeek(root){
   const t = s2d(todayS());
   const monday = addDays(t, -(t.getDay()+6)%7);
-  let html = `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px;padding:14px 16px 18px">`;
+  let html = `<div class="pd-week-grid">`;
   for(let i=0;i<7;i++){
-    const d=addDays(monday,i), ds=d2s(d), evs=Store.eventsOn(ds).slice(0,3);
-    html += `<div style="background:${ds===todayS()?'var(--purple-soft)':'#f8f9fd'};border-radius:12px;padding:9px 6px;text-align:center;min-height:98px;cursor:pointer" data-act="cal-day" data-id="${ds}">
-      <div style="font-size:10px;color:var(--muted);font-weight:600">${TH_DOW_S[d.getDay()]}</div>
-      <div style="font-size:15px;font-weight:700;margin:2px 0 6px;${ds===todayS()?'color:var(--purple)':''}">${d.getDate()}</div>
-      <div style="display:flex;flex-direction:column;gap:3px">${evs.map(e=>`<span style="height:5px;border-radius:4px;background:${Store.catColor(e.cat)}" title="${esc(e.title)}"></span>`).join('')||'<span style="font-size:9px;color:#c3c7dd">ว่าง</span>'}</div>
+    const d=addDays(monday,i), ds=d2s(d), evs=Store.eventsOn(ds).slice(0,2);
+    const isToday = ds===todayS();
+    html += `<div class="pd-day-col ${isToday?'is-today':''}" data-act="cal-day" data-id="${ds}">
+      <div class="pd-day-dow">${TH_DOW_S[d.getDay()]}.</div>
+      <div class="pd-day-num">${d.getDate()}</div>
+      ${evs.length
+        ? evs.map(e => {
+            const cls = Store.data.eventCats[e.cat]?.cls || 'ev-task';
+            return `<div class="pd-day-ev ${cls}" title="${esc(e.title)}">${esc(e.title)}</div>`;
+          }).join('')
+        : `<div class="pd-day-empty">ว่าง</div>`}
     </div>`;
   }
   root.innerHTML = html + '</div>';
@@ -588,14 +752,10 @@ function renderFinance(){
 
   view.innerHTML = `
     <div class="fin-summary">
-      <div class="kpi"><div class="k-ico" style="background:linear-gradient(135deg,#3BA7FF,#2F6BF0);color:#fff">${IC.money}</div>
-        <div><div class="k-num">${moneyK(paidYear)}</div><div class="k-lbl">เก็บแล้วปีนี้ (ก่อน VAT)</div></div><span class="k-trend k-up">+14%</span></div>
-      <div class="kpi"><div class="k-ico" style="background:linear-gradient(135deg,#FFD66B,#FFB020);color:#fff">${IC.clock}</div>
-        <div><div class="k-num">${moneyK(tot('pending'))}</div><div class="k-lbl">รอชำระ (รวม VAT)</div></div></div>
-      <div class="kpi"><div class="k-ico" style="background:linear-gradient(135deg,#FF8AA5,#FF5C7A);color:#fff">${IC.alarm}</div>
-        <div><div class="k-num">${moneyK(tot('overdue'))}</div><div class="k-lbl">เกินกำหนดชำระ</div></div><span class="k-trend k-down">${Store.data.invoices.filter(i=>i.status==='overdue').length} ใบ</span></div>
-      <div class="kpi"><div class="k-ico" style="background:linear-gradient(135deg,#8E9BB5,#5A6280);color:#fff">${IC.doc}</div>
-        <div><div class="k-num">${Store.data.invoices.filter(i=>i.status==='draft').length}</div><div class="k-lbl">ฉบับร่างรอออก</div></div></div>
+      ${pdKpi({ icon: IC.money, grad: 'var(--grad-cyan)', num: moneyK(paidYear), label: 'เก็บแล้วปีนี้ (ก่อน VAT)', pill: '+14%', pillCls: 'k-up' })}
+      ${pdKpi({ icon: IC.clock, grad: 'var(--grad-amber)', num: moneyK(tot('pending')), label: 'รอชำระ (รวม VAT)', pill: 'รอดำเนินการ', pillCls: 'k-warn' })}
+      ${pdKpi({ icon: IC.alarm, grad: 'linear-gradient(135deg,#ff8aa5,#ff5c7a)', num: moneyK(tot('overdue')), label: 'เกินกำหนดชำระ', pill: `${Store.data.invoices.filter(i=>i.status==='overdue').length} ใบ`, pillCls: 'k-down' })}
+      ${pdKpi({ icon: IC.doc, grad: 'linear-gradient(135deg,#8e9bb5,#5a6280)', num: Store.data.invoices.filter(i=>i.status==='draft').length, label: 'ฉบับร่างรอออก', pill: 'ฉบับร่าง', pillCls: 'k-neutral' })}
     </div>
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>เลขที่</th><th>รายการ</th><th>ลูกค้า</th><th>ยอดก่อน VAT</th><th>VAT 7%</th><th>รวมสุทธิ</th><th>ครบกำหนด</th><th>สถานะ</th><th></th></tr></thead>
