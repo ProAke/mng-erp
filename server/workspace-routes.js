@@ -8,6 +8,17 @@ const numid = fid => parseInt(String(fid ?? '').replace(/^[a-z]+/i, ''), 10) || 
 const escS = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LEAD_ROLES = ['super_admin', 'admin', 'manager'];
 
+function bkkNow() {
+  const now = new Date();
+  const date = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(now);
+  const time = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(now);
+  return { date, time };
+}
+
 async function logActivity(text, teamId = 1) {
   try { await workPool.query('INSERT INTO erp_activity (team_id, text) VALUES (?,?)', [teamId, text]); } catch {}
 }
@@ -81,9 +92,9 @@ router.post('/ai/toggle-all', async (req, res) => {
 });
 
 router.post('/ai/dispatch', async (req, res) => {
-  const { agentId, taskId, instruction } = req.body || {};
-  const aid = numid(agentId);
-  const tid = taskId ? numid(taskId) : null;
+  const b = req.body || {};
+  const aid = numid(b.agentId);
+  const tid = b.taskId ? numid(b.taskId) : null;
   try {
     const [agRows] = await workPool.query('SELECT * FROM erp_ai_agents WHERE id=?', [aid]);
     if (!agRows.length) return res.status(404).json({ error: 'agent_not_found' });
@@ -93,31 +104,34 @@ router.post('/ai/dispatch', async (req, res) => {
     if (tid) {
       const [tRows] = await workPool.query('SELECT title, erp_code FROM tasks WHERE id=?', [tid]);
       if (tRows.length) { taskTitle = tRows[0].title; taskCode = tRows[0].erp_code || ('MNG-' + (1000 + tid)); }
+      await workPool.query("UPDATE tasks SET erp_ai_agent = ? WHERE id = ? AND (erp_ai_agent IS NULL OR erp_ai_agent = '')", ['ai' + aid, tid]).catch(() => {});
     }
     const tokens = 620 + Math.floor(Math.random() * 980);
-    const dur = 3 + Math.floor(Math.random() * 6);
-    const action = instruction?.trim() || (taskCode ? `วิเคราะห์และดำเนินการ ${taskCode}` : `ประมวลผลคำสั่งโดย ${ag.name}`);
-    const detail = taskTitle
-      ? `${ag.name} (${ag.model}) ตรวจสอบงาน "${taskTitle}" พร้อมสรุปแผนปฏิบัติการและเช็กลิสต์ย่อยเรียบร้อย`
-      : `${ag.name} (${ag.model}) ดำเนินการ "${action}" เสร็จสมบูรณ์`;
+    const dur = 3 + Math.floor(Math.random() * 5);
+    const rawCmd = (b.action || b.instruction || '').trim();
+    const action = rawCmd || (taskCode ? `วิเคราะห์และดำเนินการ ${taskCode}` : `ประมวลผลคำสั่งโดย ${ag.name}`);
+    const detail = (b.detail && String(b.detail).trim())
+      ? String(b.detail).trim()
+      : taskTitle
+        ? `${ag.name} (${ag.model}) ตรวจสอบงาน "${taskTitle}" พร้อมสรุปแผนปฏิบัติการและเช็กลิสต์ย่อยเรียบร้อย`
+        : `${ag.name} (${ag.model}) ดำเนินการ "${action}" เสร็จสมบูรณ์`;
 
     const [ins] = await workPool.query(
       `INSERT INTO erp_ai_runs (agent_id, task_id, action, detail, duration_sec, tokens, status)
        VALUES (?,?,?,?,?,?,'ok')`,
-      [aid, tid, action, detail, dur, tokens]
+      [aid, tid, action.slice(0, 155), detail, dur, tokens]
     );
     await workPool.query('UPDATE erp_ai_agents SET runs = runs + 1, tokens_today = tokens_today + ? WHERE id = ?', [tokens, aid]);
 
-    // Post update to #ai-feed channel if present
     const [ch] = await workPool.query("SELECT id FROM erp_channels WHERE slug='ai-feed' LIMIT 1");
     if (ch.length) {
       await workPool.query(
         `INSERT INTO erp_messages (channel_id, sender_id, sender_name, kind, body, reactions)
-         VALUES (?,?,?,'ai',?,'{}')`,
-        [ch[0].id, 'ai' + aid, `${ag.name} (AI)`, `✨ <b>${escS(action)}</b> — ${escS(detail)} (${tokens} tokens · ${dur}s)`]
+         VALUES (?,?,?,'ai',?,'{"⚡":["u1"]}')`,
+        [ch[0].id, 'ai' + aid, `${ag.name} (AI)`, `✨ <b>${escS(ag.name)}</b>: <b>${escS(action)}</b>${taskCode ? ` (${escS(taskCode)})` : ''} — ${escS(detail)}`]
       );
     }
-    await logActivity(`AI <b>${escS(ag.name)}</b> รันงาน: ${escS(action)}`);
+    await logActivity(`🤖 <b>${escS(ag.name)}</b> รันงาน: ${escS(action)}`);
     res.json({ ok: true, id: 'run' + ins.insertId, tokens, durationSec: dur, detail });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -168,6 +182,14 @@ router.post('/messages/:id/react', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+router.post('/messages/:id/pin', async (req, res) => {
+  const mid = numid(req.params.id);
+  try {
+    await workPool.query('UPDATE erp_messages SET pinned = 1 - COALESCE(pinned, 0) WHERE id = ?', [mid]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.patch('/messages/:id', async (req, res) => {
   const mid = numid(req.params.id);
   try {
@@ -186,35 +208,39 @@ router.delete('/messages/:id', async (req, res) => {
 });
 
 /* ---------- HR ATTENDANCE & LEAVES ---------- */
-router.post('/checkins/in', async (req, res) => {
+router.post(['/checkins/clock', '/checkins/in'], async (req, res) => {
   const b = req.body || {};
   const memberId = b.memberId || 'u1';
-  const today = b.date || new Date().toISOString().slice(0, 10);
-  const time = b.time || new Date().toTimeString().slice(0, 5);
+  const now = bkkNow();
+  const today = b.date || now.date;
+  const time = b.time || now.time;
   try {
     const [ex] = await workPool.query('SELECT id FROM erp_checkins WHERE member_id=? AND date=? LIMIT 1', [memberId, today]);
     if (ex.length) {
-      await workPool.query('UPDATE erp_checkins SET clock_in=?, mode=?, note=? WHERE id=?',
+      await workPool.query('UPDATE erp_checkins SET clock_in=COALESCE(NULLIF(clock_in,""), ?), mode=?, note=? WHERE id=?',
         [time, b.mode || 'office', b.note || null, ex[0].id]);
-      return res.json({ ok: true, id: 'ck' + ex[0].id });
+    } else {
+      await workPool.query(
+        'INSERT INTO erp_checkins (member_id, date, clock_in, mode, note) VALUES (?,?,?,?,?)',
+        [memberId, today, time, b.mode || 'office', b.note || null]
+      );
     }
-    const [r] = await workPool.query(
-      'INSERT INTO erp_checkins (member_id, date, clock_in, mode, note) VALUES (?,?,?,?,?)',
-      [memberId, today, time, b.mode || 'office', b.note || null]
-    );
-    await logActivity(`ลงเวลาเข้างาน (${b.mode === 'wfh' ? 'WFH' : 'เข้าออฟฟิศ'}) เวลา <b>${time}</b>`);
-    res.status(201).json({ ok: true, id: 'ck' + r.insertId });
+    await workPool.query("UPDATE erp_team SET presence = 'working' WHERE id = ?", [numid(memberId)]).catch(() => {});
+    await logActivity(`⏱ ลงเวลาเข้างาน (${b.mode === 'wfh' ? 'WFH' : 'เข้าออฟฟิศ'}) เวลา <b>${time}</b>`);
+    res.json({ ok: true, clockIn: time });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-router.post('/checkins/out', async (req, res) => {
+router.post(['/checkins/clock-out', '/checkins/out'], async (req, res) => {
   const b = req.body || {};
   const memberId = b.memberId || 'u1';
-  const today = b.date || new Date().toISOString().slice(0, 10);
-  const time = b.time || new Date().toTimeString().slice(0, 5);
+  const now = bkkNow();
+  const today = b.date || now.date;
+  const time = b.time || now.time;
   try {
     await workPool.query('UPDATE erp_checkins SET clock_out=? WHERE member_id=? AND date=?', [time, memberId, today]);
-    await logActivity(`ลงเวลาออกงาน เวลา <b>${time}</b>`);
+    await workPool.query("UPDATE erp_team SET presence = 'away' WHERE id = ?", [numid(memberId)]).catch(() => {});
+    await logActivity(`👋 ลงเวลาออกงาน เวลา <b>${time}</b>`);
     res.json({ ok: true, clockOut: time });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -228,7 +254,7 @@ router.post('/leaves', async (req, res) => {
        VALUES (?,?,?,?,?,?,'pending')`,
       [b.memberId || 'u1', b.kind || 'annual', b.startDate, b.endDate, Number(b.days) || 1, b.reason || '']
     );
-    await logActivity(`ยื่นคำขอลา/WFH (${escS(b.kind || 'annual')}) วันที่ ${escS(b.startDate)}`);
+    await logActivity(`🌿 ยื่นคำขอลา/WFH (${escS(b.kind || 'annual')}) วันที่ ${escS(b.startDate)}`);
     res.status(201).json({ id: 'lv' + r.insertId });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -274,7 +300,6 @@ router.post('/bookings', async (req, res) => {
   const start = b.start || '10:00';
   const end = b.end || '11:00';
   try {
-    // Check overlap
     const [clash] = await workPool.query(
       'SELECT id, title, start, end FROM erp_bookings WHERE room_id=? AND date=? AND NOT (end <= ? OR start >= ?)',
       [rid, b.date, start, end]
@@ -287,7 +312,7 @@ router.post('/bookings', async (req, res) => {
        VALUES (?,?,?,?,?,?,?,?)`,
       [rid, b.title.trim(), b.date, start, end, b.hostId || 'u1', JSON.stringify(b.members || ['u1']), b.note || null]
     );
-    await logActivity(`จองห้อง/อุปกรณ์ <b>${escS(b.title.trim())}</b> วันที่ ${escS(b.date)} (${start}–${end})`);
+    await logActivity(`🚪 จองห้อง/อุปกรณ์ <b>${escS(b.title.trim())}</b> วันที่ ${escS(b.date)} (${start}–${end})`);
     res.status(201).json({ id: 'bk' + r.insertId });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

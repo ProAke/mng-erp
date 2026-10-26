@@ -7,20 +7,18 @@ const authPool = mysql.createPool(cfg.authDb);   // pacific_mng        (users, s
 const workPool = mysql.createPool(cfg.workDb);   // pacific_mngworks   (projects, tasks, erp_* tables)
 
 /* ---------- schema: additive-only, safe for the existing workspace app ---------- */
-const SCHEMA = [
+const TABLES = [
   `CREATE TABLE IF NOT EXISTS erp_team (
      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
      name VARCHAR(100) NOT NULL, role VARCHAR(80) NOT NULL DEFAULT '',
      color VARCHAR(20) NOT NULL DEFAULT '#8E7CF3',
      email VARCHAR(255), phone VARCHAR(30), is_me TINYINT(1) DEFAULT 0,
      auth_user_id BIGINT UNSIGNED NULL,
+     nickname VARCHAR(40) NULL,
+     presence VARCHAR(20) DEFAULT 'online',
+     skills LONGTEXT NULL,
      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-
-  `ALTER TABLE erp_team
-     ADD COLUMN IF NOT EXISTS nickname VARCHAR(40) NULL,
-     ADD COLUMN IF NOT EXISTS presence VARCHAR(20) DEFAULT 'online',
-     ADD COLUMN IF NOT EXISTS skills LONGTEXT NULL`,
 
   `CREATE TABLE IF NOT EXISTS erp_clients (
      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -177,41 +175,68 @@ const SCHEMA = [
      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
      INDEX idx_status (status)
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+];
 
-  // additive ERP columns on the EXISTING tables (nothing removed/renamed)
-  `ALTER TABLE projects
-     ADD COLUMN IF NOT EXISTS erp_code VARCHAR(16) NULL,
-     ADD COLUMN IF NOT EXISTS erp_client_id INT UNSIGNED NULL,
-     ADD COLUMN IF NOT EXISTS erp_client VARCHAR(200) NULL,
-     ADD COLUMN IF NOT EXISTS erp_budget DECIMAL(15,2) NULL,
-     ADD COLUMN IF NOT EXISTS erp_spent DECIMAL(15,2) NULL,
-     ADD COLUMN IF NOT EXISTS erp_progress TINYINT UNSIGNED DEFAULT 0,
-     ADD COLUMN IF NOT EXISTS erp_color VARCHAR(20) NULL,
-     ADD COLUMN IF NOT EXISTS erp_grad VARCHAR(20) NULL,
-     ADD COLUMN IF NOT EXISTS erp_start DATE NULL,
-     ADD COLUMN IF NOT EXISTS erp_end DATE NULL,
-     ADD COLUMN IF NOT EXISTS erp_members LONGTEXT NULL,
-     ADD COLUMN IF NOT EXISTS erp_status VARCHAR(12) NULL,
-     ADD COLUMN IF NOT EXISTS erp_archived TINYINT(1) DEFAULT 0`,
-  `ALTER TABLE tasks
-     ADD COLUMN IF NOT EXISTS erp_code VARCHAR(20) NULL,
-     ADD COLUMN IF NOT EXISTS erp_start DATE NULL,
-     ADD COLUMN IF NOT EXISTS erp_assignee INT UNSIGNED NULL,
-     ADD COLUMN IF NOT EXISTS erp_est DECIMAL(6,2) NULL,
-     ADD COLUMN IF NOT EXISTS erp_spent DECIMAL(6,2) DEFAULT 0,
-     ADD COLUMN IF NOT EXISTS erp_prio VARCHAR(10) NULL,
-     ADD COLUMN IF NOT EXISTS erp_blocked TINYINT(1) DEFAULT 0,
-     ADD COLUMN IF NOT EXISTS erp_block_reason VARCHAR(300) NULL,
-     ADD COLUMN IF NOT EXISTS erp_ai_generated TINYINT(1) DEFAULT 0,
-     ADD COLUMN IF NOT EXISTS erp_tags LONGTEXT NULL,
-     ADD COLUMN IF NOT EXISTS erp_subtasks LONGTEXT NULL,
-     ADD COLUMN IF NOT EXISTS erp_comments LONGTEXT NULL`,
+/* Additive columns — executed individually ignoring ER_DUP_FIELDNAME (1060)
+   so it works identically on both MariaDB and MySQL 8 without syntax errors */
+const ADDITIVE_COLS = [
+  ['erp_team', 'nickname VARCHAR(40) NULL'],
+  ['erp_team', "presence VARCHAR(20) DEFAULT 'online'"],
+  ['erp_team', 'skills LONGTEXT NULL'],
+
+  ['projects', 'erp_code VARCHAR(16) NULL'],
+  ['projects', 'erp_client_id INT UNSIGNED NULL'],
+  ['projects', 'erp_client VARCHAR(200) NULL'],
+  ['projects', 'erp_budget DECIMAL(15,2) NULL'],
+  ['projects', 'erp_spent DECIMAL(15,2) NULL'],
+  ['projects', 'erp_progress TINYINT UNSIGNED DEFAULT 0'],
+  ['projects', 'erp_color VARCHAR(20) NULL'],
+  ['projects', 'erp_grad VARCHAR(20) NULL'],
+  ['projects', 'erp_start DATE NULL'],
+  ['projects', 'erp_end DATE NULL'],
+  ['projects', 'erp_members LONGTEXT NULL'],
+  ['projects', 'erp_status VARCHAR(12) NULL'],
+  ['projects', 'erp_archived TINYINT(1) DEFAULT 0'],
+
+  ['tasks', 'erp_code VARCHAR(20) NULL'],
+  ['tasks', 'erp_start DATE NULL'],
+  ['tasks', 'erp_assignee INT UNSIGNED NULL'],
+  ['tasks', 'erp_ai_agent VARCHAR(20) NULL'],
+  ['tasks', 'erp_est DECIMAL(6,2) NULL'],
+  ['tasks', 'erp_spent DECIMAL(6,2) DEFAULT 0'],
+  ['tasks', 'erp_spent_hrs DECIMAL(6,2) DEFAULT 0'],
+  ['tasks', 'erp_prio VARCHAR(10) NULL'],
+  ['tasks', 'erp_blocked TINYINT(1) DEFAULT 0'],
+  ['tasks', 'erp_block_reason VARCHAR(300) NULL'],
+  ['tasks', 'erp_ai_generated TINYINT(1) DEFAULT 0'],
+  ['tasks', 'erp_tags LONGTEXT NULL'],
+  ['tasks', 'erp_subtasks LONGTEXT NULL'],
+  ['tasks', 'erp_comments LONGTEXT NULL'],
 ];
 
 async function ensureSchema() {
   const conn = await workPool.getConnection();
   try {
-    for (const sql of SCHEMA) await conn.query(sql);
+    for (const sql of TABLES) {
+      await conn.query(sql);
+    }
+    // Check existing columns first in one fast query so we don't lock tables unnecessarily!
+    const [existingCols] = await conn.query(
+      `SELECT TABLE_NAME t, COLUMN_NAME c FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('erp_team', 'projects', 'tasks')`
+    );
+    const colSet = new Set(existingCols.map(r => `${r.t}.${r.c}`.toLowerCase()));
+    for (const [tbl, def] of ADDITIVE_COLS) {
+      const colName = def.split(/\s+/)[0].toLowerCase();
+      if (colSet.has(`${tbl}.${colName}`)) continue;
+      try {
+        await conn.query(`ALTER TABLE ${tbl} ADD COLUMN ${def}`);
+      } catch (e) {
+        if (e.errno !== 1060 && e.code !== 'ER_DUP_FIELDNAME') {
+          console.warn(`[db] alter ${tbl}.${colName} warn:`, e.message);
+        }
+      }
+    }
     console.log('[db] schema ready (authPool=users only, workPool=works + agency-os data)');
   } finally { conn.release(); }
 }

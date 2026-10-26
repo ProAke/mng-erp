@@ -150,12 +150,22 @@ const ACTIVITY = [
   [5,'ปิดงาน <b>Chef-jeed v2 deploy</b> — production verified'],
 ];
 
+const bkkDate = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+
 async function seed(pool) {
   const conn = await pool.getConnection();
   try {
-    await conn.query(`INSERT INTO erp_settings (id, data) VALUES (1, ?)
-      ON DUPLICATE KEY UPDATE data = JSON_SET(data, '$.seedVersion', ${SEED_VERSION})`,
-      [JSON.stringify({ seedVersion: SEED_VERSION, theme:'#6C5CE7', n1:true, n2:true, n3:false })]);
+    // Fast-path check: if already at SEED_VERSION and Agency OS tables populated, skip heavy seed!
+    const [curSet] = await conn.query('SELECT data FROM erp_settings WHERE id = 1');
+    let curVer = 0;
+    try { curVer = JSON.parse(curSet[0]?.data || '{}').seedVersion || 0; } catch {}
+    if (curVer >= SEED_VERSION) {
+      const [agCnt] = await conn.query('SELECT COUNT(*) c FROM erp_ai_agents');
+      if (agCnt[0]?.c > 0) {
+        console.log('[seed] already at seedVersion', curVer, '— fast-path skip');
+        return;
+      }
+    }
 
     // team
     let [rows] = await conn.query('SELECT COUNT(*) c FROM erp_team');
@@ -212,7 +222,7 @@ async function seed(pool) {
       for (const rm of ROOMS) await conn.query(
         'INSERT INTO erp_rooms (name, kind, zone, capacity, color, equip) VALUES (?,?,?,?,?,?)',
         [rm.name, rm.kind, rm.zone, rm.capacity, rm.color, JSON.stringify(rm.equip)]);
-      const td = new Date().toISOString().slice(0, 10);
+      const td = bkkDate();
       await conn.query(
         `INSERT INTO erp_bookings (room_id, title, date, start, end, host_id, members, note) VALUES
          (1, 'Sprint Planning & Review ทีม MNG', ?, '10:00', '11:30', 'u1', '["u1","u2","u3","u5"]', 'เตรียมสไลด์สรุปความคืบหน้า'),
@@ -226,7 +236,7 @@ async function seed(pool) {
     // HR Check-ins + Leaves
     [rows] = await conn.query('SELECT COUNT(*) c FROM erp_checkins');
     if (!rows[0].c) {
-      const td = new Date().toISOString().slice(0, 10);
+      const td = bkkDate();
       await conn.query(
         `INSERT INTO erp_checkins (member_id, date, clock_in, clock_out, mode, note) VALUES
          ('u1', ?, '09:05', NULL, 'office', 'เข้าออฟฟิศ ประชุมเช้า'),
@@ -300,8 +310,8 @@ async function seed(pool) {
     }
     console.log('[seed] real tasks enriched');
 
-    // extra tasks (insert only if not already there — marker by title prefix match)
-    const [exCnt] = await conn.query("SELECT COUNT(*) c FROM tasks WHERE erp_code LIKE 'MNG-%'");
+    // extra tasks (insert only if not already there — check both erp_code and first extra task title)
+    const [exCnt] = await conn.query("SELECT COUNT(*) c FROM tasks WHERE erp_code IS NOT NULL OR title = ?", [EXTRA_TASKS[0].title]);
     if (!exCnt[0].c) {
       for (const t of EXTRA_TASKS) {
         await conn.query(`INSERT INTO tasks (project_id, title, description, status, priority, due_date, progress,
@@ -314,18 +324,29 @@ async function seed(pool) {
       console.log('[seed] extra tasks:', EXTRA_TASKS.length);
     }
 
-    // backfill codes + progress sync (pure JS + standard SQL for maximum MariaDB compatibility)
-    const [projRows] = await conn.query("SELECT id, hub_id, name, erp_code FROM projects WHERE erp_code IS NULL OR erp_code = ''");
+    // backfill codes + progress sync (pure JS + standard SQL — projects uses `title`, NOT `name`)
+    const [projRows] = await conn.query("SELECT id, hub_id, title, erp_code FROM projects WHERE erp_code IS NULL OR erp_code = ''");
     for (const pr of projRows) {
-      const cleaned = String(pr.hub_id || pr.name || 'MNG').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 3);
+      const cleaned = String(pr.hub_id || pr.title || 'MNG').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 3);
       const code = cleaned.length >= 2 ? cleaned : 'MNG';
       await conn.query('UPDATE projects SET erp_code=? WHERE id=?', [code, pr.id]);
     }
     await conn.query(`UPDATE tasks t LEFT JOIN projects p ON p.id = t.project_id
       SET t.erp_code = CONCAT(COALESCE(NULLIF(p.erp_code, ''), 'MNG'), '-', 1000 + t.id)
-      WHERE t.erp_code IS NULL OR t.erp_code = ''`);
+      WHERE t.erp_code IS NULL OR t.erp_code = '' OR t.erp_code LIKE 'MNG-%'`);
     await conn.query("UPDATE tasks SET progress = 100 WHERE status = 'done' AND progress < 100");
-    console.log('[seed] done');
+
+    // Mark seedVersion ONLY after all seed operations succeed!
+    let mergedSettings = { seedVersion: SEED_VERSION, theme: '#6C5CE7', n1: true, n2: true, n3: false };
+    try {
+      const prev = curSet[0]?.data ? JSON.parse(curSet[0].data) : {};
+      mergedSettings = { ...mergedSettings, ...prev, seedVersion: SEED_VERSION };
+    } catch {}
+    await conn.query(
+      'INSERT INTO erp_settings (id, data) VALUES (1, ?) ON DUPLICATE KEY UPDATE data = ?',
+      [JSON.stringify(mergedSettings), JSON.stringify(mergedSettings)]
+    );
+    console.log('[seed] done (version', SEED_VERSION + ')');
   } finally { conn.release(); }
 }
 

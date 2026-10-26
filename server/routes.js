@@ -28,20 +28,26 @@ const EVENT_CATS = {
 };
 
 function shapeTask(r) {
+  const rawSt = STATUS_MAP[r.status] || r.status;
+  const status = ['todo', 'doing', 'review', 'done'].includes(rawSt) ? rawSt : 'todo';
+  const rawPrio = r.erp_prio || PRIO_BASE[r.priority] || 'med';
+  const priority = ['urgent', 'high', 'med', 'low'].includes(rawPrio) ? rawPrio : 'med';
+  const fbDate = (r.created_at ? String(r.created_at).slice(0, 10) : '') || '2026-10-31';
   return {
     id: 't' + r.id,
     code: r.erp_code || ('MNG-' + (1000 + r.id)),
     project: 'p' + r.project_id,
-    title: r.title,
+    title: r.title || '(ไม่มีชื่องาน)',
     desc: r.description || '',
-    status: STATUS_MAP[r.status] || r.status,
-    priority: r.erp_prio || PRIO_BASE[r.priority] || 'med',
+    status,
+    priority,
     assignee: r.erp_assignee ? 'u' + r.erp_assignee : null,
     aiAgentId: r.erp_ai_agent || null,
-    start: r.erp_start, due: r.due_date,
+    start: r.erp_start || fbDate,
+    due: r.due_date || fbDate,
     progress: r.progress || 0,
     est: r.erp_est ? +r.erp_est : 0,
-    spent: r.erp_spent_hrs ? +r.erp_spent_hrs : 0,
+    spent: (r.erp_spent_hrs != null ? +r.erp_spent_hrs : (r.erp_spent ? +r.erp_spent : 0)),
     tags: J(r.erp_tags, []), subtasks: J(r.erp_subtasks, []), comments: J(r.erp_comments, []),
   };
 }

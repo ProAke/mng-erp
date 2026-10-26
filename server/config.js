@@ -1,6 +1,7 @@
 /* MNG ERP — server configuration (secrets live in .env only, never in git) */
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const demoOnly = !process.env.DB_AUTH_PASS || !process.env.DB_WORK_PASS;
 if (demoOnly) {
