@@ -248,7 +248,6 @@ const App = {
           <div class="f-group"><label>รหัสผ่าน</label><input type="password" id="lgPass" placeholder="••••••••" autocomplete="current-password" required></div>
           <button class="btn btn-primary lg-btn" type="submit" id="lgBtn">เข้าสู่ระบบ (เชื่อมฐานข้อมูลจริง)</button>
         </form>
-        <div class="login-alt">ไม่ต้องการเชื่อมฐานข้อมูล? <a id="lgDemo">ใช้โหมดสาธิต</a></div>
         <div class="login-db"><span class="dot ok"></span> MariaDB · pacific_mng (auth) + pacific_mngworks (data) · 203.146.252.149</div>
       </div>`;
     document.body.appendChild(ov);
@@ -273,11 +272,6 @@ const App = {
           : (err.message||'เข้าสู่ระบบไม่สำเร็จ');
         const eb = $('#lgErr'); eb.innerHTML = IC.alarm+' '+msg; eb.style.display='flex';
       }
-    });
-    $('#lgDemo').addEventListener('click', ()=>{
-      ov.remove(); $('#appShell').style.display = '';
-      this._bootToast = ['โหมดสาธิต — ข้อมูลอยู่ใน localStorage เท่านั้น','warn'];
-      this.start();
     });
   },
 
