@@ -342,14 +342,10 @@ function renderAI() {
     </div>
 
     <div class="kpi-grid">
-      <div class="kpi"><div class="k-ico" style="background:linear-gradient(135deg,#8E7CF3,#6C5CE7);color:#fff">${IC.bot}</div>
-        <div><div class="k-num">${activeCnt}/${agents.length}</div><div class="k-lbl">AI พร้อมทำงาน</div></div><span class="k-trend k-up">ออนไลน์</span></div>
-      <div class="kpi"><div class="k-ico" style="background:linear-gradient(135deg,#3BA7FF,#2F6BF0);color:#fff">${IC.bolt}</div>
-        <div><div class="k-num">${totalRuns}</div><div class="k-lbl">ภารกิจสำเร็จสะสม</div></div><span class="k-trend k-up">+${runs.length} ล่าสุด</span></div>
-      <div class="kpi"><div class="k-ico" style="background:linear-gradient(135deg,#36D6A8,#14B890);color:#fff">${IC.check}</div>
-        <div><div class="k-num">${avgSucc}%</div><div class="k-lbl">ความแม่นยำเฉลี่ย</div></div></div>
-      <div class="kpi"><div class="k-ico" style="background:linear-gradient(135deg,#FFD66B,#FFB020);color:#fff">${IC.flame}</div>
-        <div><div class="k-num">${(totalTok / 1000).toFixed(1)}k</div><div class="k-lbl">Tokens วันนี้</div></div></div>
+      ${pdKpi({ icon: IC.bot, grad: 'var(--grad-violet)', num: `${activeCnt}/${agents.length}`, label: 'AI พร้อมทำงาน', pill: 'ออนไลน์', pillCls: 'k-up' })}
+      ${pdKpi({ icon: IC.bolt, grad: 'var(--grad-cyan)', num: totalRuns, label: 'ภารกิจสำเร็จสะสม', pill: `+${runs.length} ล่าสุด`, pillCls: 'k-violet' })}
+      ${pdKpi({ icon: IC.check, grad: 'var(--grad-mint)', num: `${avgSucc}%`, label: 'ความแม่นยำเฉลี่ย', pill: 'เสถียร', pillCls: 'k-up' })}
+      ${pdKpi({ icon: IC.flame, grad: 'var(--grad-amber)', num: `${(totalTok / 1000).toFixed(1)}k`, label: 'Tokens วันนี้', pill: 'จาก 150k', pillCls: 'k-neutral' })}
     </div>
 
     <div class="ai-grid">
@@ -928,14 +924,10 @@ function renderHR() {
     </div>
 
     <div class="kpi-grid">
-      <div class="kpi"><div class="k-ico" style="background:linear-gradient(135deg,#36D6A8,#14B890);color:#fff">${IC.users}</div>
-        <div><div class="k-num">${todayCheckins.length}/${Store.data.team.length}</div><div class="k-lbl">เช็กอินเข้างานวันนี้</div></div><span class="k-trend k-up">ออฟฟิศ ${officeCnt}</span></div>
-      <div class="kpi"><div class="k-ico" style="background:linear-gradient(135deg,#3BA7FF,#2F6BF0);color:#fff">${IC.dash}</div>
-        <div><div class="k-num">${wfhCnt}</div><div class="k-lbl">ปฏิบัติงาน WFH วันนี้</div></div></div>
-      <div class="kpi"><div class="k-ico" style="background:linear-gradient(135deg,#FFD66B,#FFB020);color:#fff">${IC.clock}</div>
-        <div><div class="k-num">${pendingLeaves}</div><div class="k-lbl">ใบลารออนุมัติ</div></div>${pendingLeaves ? '<span class="k-trend k-down">รออนุมัติ</span>' : ''}</div>
-      <div class="kpi"><div class="k-ico" style="background:linear-gradient(135deg,#8E7CF3,#6C5CE7);color:#fff">${IC.flame}</div>
-        <div><div class="k-num">${myStreak} วัน</div><div class="k-lbl">สถิติเช็กอินต่อเนื่อง</div></div></div>
+      ${pdKpi({ icon: IC.users, grad: 'var(--grad-mint)', num: `${todayCheckins.length}/${Store.data.team.length}`, label: 'เช็กอินเข้างานวันนี้', pill: `ออฟฟิศ ${officeCnt}`, pillCls: 'k-up' })}
+      ${pdKpi({ icon: IC.dash, grad: 'var(--grad-cyan)', num: wfhCnt, label: 'ปฏิบัติงาน WFH วันนี้', pill: 'Hybrid', pillCls: 'k-violet' })}
+      ${pdKpi({ icon: IC.clock, grad: 'var(--grad-amber)', num: pendingLeaves, label: 'ใบลารออนุมัติ', pill: pendingLeaves ? 'รออนุมัติ' : 'ครบแล้ว', pillCls: pendingLeaves ? 'k-down' : 'k-up' })}
+      ${pdKpi({ icon: IC.flame, grad: 'var(--grad-violet)', num: `${myStreak} วัน`, label: 'สถิติเช็กอินต่อเนื่อง', pill: 'ต่อเนื่อง', pillCls: 'k-violet' })}
     </div>
 
     <div class="card" style="margin-bottom:18px;padding:18px">
