@@ -116,6 +116,15 @@ describe('PlayDigital Chat (i.playdigital.co.th parity) & End-to-End Real MariaD
       vm.runInContext(`openClientModal('c1')`, ctx)
       expect(win.document.getElementById('modalRoot')?.textContent).toContain('ออกใบแจ้งหนี้')
       vm.runInContext(`closeModal()`, ctx)
+
+      // Login screen must NOT show demo-mode bypass text ("ไม่ต้องการเชื่อมฐานข้อมูล? ใช้โหมดสาธิต")
+      vm.runInContext(`App.showLogin()`, ctx)
+      const loginOv = win.document.querySelector('.login-ov')
+      expect(loginOv).toBeTruthy()
+      expect(loginOv?.textContent).not.toContain('ไม่ต้องการเชื่อมฐานข้อมูล')
+      expect(loginOv?.textContent).not.toContain('ใช้โหมดสาธิต')
+      expect(win.document.getElementById('lgDemo')).toBeNull()
+      loginOv?.remove()
     })
   })
 
