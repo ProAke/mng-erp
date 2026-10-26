@@ -177,22 +177,36 @@ window.SEED = (() => {
     { id:'run4', agentId:'ai5', taskId:null, action:'ตรวจสอบใบแจ้งหนี้ค้างชำระประจำสัปดาห์', detail:'แจ้งเตือน INV-2026-042 เกินกำหนดชำระ พร้อมร่างอีเมลติดตามลูกค้า SGI', durationSec:3, tokens:610, status:'ok', at:`${relDate(-1)} 11:05` },
   ];
 
+  const allMembers = ['u1','u2','u3','u4','u5','u6','ai1','ai2','ai3','ai4','ai5'];
   const channels = [
-    { id:'ch1', slug:'general',        name:'general',        emoji:'📢', topic:'ประกาศกลางและอัปเดตประจำวันของทีม MNG Groups' },
-    { id:'ch2', slug:'dev-ops',        name:'dev-ops',        emoji:'💻', topic:'พูดคุยงานพัฒนา API, Deploy, Database และแก้บั๊ก' },
-    { id:'ch3', slug:'design-review',  name:'design-review',  emoji:'🎨', topic:'ส่งดราฟต์ UI/UX, การ์ดข่าว และตรวจงานดีไซน์' },
-    { id:'ch4', slug:'client-updates', name:'client-updates', emoji:'🤝', topic:'สรุปความคืบหน้าลูกค้า นัดหมาย Demo และ UAT' },
-    { id:'ch5', slug:'ai-feed',        name:'ai-feed',        emoji:'✨', topic:'รายงานผลการทำงานอัตโนมัติจากทีม AI Workforce' },
+    { id:'ch0', slug:'team-all',       name:'ทีมทั้งหมด',      emoji:'💬', type:'group', pinned:true,  members:allMembers, topic:'ห้องหลักของทีม MNG Groups · แชร์งาน ไฟล์ และ Google Drive ร่วมกับทีมมนุษย์และ AI' },
+    { id:'ch1', slug:'general',        name:'general',        emoji:'📢', type:'group', pinned:true,  members:['u1','u2','u3','u4','u5','u6','ai1','ai4'], topic:'ประกาศกลางและอัปเดตประจำวันของทีม MNG Groups' },
+    { id:'ch2', slug:'dev-ops',        name:'dev-ops',        emoji:'💻', type:'group', pinned:false, projectId:'p1', members:['u1','u3','u4','u5','u6','ai3'], topic:'พูดคุยงานพัฒนา API, Deploy, Database และแก้บั๊ก' },
+    { id:'ch3', slug:'design-review',  name:'design-review',  emoji:'🎨', type:'group', pinned:false, projectId:'p4', members:['u1','u2','u4','ai2'], topic:'ส่งดราฟต์ UI/UX, การ์ดข่าว และตรวจงานดีไซน์' },
+    { id:'ch4', slug:'client-updates', name:'client-updates', emoji:'🤝', type:'group', pinned:false, members:['u1','u2','u6','ai4','ai5'], topic:'สรุปความคืบหน้าลูกค้า นัดหมาย Demo และ UAT' },
+    { id:'ch5', slug:'ai-feed',        name:'ai-feed',        emoji:'✨', type:'group', pinned:false, members:allMembers, topic:'รายงานผลการทำงานอัตโนมัติจากทีม AI Workforce' },
   ];
 
   const messages = [
-    { id:'m1', channelId:'ch1', senderId:'u1', senderName:'Worapot (เอก)', kind:'text', body:'สวัสดีตอนเช้าทีม MNG! วันนี้เรามี Sprint Review บ่ายสอง และเตรียมส่งมอบการ์ดข่าว LoveIT นะครับ 🚀', pinned:true, reactions:{'🔥':['u2','u3'],'👍':['u4','u5']}, at:`${td} 09:05` },
-    { id:'m2', channelId:'ch1', senderId:'u3', senderName:'Bank Kritsada', kind:'text', body:'รับทราบครับพี่เอก ตอนนี้ระบบ webhook retry เทสต์ผ่านแล้ว เดี๋ยวอัปขึ้น staging ก่อนเที่ยงครับ', pinned:false, reactions:{'✅':['u1']}, at:`${td} 09:12` },
-    { id:'m3', channelId:'ch2', senderId:'u5', senderName:'Art Pongsakorn', kind:'text', body:'อัปเดตฐานข้อมูล MariaDB แยก 2 pool (auth + works) พร้อม health latency เรียบร้อยครับ ⚡', pinned:true, reactions:{'🎉':['u1','u3']}, at:`${td} 09:20` },
-    { id:'m4', channelId:'ch3', senderId:'u2', senderName:'Nuna Sirima', kind:'text', body:'ส่งดราฟต์การ์ดข่าว LoveIT แบบที่ 3 และ 5 ปรับโทนสีให้คมขึ้นแล้ว รบกวนพี่เอกช่วยดูหน่อยนะคะ 🎨', pinned:false, reactions:{'❤️':['u1','u4']}, at:`${td} 09:35` },
-    { id:'m5', channelId:'ch4', senderId:'u6', senderName:'Fah Chanya', kind:'text', body:'เตรียมสคริปต์ UAT เว็บ SGI ครบ 32 เคสแล้ว พร้อมรันรอบสุดท้ายกับลูกค้าวันพฤหัสนี้ค่ะ', pinned:false, reactions:{'👍':['u1','u2']}, at:`${td} 09:40` },
+    { id:'m0', channelId:'ch0', senderId:'u1', senderName:'Worapot (เอก)', kind:'system', body:'สร้างกลุ่ม #ทีมทั้งหมด แล้ว — เชิญทุกคนแชร์งานและไฟล์ผ่าน Google Drive ที่นี่', pinned:false, reactions:{}, at:`${td} 09:00` },
+    { id:'m1', channelId:'ch0', senderId:'u1', senderName:'Worapot (เอก)', kind:'text', body:'สวัสดีตอนเช้าทีม MNG! วันนี้เรามี Sprint Review บ่ายสอง และเตรียมส่งมอบการ์ดข่าว LoveIT (LVT-1007) นะครับ พิมพ์ @NOVA หรือแนบไฟล์ Google Drive ในห้องนี้ได้เลย 🚀', pinned:true, reactions:{'🔥':['u2','u3'],'👍':['u4','u5']}, at:`${td} 09:05` },
+    { id:'m2', channelId:'ch0', senderId:'u3', senderName:'Bank Kritsada (แบงก์)', kind:'text', body:'รับทราบครับพี่เอก ตอนนี้ระบบ webhook retry (CAL-1031) เทสต์ผ่านแล้ว เดี๋ยวอัปขึ้น staging ก่อนเที่ยงครับ', replyTo:'m1', pinned:false, reactions:{'✅':['u1']}, at:`${td} 09:12` },
+    { id:'m3', channelId:'ch2', senderId:'u5', senderName:'Art Pongsakorn (อาร์ต)', kind:'text', body:'อัปเดตฐานข้อมูล MariaDB แยก 2 pool (auth + works) พร้อม health latency เรียบร้อยครับ ⚡', pinned:true, reactions:{'🎉':['u1','u3']}, at:`${td} 09:20` },
+    { id:'m4', channelId:'ch3', senderId:'u2', senderName:'Nuna Sirima (นุ่น)', kind:'text', body:'ส่งดราฟต์การ์ดข่าว LoveIT แบบที่ 3 และ 5 ปรับโทนสีให้คมขึ้นแล้ว รบกวนพี่เอกช่วยดูหน่อยนะคะ 🎨', attachmentUrl:'https://drive.google.com/drive/u/0/my-drive', attachmentName:'LoveIT-NewsCards-v5-Figma.fig', attachmentType:'drive', attachmentSize:0, pinned:false, reactions:{'❤️':['u1','u4']}, at:`${td} 09:35` },
+    { id:'m5', channelId:'ch4', senderId:'u6', senderName:'Fah Chanya (ฟ้า)', kind:'text', body:'เตรียมสคริปต์ UAT เว็บ SGI (SGI-0993) ครบ 32 เคสแล้ว พร้อมรันรอบสุดท้ายกับลูกค้าวันพฤหัสนี้ค่ะ', pinned:false, reactions:{'👍':['u1','u2']}, at:`${td} 09:40` },
     { id:'m6', channelId:'ch5', senderId:'ai1', senderName:'NOVA (AI)', kind:'ai', body:'✨ <b>สรุปภาพรวมเช้าวันนี้</b> — มีงานกำลังทำ 8 ชิ้น ใกล้ครบกำหนดใน 3 วัน 2 ชิ้น แนะนำโฟกัส CAL-1031 และ ERP-1042 ก่อนเที่ยง', pinned:false, reactions:{'👍':['u1']}, at:`${td} 09:45` },
   ];
+
+  const files = [
+    { id:'f1', channelId:'ch3', projectId:'p4', taskId:'t9', uploaderId:'u2', uploaderName:'Nuna Sirima (นุ่น)', name:'LoveIT-NewsCards-v5-Figma.fig', mime:'application/vnd.google-apps.file', size:0, url:'https://drive.google.com/drive/u/0/my-drive', source:'drive', at:`${td} 09:35` },
+  ];
+
+  const settings = {
+    theme:'#6C5CE7', n1:true, n2:true, n3:false,
+    orgName:'MNG Groups',
+    orgDesc:'Smart Dashboard & Work Tracking System',
+    driveFolder:'https://drive.google.com/drive/u/0/my-drive',
+  };
 
   const rooms = [
     { id:'rm1', name:'Boardroom ชั้น 4 (ห้องประชุมใหญ่)',   kind:'room',   zone:'ชั้น 4 · โซนหน้า', capacity:12, color:'#6C5CE7', equip:['จอ 4K 75"','กล้อง Conference','Whiteboard'] },
@@ -227,6 +241,6 @@ window.SEED = (() => {
 
   return {
     team, projects, clients, tasks, eventCats, events, invoices, activity, trend,
-    aiAgents, aiRuns, channels, messages, rooms, bookings, checkins, leaves,
+    aiAgents, aiRuns, channels, messages, files, settings, rooms, bookings, checkins, leaves,
   };
 })();

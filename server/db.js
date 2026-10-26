@@ -104,12 +104,17 @@ const TABLES = [
 
   `CREATE TABLE IF NOT EXISTS erp_channels (
      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-     slug VARCHAR(60) NOT NULL,
+     slug VARCHAR(80) NOT NULL,
      name VARCHAR(120) NOT NULL,
      emoji VARCHAR(16) DEFAULT '💬',
      topic VARCHAR(300) DEFAULT '',
+     chan_type VARCHAR(20) DEFAULT 'group',
+     members LONGTEXT NULL,
+     project_id INT UNSIGNED NULL,
+     pinned TINYINT(1) DEFAULT 0,
      is_private TINYINT(1) DEFAULT 0,
-     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     INDEX idx_slug (slug), INDEX idx_type (chan_type)
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
   `CREATE TABLE IF NOT EXISTS erp_messages (
@@ -119,8 +124,30 @@ const TABLES = [
      sender_name VARCHAR(100) NOT NULL DEFAULT '',
      kind VARCHAR(20) DEFAULT 'text',
      body TEXT NOT NULL,
+     reply_to BIGINT UNSIGNED NULL,
+     attachment_url VARCHAR(600) NULL,
+     attachment_name VARCHAR(255) NULL,
+     attachment_type VARCHAR(80) NULL,
+     attachment_size INT UNSIGNED DEFAULT 0,
      pinned TINYINT(1) DEFAULT 0,
      reactions LONGTEXT NULL,
+     edited_at TIMESTAMP NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     INDEX idx_chan (channel_id), INDEX idx_created (created_at)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_files (
+     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     channel_id INT UNSIGNED NULL,
+     project_id INT UNSIGNED NULL,
+     task_id INT UNSIGNED NULL,
+     uploader_id VARCHAR(30) DEFAULT 'u1',
+     uploader_name VARCHAR(100) DEFAULT '',
+     name VARCHAR(255) NOT NULL,
+     mime VARCHAR(120) DEFAULT 'application/octet-stream',
+     size INT UNSIGNED DEFAULT 0,
+     url VARCHAR(600) NOT NULL,
+     source VARCHAR(30) DEFAULT 'upload',
      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
      INDEX idx_chan (channel_id), INDEX idx_created (created_at)
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
@@ -184,6 +211,18 @@ const ADDITIVE_COLS = [
   ['erp_team', "presence VARCHAR(20) DEFAULT 'online'"],
   ['erp_team', 'skills LONGTEXT NULL'],
 
+  ['erp_channels', "chan_type VARCHAR(20) DEFAULT 'group'"],
+  ['erp_channels', 'members LONGTEXT NULL'],
+  ['erp_channels', 'project_id INT UNSIGNED NULL'],
+  ['erp_channels', 'pinned TINYINT(1) DEFAULT 0'],
+
+  ['erp_messages', 'reply_to BIGINT UNSIGNED NULL'],
+  ['erp_messages', 'attachment_url VARCHAR(600) NULL'],
+  ['erp_messages', 'attachment_name VARCHAR(255) NULL'],
+  ['erp_messages', 'attachment_type VARCHAR(80) NULL'],
+  ['erp_messages', 'attachment_size INT UNSIGNED DEFAULT 0'],
+  ['erp_messages', 'edited_at TIMESTAMP NULL'],
+
   ['projects', 'erp_code VARCHAR(16) NULL'],
   ['projects', 'erp_client_id INT UNSIGNED NULL'],
   ['projects', 'erp_client VARCHAR(200) NULL'],
@@ -223,7 +262,7 @@ async function ensureSchema() {
     // Check existing columns first in one fast query so we don't lock tables unnecessarily!
     const [existingCols] = await conn.query(
       `SELECT TABLE_NAME t, COLUMN_NAME c FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('erp_team', 'projects', 'tasks')`
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('erp_team', 'erp_channels', 'erp_messages', 'projects', 'tasks')`
     );
     const colSet = new Set(existingCols.map(r => `${r.t}.${r.c}`.toLowerCase()));
     for (const [tbl, def] of ADDITIVE_COLS) {
@@ -237,7 +276,7 @@ async function ensureSchema() {
         }
       }
     }
-    console.log('[db] schema ready (authPool=users only, workPool=works + agency-os data)');
+    console.log('[db] schema ready (authPool=users only, workPool=works + agency-os + chat/files)');
   } finally { conn.release(); }
 }
 
@@ -254,4 +293,4 @@ async function healthCheck() {
   return out;
 }
 
-module.exports = { authPool, workPool, ensureSchema, healthCheck };
+module.exports = { authPool, workPool, ensureSchema, healthCheck, TABLES, ADDITIVE_COLS };

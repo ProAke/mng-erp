@@ -3,7 +3,7 @@
    - Enriches the REAL projects/tasks with erp_* metadata (additive only)
    - Guarded by erp_settings seedVersion — safe to run repeatedly         */
 
-const SEED_VERSION = 4;
+const SEED_VERSION = 5;
 
 const TEAM = [
   { name:'Worapot',       nickname:'เอก',   presence:'online',  skills:['PM','Strategy','ERP'],     role:'Founder / PM',   color:'#FF8A5C', email:'worapot@outlook.com', phone:'081-234-5678', is_me:1, auth:2 },
@@ -23,11 +23,12 @@ const AI_AGENTS = [
 ];
 
 const CHANNELS = [
-  { slug:'general',        name:'general',        emoji:'📢', topic:'ประกาศกลางและอัปเดตประจำวันของทีม MNG Groups' },
-  { slug:'dev-ops',        name:'dev-ops',        emoji:'💻', topic:'พูดคุยงานพัฒนา API, Deploy, Database และแก้บั๊ก' },
-  { slug:'design-review',  name:'design-review',  emoji:'🎨', topic:'ส่งดราฟต์ UI/UX, การ์ดข่าว และตรวจงานดีไซน์' },
-  { slug:'client-updates', name:'client-updates', emoji:'🤝', topic:'สรุปความคืบหน้าลูกค้า นัดหมาย Demo และ UAT' },
-  { slug:'ai-feed',        name:'ai-feed',        emoji:'✨', topic:'รายงานผลการทำงานอัตโนมัติจากทีม AI Workforce' },
+  { slug:'team-all',       name:'ทีมทั้งหมด',      emoji:'💬', topic:'ห้องหลักของทีม MNG Groups · แชร์งาน ไฟล์ และ Google Drive ร่วมกับทีมมนุษย์และ AI', pinned:1, members:['u1','u2','u3','u4','u5','u6','ai1','ai2','ai3','ai4','ai5'] },
+  { slug:'general',        name:'general',        emoji:'📢', topic:'ประกาศกลางและอัปเดตประจำวันของทีม MNG Groups', pinned:1, members:['u1','u2','u3','u4','u5','u6','ai1','ai4'] },
+  { slug:'dev-ops',        name:'dev-ops',        emoji:'💻', topic:'พูดคุยงานพัฒนา API, Deploy, Database และแก้บั๊ก', pinned:0, members:['u1','u3','u4','u5','u6','ai3'] },
+  { slug:'design-review',  name:'design-review',  emoji:'🎨', topic:'ส่งดราฟต์ UI/UX, การ์ดข่าว และตรวจงานดีไซน์', pinned:0, members:['u1','u2','u4','ai2'] },
+  { slug:'client-updates', name:'client-updates', emoji:'🤝', topic:'สรุปความคืบหน้าลูกค้า นัดหมาย Demo และ UAT', pinned:0, members:['u1','u2','u6','ai4','ai5'] },
+  { slug:'ai-feed',        name:'ai-feed',        emoji:'✨', topic:'รายงานผลการทำงานอัตโนมัติจากทีม AI Workforce', pinned:0, members:['u1','u2','u3','u4','u5','u6','ai1','ai2','ai3','ai4','ai5'] },
 ];
 
 const ROOMS = [
@@ -200,20 +201,45 @@ async function seed(pool) {
       console.log('[seed] erp_ai_agents:', AI_AGENTS.length);
     }
 
-    // Team Channels + initial messages
+    // Team Channels + initial messages (i.playdigital.co.th structure)
+    const allMemberIds = ['u1','u2','u3','u4','u5','u6','ai1','ai2','ai3','ai4','ai5'];
     [rows] = await conn.query('SELECT COUNT(*) c FROM erp_channels');
     if (!rows[0].c) {
-      for (const c of CHANNELS) await conn.query(
-        'INSERT INTO erp_channels (slug, name, emoji, topic) VALUES (?,?,?,?)',
-        [c.slug, c.name, c.emoji, c.topic]);
+      const chanIds = {};
+      for (const c of CHANNELS) {
+        const [ins] = await conn.query(
+          'INSERT INTO erp_channels (slug, name, emoji, topic, chan_type, members, pinned) VALUES (?,?,?,?,?,?,?)',
+          [c.slug, c.name, c.emoji, c.topic, 'group', JSON.stringify(c.members || allMemberIds), c.pinned ? 1 : 0]
+        );
+        chanIds[c.slug] = ins.insertId;
+      }
       await conn.query(
         `INSERT INTO erp_messages (channel_id, sender_id, sender_name, kind, body, pinned, reactions) VALUES
-         (1, 'u1', 'Worapot (เอก)', 'text', 'ยินดีต้อนรับสู่ระบบแชตกลางของ MNG ERP! อัปเดตงานด่วนและไฟล์ส่งมอบในแต่ละห้องได้เลยครับ 🚀', 1, '{"🔥":["u2","u3"],"👍":["u4","u5"]}'),
-         (2, 'u3', 'Bank Kritsada', 'text', 'อัปเดต: เชื่อมฐานข้อมูล MariaDB แยก 2 pool (auth + works) เรียบร้อย พร้อมทดสอบ load test บ่ายนี้ครับ', 0, '{"✅":["u1","u5"]}'),
-         (3, 'u2', 'Nuna Sirima', 'text', 'ส่งดราฟต์การ์ดข่าว LoveIT แบบที่ 3 และ 5 ปรับโทนสีให้คมขึ้นแล้ว รบกวนพี่เอกช่วยดูหน่อยนะคะ 🎨', 0, '{"🎉":["u1"]}'),
-         (5, 'ai1', 'NOVA (AI)', 'ai', '✨ <b>สรุปภาพรวมเช้าวันนี้</b> — มีงานกำลังทำ 8 ชิ้น ใกล้ครบกำหนดใน 3 วัน 2 ชิ้น แนะนำโฟกัส MNG-1031 ก่อนเที่ยง', 0, '{"👍":["u1"]}')`
+         (?, 'u1', 'Worapot (เอก)', 'system', 'สร้างกลุ่ม #ทีมทั้งหมด แล้ว — เชิญทุกคนแชร์งานและไฟล์ผ่าน Google Drive ที่นี่', 0, '{}'),
+         (?, 'u1', 'Worapot (เอก)', 'text', 'ยินดีต้อนรับสู่ระบบแชตกลางของ MNG ERP! พิมพ์ @NOVA, @BYTE, @PIXEL หรือแนบไฟล์/Google Drive ส่งงานในแต่ละห้องได้เลยครับ 🚀', 1, '{"🔥":["u2","u3"],"👍":["u4","u5"]}'),
+         (?, 'u3', 'Bank Kritsada', 'text', 'อัปเดต: เชื่อมฐานข้อมูล MariaDB แยก 2 pool (auth + works) เรียบร้อย พร้อมทดสอบ load test บ่ายนี้ครับ', 0, '{"✅":["u1","u5"]}'),
+         (?, 'u2', 'Nuna Sirima', 'text', 'ส่งดราฟต์การ์ดข่าว LoveIT แบบที่ 3 และ 5 ปรับโทนสีให้คมขึ้นแล้ว รบกวนพี่เอกช่วยดูหน่อยนะคะ 🎨', 0, '{"🎉":["u1"]}'),
+         (?, 'ai1', 'NOVA (AI)', 'ai', '✨ <b>สรุปภาพรวมเช้าวันนี้</b> — มีงานกำลังทำ 8 ชิ้น ใกล้ครบกำหนดใน 3 วัน 2 ชิ้น แนะนำโฟกัส CAL-1001 ก่อนเที่ยง', 0, '{"👍":["u1"]}')`,
+        [chanIds['team-all'], chanIds['team-all'], chanIds['dev-ops'], chanIds['design-review'], chanIds['ai-feed']]
       );
       console.log('[seed] erp_channels:', CHANNELS.length);
+    } else {
+      // Additive upgrade for existing DBs: ensure #ทีมทั้งหมด exists + backfill members & chan_type
+      const [ta] = await conn.query("SELECT id FROM erp_channels WHERE slug='team-all' LIMIT 1");
+      if (!ta.length) {
+        const [ins] = await conn.query(
+          'INSERT INTO erp_channels (slug, name, emoji, topic, chan_type, members, pinned) VALUES (?,?,?,?,?,?,1)',
+          ['team-all', 'ทีมทั้งหมด', '💬', 'ห้องหลักของทีม MNG Groups · แชร์งาน ไฟล์ และ Google Drive ร่วมกับทีมมนุษย์และ AI', 'group', JSON.stringify(allMemberIds)]
+        );
+        await conn.query(
+          `INSERT INTO erp_messages (channel_id, sender_id, sender_name, kind, body, pinned, reactions)
+           VALUES (?, 'u1', 'Worapot (เอก)', 'system', 'สร้างกลุ่ม #ทีมทั้งหมด แล้ว — เชิญทุกคนแชร์งานและไฟล์ผ่าน Google Drive ที่นี่', 0, '{}')`,
+          [ins.insertId]
+        );
+      }
+      await conn.query("UPDATE erp_channels SET chan_type = 'group' WHERE chan_type IS NULL OR chan_type = ''");
+      await conn.query("UPDATE erp_channels SET members = ? WHERE members IS NULL OR members = ''", [JSON.stringify(allMemberIds)]);
+      await conn.query("UPDATE erp_channels SET pinned = 1 WHERE slug IN ('team-all','general') AND COALESCE(pinned,0) = 0");
     }
 
     // Rooms & Studio + initial bookings
@@ -337,7 +363,14 @@ async function seed(pool) {
     await conn.query("UPDATE tasks SET progress = 100 WHERE status = 'done' AND progress < 100");
 
     // Mark seedVersion ONLY after all seed operations succeed!
-    let mergedSettings = { seedVersion: SEED_VERSION, theme: '#6C5CE7', n1: true, n2: true, n3: false };
+    let mergedSettings = {
+      seedVersion: SEED_VERSION,
+      theme: '#6C5CE7',
+      n1: true, n2: true, n3: false,
+      orgName: 'MNG Groups',
+      orgDesc: 'Smart Dashboard & Work Tracking System',
+      driveFolder: 'https://drive.google.com/drive/u/0/my-drive',
+    };
     try {
       const prev = curSet[0]?.data ? JSON.parse(curSet[0].data) : {};
       mergedSettings = { ...mergedSettings, ...prev, seedVersion: SEED_VERSION };

@@ -315,13 +315,15 @@ const App = {
       return `<button class="rail-btn ${cur===k?'active':''}" data-act="nav:${k}" title="${r.label}">
         ${r.icon}<span>${r.label}</span>${b?`<span class="rail-badge">${b}</span>`:''}</button>`;
     };
+    const meName = Store.data?.user?.name || (typeof meMember === 'function' ? meMember().name : 'Worapot');
+    const meRole = Store.data?.user?.role || 'Admin';
     rail.innerHTML = `<div class="logo" data-act="nav:dashboard" title="MNG ERP">M</div>` +
       coreOrder.map(btnHtml).join('') +
       `<div class="rail-sep"></div>` +
       osOrder.map(btnHtml).join('') +
       `<div class="spacer"></div>
        <button class="rail-btn ${cur==='settings'?'active':''}" data-act="nav:settings" title="ตั้งค่า">${IC.gear}<span>ตั้งค่า</span></button>
-       <div class="rail-avatar" data-act="user-menu" title="Worapot — Admin">WP</div>`;
+       <div class="rail-avatar" data-act="user-menu" title="${esc(meName)} — ${esc(meRole)}">${esc(initials(meName))}</div>`;
   },
 
   renderTopbar(r){
@@ -434,6 +436,9 @@ const App = {
         case 'open-event': { const [k,i]=(arg||id).split(':'); if(k==='task') openTaskModal(i); else openEventModal(i); break; }
         case 'open-project': openProjectModal(arg||id); break;
         case 'open-invoice': openInvoiceModal(arg||id); break;
+        case 'open-client':  openClientModal(arg||id); break;
+        case 'edit-client':  { e.stopPropagation(); const c = Store.data.clients.find(x=>x.id===id); if(c) openClientForm(c); break; }
+        case 'new-client':   openClientForm(); break;
         case 'open-member': Store.ui.q.tasks = Store.userOf(id).name.split(' ')[0]; Store.ui.f.taskProj.clear(); this.go('tasks'); break;
         case 'chip': {
           const g = elAct.dataset.group;
@@ -467,8 +472,24 @@ const App = {
         case 'export-csv': exportCSV(); break;
         case 'export-json': exportJSON(); break;
         case 'print': window.print(); break;
-        case 'invite': toast('คัดลอกลิงก์เชิญแล้ว (โหมดสาธิต)','ok'); break;
-        case 'save-settings': Store.save(); Remote.push('/settings','PUT',Store.data.settings); toast('บันทึกการตั้งค่าแล้ว'); break;
+        case 'invite': openClientForm(); break;
+        case 'run-db-audit': runDbAudit(false); break;
+        case 'save-settings': {
+          const st = Store.data.settings;
+          if($('#setOrg')) st.orgName = $('#setOrg').value.trim() || 'MNG Groups';
+          if($('#setDesc')) st.orgDesc = $('#setDesc').value.trim();
+          if($('#setDriveFolder')) st.driveFolder = $('#setDriveFolder').value.trim();
+          Store.save();
+          if(Remote.on){
+            Remote.req('/settings', {method:'PUT', body:st})
+              .then(()=>{ toast('บันทึกการตั้งค่าลง MariaDB แล้ว ✓'); App.refresh(); })
+              .catch(err=>toast('บันทึกไม่สำเร็จ: '+err.message, 'err'));
+          } else {
+            App.refresh();
+            toast('บันทึกการตั้งค่าแล้ว');
+          }
+          break;
+        }
         case 'user-new':    openUserForm(); break;
         case 'user-edit':   { const u = findAuthUser(+id); if(u) openUserForm(u); break; }
         case 'user-pass':   { const u = findAuthUser(+id); if(u) openUserPass(u); break; }
@@ -889,17 +910,17 @@ function archiveProject(p){
 
 function openInvoiceModal(id){
   const i = Store.data.invoices.find(x=>x.id===id); if(!i) return;
-  const cl = Store.data.clients.find(c=>c.id===i.client);
+  const cl = Store.data.clients.find(c=>c.id===i.client) || { id:'', name:'ไม่ระบุลูกค้า', short:'—', color:'#8a8fb1', contact:'' };
   openModal(`${modalHead(`ใบแจ้งหนี้ ${i.no}`, `${i.title} · ออก ${fmtD(i.issue)}`)}
     <div class="modal-body">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
         <div style="display:flex;gap:11px;align-items:center">
-          <div class="cc-logo" style="width:42px;height:42px;border-radius:12px;background:${cl.color};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">${initials(cl.short)}</div>
+          <div class="cc-logo" style="width:42px;height:42px;border-radius:12px;background:${cl.color};color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">${initials(cl.short||cl.name)}</div>
           <div><b>${esc(cl.name)}</b><div style="font-size:11.5px;color:var(--muted)">${esc(cl.contact)}</div></div>
         </div>${invBadge(i.status)}</div>
       <div class="tbl-wrap"><table class="tbl">
         <thead><tr><th>รายการ</th><th style="text-align:right">จำนวน</th><th style="text-align:right">ราคา</th></tr></thead>
-        <tbody>${i.items.map(it=>`<tr><td>${esc(it.d)}</td><td style="text-align:right">${it.q}</td><td style="text-align:right" class="money">${money(it.p)}</td></tr>`).join('')}</tbody></table></div>
+        <tbody>${(i.items||[]).map(it=>`<tr><td>${esc(it.d)}</td><td style="text-align:right">${it.q}</td><td style="text-align:right" class="money">${money(it.p)}</td></tr>`).join('')}</tbody></table></div>
       <div style="text-align:right;margin-top:14px;line-height:2;font-size:13px">
         ยอดก่อน VAT <b class="money">${money(i.amount)}</b><br>
         VAT 7% <b class="money">${money(i.vat)}</b><br>
@@ -908,11 +929,26 @@ function openInvoiceModal(id){
       <div style="font-size:12px;color:var(--muted);margin-top:8px">ครบกำหนดชำระ ${fmtD(i.due)} ${i.paid?`· ชำระเมื่อ ${fmtD(i.paid)}`:''}</div>
     </div>
     <div class="modal-foot">
+      <button class="btn btn-danger" id="invDelBtn">🗑 ลบ</button>
       <button class="btn btn-ghost" data-act="print">${IC.export} พิมพ์ / PDF</button>
       <div style="flex:1"></div>
+      <button class="btn btn-ghost" id="invEditBtn">✏️ แก้ไข</button>
       ${i.status!=='paid'?`<button class="btn btn-primary" data-act="mark-paid" data-id="${i.id}">${IC.check} บันทึกรับชำระ</button>`:''}
       <button class="btn btn-ghost" onclick="closeModal()">ปิด</button>
     </div>`);
+  $('#invEditBtn').onclick = () => openInvoiceForm(i);
+  $('#invDelBtn').onclick = () => {
+    confirmDlg(`ลบใบแจ้งหนี้ ${i.no}?`, 'ใบแจ้งหนี้นี้จะถูกลบออกจากฐานข้อมูล erp_invoices ทันที', async () => {
+      if(Remote.on){
+        try { await Remote.req('/invoices/'+i.id, {method:'DELETE'}); await Remote.refreshAll(); }
+        catch(e){ toast('ลบไม่สำเร็จ: '+e.message,'err'); return; }
+      } else {
+        Store.data.invoices = Store.data.invoices.filter(x=>x.id!==i.id);
+        Store.save();
+      }
+      closeModal(); App.refresh(); toast(`ลบ ${i.no} เรียบร้อย`);
+    });
+  };
 }
 
 function markInvoicePaid(id){
@@ -924,32 +960,151 @@ function markInvoicePaid(id){
   App.refresh(); toast(`รับชำระ ${i.no} แล้ว ✓${Remote.on?' (MariaDB)':''}`);
 }
 
-function openInvoiceForm(){
-  openModal(`${modalHead('สร้างใบแจ้งหนี้','ระบบคำนวณ VAT 7% ให้อัตโนมัติ')}
+function openInvoiceForm(inv){
+  const isEdit = !!inv; inv = inv || {};
+  openModal(`${modalHead(isEdit ? `✏️ แก้ไขใบแจ้งหนี้ ${inv.no}` : 'สร้างใบแจ้งหนี้','ระบบคำนวณ VAT 7% ให้อัตโนมัติ และบันทึกลง MariaDB ทันที')}
     <div class="modal-body"><div class="form-grid">
-      <div class="f-group"><label>ลูกค้า</label><select id="iClient">${Store.data.clients.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></div>
-      <div class="f-group"><label>ครบกำหนดชำระ</label><input type="date" id="iDue" value="${d2s(addDays(new Date(),7))}"></div>
-      <div class="f-group full"><label>รายการ</label><input id="iTitle" placeholder="เช่น ค่าพัฒนางวด 2"></div>
-      <div class="f-group"><label>ยอดก่อน VAT (บาท)</label><input type="number" id="iAmount" value="50000" min="0" step="1000"></div>
-      <div class="f-group"><label>สถานะ</label><select id="iStatus"><option value="draft">ฉบับร่าง</option><option value="pending">รอชำระ (ออกเลย)</option></select></div>
+      <div class="f-group"><label>ลูกค้า</label><select id="iClient">${Store.data.clients.map(c=>`<option value="${c.id}" ${inv.client===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
+      <div class="f-group"><label>ครบกำหนดชำระ</label><input type="date" id="iDue" value="${inv.due || d2s(addDays(new Date(),7))}"></div>
+      <div class="f-group full"><label>รายการ *</label><input id="iTitle" value="${esc(inv.title||'')}" placeholder="เช่น ค่าพัฒนางวด 2"></div>
+      <div class="f-group"><label>ยอดก่อน VAT (บาท)</label><input type="number" id="iAmount" value="${isEdit ? inv.amount : 50000}" min="0" step="1000"></div>
+      <div class="f-group"><label>สถานะ</label><select id="iStatus">
+        <option value="draft" ${inv.status==='draft'?'selected':''}>ฉบับร่าง</option>
+        <option value="pending" ${inv.status==='pending'?'selected':''}>รอชำระ (ออกเลย)</option>
+        <option value="overdue" ${inv.status==='overdue'?'selected':''}>เกินกำหนด</option>
+        <option value="paid" ${inv.status==='paid'?'selected':''}>ชำระแล้ว</option>
+      </select></div>
     </div>
     <p style="font-size:12px;color:var(--muted);margin-top:10px">VAT 7% จะถูกบวกอัตโนมัติตอนออกบิล</p></div>
     <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
-      <button class="btn btn-primary" id="iSave">สร้างใบแจ้งหนี้</button></div>`);
+      <button class="btn btn-primary" id="iSave">${isEdit?'บันทึกการแก้ไข':'สร้างใบแจ้งหนี้'}</button></div>`);
   $('#iSave').onclick = async ()=>{
     const amt=+$('#iAmount').value||0, title=$('#iTitle').value.trim()||'ค่าบริการ';
+    const body = { client:$('#iClient').value, title, amount:amt, vat:Math.round(amt*.07), due:$('#iDue').value, status:$('#iStatus').value, items:[{d:title,q:1,p:amt}] };
     if(Remote.on){
       try {
-        const d = await Remote.req('/invoices', {method:'POST', body:{client:$('#iClient').value, title, amount:amt, due:$('#iDue').value, status:$('#iStatus').value}});
-        closeModal(); await Remote.refreshAll(); toast(`สร้างใบแจ้งหนี้ ${d.no} แล้ว ✓ (MariaDB)`);
+        if(isEdit){
+          await Remote.req('/invoices/'+inv.id, {method:'PATCH', body});
+          closeModal(); await Remote.refreshAll(); toast(`อัปเดต ${inv.no} แล้ว ✓ (MariaDB)`);
+        } else {
+          const d = await Remote.req('/invoices', {method:'POST', body});
+          closeModal(); await Remote.refreshAll(); toast(`สร้างใบแจ้งหนี้ ${d.no} แล้ว ✓ (MariaDB)`);
+        }
       } catch(e){ toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+e.message,'err'); }
       return;
     }
+    if(isEdit){
+      Object.assign(inv, body);
+      Store.save(); closeModal(); App.refresh(); toast(`อัปเดต ${inv.no} แล้ว`);
+      return;
+    }
     const no='INV-2026-0'+(46+Store.data.invoices.length);
-    Store.data.invoices.push({id:uid('i'), no, client:$('#iClient').value, title, amount:amt, vat:Math.round(amt*.07),
-      issue:todayS(), due:$('#iDue').value, status:$('#iStatus').value, items:[{d:title,q:1,p:amt}]});
+    Store.data.invoices.push({id:uid('i'), no, ...body, issue:todayS()});
     Store.logActivity(`สร้างใบแจ้งหนี้ <b>${no}</b> ${money(amt)}`); Store.save(); closeModal(); App.refresh(); toast(`สร้าง ${no} แล้ว`);
   };
+}
+
+/* ============================================================
+   CLIENTS CRM — MariaDB erp_clients CRUD
+   ============================================================ */
+function openClientModal(cid){
+  const c = Store.data.clients.find(x=>x.id===cid); if(!c) return;
+  const projs = Store.data.projects.filter(p=>p.client===c.name || (Store.clientOf(p)||{}).id===c.id);
+  const invs = Store.data.invoices.filter(i=>i.client===c.id);
+  const paidSum = invs.filter(i=>i.status==='paid').reduce((s,i)=>s+i.amount+i.vat,0);
+  openModal(`
+    ${modalHead(`🏢 ${c.name}`, `รหัสย่อ: ${c.short||c.name} · ลูกค้าตั้งแต่ ${fmtD(c.since)}`)}
+    <div class="modal-body">
+      <div class="td-meta">
+        <div class="m"><small>ผู้ติดต่อหลัก</small><b>${esc(c.contact||'—')}</b></div>
+        <div class="m"><small>โทรศัพท์</small><b>${esc(c.phone||'—')}</b></div>
+        <div class="m"><small>อีเมล</small><b>${esc(c.email||'—')}</b></div>
+        <div class="m"><small>โปรเจกต์ทั้งหมด</small><b>${projs.length} โครงการ</b></div>
+        <div class="m"><small>ใบแจ้งหนี้</small><b>${invs.length} ใบ</b></div>
+        <div class="m"><small>ยอดรับชำระสะสม</small><b style="color:var(--violet)">${money(paidSum)}</b></div>
+      </div>
+      ${c.addr?`<div style="font-size:12.5px;color:var(--ink-2);margin-top:10px">📍 ${esc(c.addr)}</div>`:''}
+    </div>
+    <div class="modal-foot">
+      ${canLead()?`<button class="btn btn-danger" id="clDelBtn" style="margin-right:auto">🗑 ลบลูกค้า</button>`:''}
+      <button class="btn btn-ghost" onclick="closeModal()">ปิด</button>
+      <button class="btn btn-ghost" id="clEditBtn">✏️ แก้ไขข้อมูลลูกค้า</button>
+      <button class="btn btn-primary" id="clNewInvBtn">${IC.plus} ออกใบแจ้งหนี้</button>
+    </div>`);
+  $('#clEditBtn').onclick = () => openClientForm(c);
+  $('#clNewInvBtn').onclick = () => openInvoiceForm({ client: c.id, status: 'pending' });
+  if($('#clDelBtn')) $('#clDelBtn').onclick = () => {
+    confirmDlg(`ลบข้อมูลลูกค้า "${c.name}"?`, 'ข้อมูลลูกค้าจะถูกลบออกจากตาราง erp_clients (โปรเจกต์และใบแจ้งหนี้เดิมจะยังคงอยู่)', async () => {
+      if(Remote.on){
+        try { await Remote.req('/clients/'+c.id, {method:'DELETE'}); await Remote.refreshAll(); }
+        catch(e){ toast('ลบไม่สำเร็จ: '+e.message,'err'); return; }
+      } else {
+        Store.data.clients = Store.data.clients.filter(x=>x.id!==c.id);
+        Store.save();
+      }
+      closeModal(); App.refresh(); toast(`ลบลูกค้า "${c.name}" แล้ว`);
+    });
+  };
+}
+
+function openClientForm(c){
+  const isEdit = !!c; c = c || {};
+  const COLORS = ['#6C5CE7','#2F6BF0','#14B890','#F25C8B','#17A2B8','#FFB020','#4B5ED9'];
+  openModal(`
+    ${modalHead(isEdit ? `✏️ แก้ไขลูกค้า — ${c.name}` : '🏢 เพิ่มลูกค้าใหม่ (CRM)', 'บันทึกเข้าฐานข้อมูลจริง erp_clients ทันที')}
+    <div class="modal-body"><div class="form-grid">
+      <div class="f-group"><label>ชื่อบริษัท / ลูกค้า *</label><input id="clName" value="${esc(c.name||'')}" placeholder="เช่น บริษัท เพลย์ดิจิทัล จำกัด"></div>
+      <div class="f-group"><label>ชื่อย่อ</label><input id="clShort" value="${esc(c.short||'')}" placeholder="เช่น PlayDigital"></div>
+      <div class="f-group"><label>ผู้ติดต่อ & ตำแหน่ง</label><input id="clContact" value="${esc(c.contact||'')}" placeholder="เช่น คุณแพรว — Marketing"></div>
+      <div class="f-group"><label>เบอร์โทรศัพท์</label><input id="clPhone" value="${esc(c.phone||'')}" placeholder="02-xxx-xxxx"></div>
+      <div class="f-group"><label>อีเมล</label><input type="email" id="clEmail" value="${esc(c.email||'')}" placeholder="contact@company.co.th"></div>
+      <div class="f-group"><label>เริ่มเป็นลูกค้าเมื่อ</label><input type="date" id="clSince" value="${c.since || todayS()}"></div>
+      <div class="f-group full"><label>ที่อยู่สำหรับออกใบแจ้งหนี้</label><input id="clAddr" value="${esc(c.addr||'')}" placeholder="เลขที่ อาคาร ถนน แขวง เขต จังหวัด"></div>
+      <div class="f-group full"><label>สีแบรนด์ลูกค้า</label><div class="chips" id="clColor">
+        ${COLORS.map((col,idx)=>`<span class="chip ${(c.color===col)||(!isEdit&&idx===0)?'on':''}" data-c="${col}"><span class="dot" style="background:${col}"></span>${col}</span>`).join('')}
+      </div></div>
+    </div></div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="clSave">${isEdit?'บันทึกการแก้ไข':'เพิ่มลูกค้า'}</button></div>`);
+  let color = c.color || COLORS[0];
+  $$('#clColor .chip').forEach(x=>x.onclick=()=>{ color=x.dataset.c; $$('#clColor .chip').forEach(y=>y.classList.toggle('on',y===x)); });
+  $('#clSave').onclick = async () => {
+    const name = $('#clName').value.trim();
+    if(!name) return toast('กรุณาระบุชื่อบริษัท/ลูกค้า','warn');
+    const body = {
+      name,
+      short: $('#clShort').value.trim() || name.slice(0,18),
+      contact: $('#clContact').value.trim(),
+      phone: $('#clPhone').value.trim(),
+      email: $('#clEmail').value.trim(),
+      since: $('#clSince').value || todayS(),
+      addr: $('#clAddr').value.trim(),
+      color,
+    };
+    if(Remote.on){
+      try {
+        if(isEdit) await Remote.req('/clients/'+c.id, {method:'PATCH', body});
+        else       await Remote.req('/clients', {method:'POST', body});
+        closeModal(); await Remote.refreshAll();
+        toast((isEdit?'อัปเดตลูกค้าแล้ว ✓':'เพิ่มลูกค้าใหม่แล้ว ✓')+' (MariaDB)');
+      } catch(e){ toast('บันทึกไม่สำเร็จ: '+e.message,'err'); }
+      return;
+    }
+    if(isEdit) Object.assign(c, body);
+    else Store.data.clients.push({id:uid('c'), ...body});
+    Store.save(); closeModal(); App.refresh(); toast(isEdit?'บันทึกข้อมูลลูกค้าแล้ว':'เพิ่มลูกค้าใหม่แล้ว');
+  };
+}
+
+async function runDbAudit(silent = false){
+  if(!Remote.on) return;
+  try {
+    Store.data._dbAudit = await Remote.req('/db/audit');
+    if(Store.ui?.route === 'settings') renderSettings();
+    if(!silent) toast(`ตรวจสอบ MariaDB สำเร็จครบ ${Store.data._dbAudit.modules.length} ตาราง (${Store.data._dbAudit.latencyMs}ms) ✓`);
+  } catch(e){
+    if(!silent) toast('ตรวจสอบฐานข้อมูลไม่สำเร็จ: '+e.message, 'err');
+  }
 }
 
 /* ============================================================
@@ -1098,9 +1253,11 @@ function openTeamForm(u){
   openModal(`${modalHead(isEdit ? `✏️ แก้ไขสมาชิก — ${esc(u.name||'')}` : '➕ เพิ่มสมาชิกทีม',
       'อีเมลที่กรอกจะถูกผูกกับบัญชี pacific_mng อัตโนมัติ (ถ้ามี) — ใช้ login ร่วมกันทั้ง Hub')}
     <div class="modal-body"><div class="form-grid">
-      <div class="f-group full"><label>ชื่อ-สกุล *</label><input id="tmName" value="${esc(u.name||'')}" placeholder="เช่น น้ำฝน แสงจันทร์"></div>
+      <div class="f-group"><label>ชื่อ-สกุล *</label><input id="tmName" value="${esc(u.name||'')}" placeholder="เช่น น้ำฝน แสงจันทร์"></div>
+      <div class="f-group"><label>ชื่อเล่น (Nickname)</label><input id="tmNick" value="${esc(u.nickname||'')}" placeholder="เช่น ฝน, เอก"></div>
       <div class="f-group"><label>ตำแหน่ง/สายงาน</label><input id="tmRole" value="${esc(u.role||'')}" placeholder="เช่น Frontend Dev"></div>
       <div class="f-group"><label>เบอร์โทร</label><input id="tmPhone" value="${esc(u.phone||'')}"></div>
+      <div class="f-group full"><label>ทักษะ (Skills คั่นด้วยจุลภาค ,)</label><input id="tmSkills" value="${esc((u.skills||[]).join(', '))}" placeholder="เช่น Node.js, UX/UI, QA"></div>
       <div class="f-group full"><label>อีเมล (ผูกบัญชี login ให้เห็นงานทั้ง Hub)</label><input id="tmEmail" type="email" value="${esc(u.email||'')}" placeholder="name@mng.co.th"></div>
       ${isEdit && u.authUserId ? `<div class="f-group"><label>สิทธิ์ระบบของบัญชีนี้</label><select id="tmAuthRole">
         ${['viewer','user','manager','admin','super_admin'].map(r=>`<option value="${r}" ${u.authRole===r?'selected':''} ${r==='super_admin' && Remote.user?.role!=='super_admin'?'disabled':''}>${ROLE_TH[r]}</option>`).join('')}
@@ -1114,8 +1271,15 @@ function openTeamForm(u){
   let color = u.color || '#6C5CE7';
   $$('#tmColor .chip').forEach(x=>x.onclick=()=>{color=x.dataset.c; $$('#tmColor .chip').forEach(y=>y.classList.toggle('on',y===x));});
   $('#tmSave').onclick = async ()=>{
-    const body = { name:$('#tmName').value.trim(), role:$('#tmRole').value.trim(),
-      phone:$('#tmPhone').value.trim(), email:$('#tmEmail').value.trim(), color };
+    const body = {
+      name:$('#tmName').value.trim(),
+      nickname:$('#tmNick').value.trim(),
+      role:$('#tmRole').value.trim(),
+      phone:$('#tmPhone').value.trim(),
+      email:$('#tmEmail').value.trim(),
+      skills:$('#tmSkills').value.split(',').map(s=>s.trim()).filter(Boolean),
+      color,
+    };
     if(!body.name) return toast('กรุณากรอกชื่อ','warn');
     const btn = $('#tmSave'); btn.disabled = true;
     if(Remote.on){
