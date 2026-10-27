@@ -467,10 +467,10 @@ describe('PlayDigital Chat (i.playdigital.co.th parity) & End-to-End Real MariaD
       expect(setRes.ok).toBe(true)
       expect(setRes.settings.orgName).toBe('MNG Groups Thailand')
 
-      // Live DB Audit across all 18 tables (pacific_mng.users + 17 pacific_mngworks tables)
+      // Live DB Audit across all 19 tables (pacific_mng.users + 18 pacific_mngworks tables incl. erp_api_tokens)
       const audit = await (await fetch(`${baseUrl}/api/db/audit`)).json()
       expect(audit.ok).toBe(true)
-      expect(audit.modules.length).toBe(18)
+      expect(audit.modules.length).toBe(19)
       expect(audit.modules.every((m: any) => m.ok)).toBe(true)
       expect(executedSql.length).toBeGreaterThan(25)
     })
