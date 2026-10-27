@@ -298,6 +298,24 @@ router.get('/bootstrap', async (req, res) => {
 });
 
 /* ---------------- TASKS ---------------- */
+router.get('/tasks', async (req, res) => {
+  try {
+    const [rows] = await workPool.query(
+      'SELECT t.* FROM tasks t LEFT JOIN projects p ON p.id=t.project_id WHERE t.archived=0 AND COALESCE(p.erp_archived,0)=0 ORDER BY t.id DESC'
+    );
+    let tasks = rows.map(shapeTask);
+    if (req.query.status) tasks = tasks.filter(t => t.status === req.query.status);
+    if (req.query.priority) tasks = tasks.filter(t => t.priority === req.query.priority);
+    if (req.query.project) tasks = tasks.filter(t => t.project === req.query.project || String(numid(t.project)) === String(numid(req.query.project)));
+    if (req.query.assignee) tasks = tasks.filter(t => t.assignee === req.query.assignee);
+    if (req.query.q) {
+      const q = String(req.query.q).toLowerCase();
+      tasks = tasks.filter(t => `${t.code} ${t.title} ${t.desc}`.toLowerCase().includes(q));
+    }
+    res.json({ ok: true, count: tasks.length, tasks });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post('/tasks', async (req, res) => {
   const b = req.body || {};
   if (!b.title?.trim()) return res.status(400).json({ error: 'title_required' });
@@ -363,6 +381,18 @@ router.delete('/tasks/:id', async (req, res) => {
 });
 
 /* ---------------- EVENTS ---------------- */
+router.get('/events', async (req, res) => {
+  try {
+    const [rows] = await workPool.query('SELECT * FROM erp_events ORDER BY date ASC, start ASC');
+    let events = rows.map(shapeEvent);
+    if (req.query.date) events = events.filter(ev => ev.date === req.query.date);
+    if (req.query.from) events = events.filter(ev => ev.date >= req.query.from);
+    if (req.query.to) events = events.filter(ev => ev.date <= req.query.to);
+    if (req.query.cat) events = events.filter(ev => ev.cat === req.query.cat);
+    res.json({ ok: true, count: events.length, events });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post('/events', async (req, res) => {
   const b = req.body || {};
   if (!b.title?.trim() || !b.date) return res.status(400).json({ error: 'title_date_required' });
@@ -412,6 +442,16 @@ router.delete('/events/:id', async (req, res) => {
 });
 
 /* ---------------- INVOICES ---------------- */
+router.get('/invoices', async (req, res) => {
+  try {
+    const [rows] = await workPool.query('SELECT * FROM erp_invoices ORDER BY id DESC');
+    let invoices = rows.map(shapeInvoice);
+    if (req.query.status) invoices = invoices.filter(iv => iv.status === req.query.status);
+    if (req.query.client) invoices = invoices.filter(iv => iv.client === req.query.client);
+    res.json({ ok: true, count: invoices.length, invoices });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post('/invoices/:id/pay', async (req, res) => {
   try {
     const id = numid(req.params.id);
@@ -483,6 +523,18 @@ router.delete('/invoices/:id', async (req, res) => {
 });
 
 /* ---------------- CLIENTS (CRM — erp_clients) ---------------- */
+router.get('/clients', async (req, res) => {
+  try {
+    const [rows] = await workPool.query('SELECT * FROM erp_clients ORDER BY id');
+    let clients = rows.map(shapeClient);
+    if (req.query.q) {
+      const q = String(req.query.q).toLowerCase();
+      clients = clients.filter(c => `${c.name} ${c.short} ${c.contact} ${c.email}`.toLowerCase().includes(q));
+    }
+    res.json({ ok: true, count: clients.length, clients });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post('/clients', async (req, res) => {
   const b = req.body || {};
   if (!b.name?.trim()) return res.status(400).json({ error: 'name_required' });
@@ -536,6 +588,23 @@ router.delete('/clients/:id', async (req, res) => {
 });
 
 /* ---------------- PROJECTS ---------------- */
+router.get('/projects', async (req, res) => {
+  try {
+    const [[projRows], [taskRows]] = await Promise.all([
+      workPool.query('SELECT * FROM projects WHERE COALESCE(erp_archived,0)=0 ORDER BY id'),
+      workPool.query('SELECT * FROM tasks WHERE archived=0'),
+    ]);
+    const tasks = taskRows.map(shapeTask);
+    let projects = projRows.map(r => shapeProject(r, tasks));
+    if (req.query.status) projects = projects.filter(p => p.status === req.query.status);
+    if (req.query.q) {
+      const q = String(req.query.q).toLowerCase();
+      projects = projects.filter(p => `${p.code} ${p.name} ${p.clientName}`.toLowerCase().includes(q));
+    }
+    res.json({ ok: true, count: projects.length, projects });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post('/projects', async (req, res) => {
   const b = req.body || {};
   if (!b.name?.trim()) return res.status(400).json({ error: 'name_required' });
@@ -631,6 +700,27 @@ router.get('/projects/archived', async (req, res) => {          // รายก�
 });
 
 /* ---------------- TEAMS (erp_team — CRUD + ผูกสิทธิ์ auth) ---------------- */
+router.get('/teams', async (_req, res) => {
+  try {
+    const [rows] = await workPool.query('SELECT * FROM erp_team ORDER BY id');
+    res.json({
+      ok: true,
+      count: rows.length,
+      members: rows.map(r => ({
+        id: 'u' + r.id,
+        name: r.name,
+        nickname: r.nickname || '',
+        role: r.role || '',
+        email: r.email || '',
+        phone: r.phone || '',
+        presence: r.presence || 'online',
+        skills: J(r.skills, []),
+        color: r.color || '#6C5CE7',
+      })),
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.post('/teams', async (req, res) => {
   if (!guardManage(req, res)) return;
   try {
@@ -725,6 +815,7 @@ router.get('/db/audit', async (_req, res) => {
     ['erp_leaves', 'ใบลา & WFH (erp_leaves)'],
     ['erp_activity', 'บันทึกกิจกรรม (erp_activity)'],
     ['erp_settings', 'การตั้งค่าระบบ (erp_settings)'],
+    ['erp_api_tokens', 'โทเคน AI/Hermes 20 ชุด (erp_api_tokens)'],
   ];
   try {
     const t0 = Date.now();

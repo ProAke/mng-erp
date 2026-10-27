@@ -468,6 +468,11 @@ const App = {
         case 'print': window.print(); break;
         case 'invite': openClientForm(); break;
         case 'run-db-audit': runDbAudit(false); break;
+        case 'hermes-reveal': openHermesPasswordModal('reveal'); break;
+        case 'hermes-rotate': openHermesPasswordModal('rotate'); break;
+        case 'hermes-strict': toggleHermesStrictAuth(); break;
+        case 'hermes-revoke': revokeHermesTokens(); break;
+        case 'hermes-copy':   copyHermesTokens(arg || 'json'); break;
         case 'save-settings': {
           const st = Store.data.settings;
           if($('#setOrg')) st.orgName = $('#setOrg').value.trim() || 'MNG Groups';
@@ -1325,6 +1330,133 @@ async function restoreProject(pid){
     Store.data.archProjects = (Store.data.archProjects||[]).filter(x=>x.id!==pid);
     await Remote.refreshAll();
   } catch(e){ toast('กู้คืนไม่สำเร็จ: '+e.message,'err'); }
+}
+
+/* ---------- Hermes & AI 20-Token Rotating Pool ---------- */
+async function loadHermesTokens(silent = false){
+  if(!Remote.on) return;
+  try {
+    Store.data._hermesPool = await Remote.req('/hermes/tokens');
+    if(location.hash.includes('settings')) App.refresh();
+    if(!silent) toast('อัปเดตสถานะชุด 20 API Tokens แล้ว ✓');
+  } catch(e){
+    Store.data._hermesPool = { ok:false, poolTarget:20, activeCount:0, totalUses:0, strictDualAuth:false, slots:[] };
+  }
+}
+
+function openHermesPasswordModal(mode = 'reveal'){
+  if(!Remote.on) return toast('กรุณาเข้าสู่ระบบด้วยบัญชีจริงก่อน', 'warn');
+  const isRot = mode === 'rotate';
+  openModal(`
+    <div class="modal-head">
+      <h3>${isRot ? '🔄 หมุนเปลี่ยน (Rotate) 20 API Tokens ใหม่' : '🔑 ยืนยันรหัสผ่านเพื่อสร้าง / ดู 20 API Tokens'}</h3>
+      <button class="modal-x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="f-group">
+        <label>รหัสผ่านปัจจุบันของบัญชี ${esc(Remote.user?.email || '')} *</label>
+        <input type="password" id="hmPass" autocomplete="current-password" placeholder="กรอกรหัสผ่านเพื่อยืนยันตัวตน">
+      </div>
+      <p style="font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:8px">
+        ${isRot
+          ? '⚠️ การหมุนเปลี่ยนจะยกเลิกชุด 20 Tokens เดิมทันที และสร้างชุดใหม่ทั้ง 20 ตัว (Hermes ที่ล็อกอินด้วย <code>POST /api/hermes/login</code> จะดึงชุดใหม่ไปใช้อัตโนมัติ)'
+          : 'ระบบบังคับยืนยันรหัสผ่านจริงกับฐานข้อมูล <b>pacific_mng.users</b> ก่อนแสดงหรือออกชุด API Token ทั้ง 20 ตัว'}
+      </p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="hmSubmit">${isRot ? 'ยืนยันและหมุนเปลี่ยน 20 ตัวใหม่' : 'ยืนยันรหัสผ่าน'}</button>
+    </div>`);
+  setTimeout(() => $('#hmPass')?.focus(), 50);
+  $('#hmSubmit').onclick = async ()=>{
+    const password = $('#hmPass')?.value || '';
+    if(!password) return toast('กรุณากรอกรหัสผ่านปัจจุบัน', 'warn');
+    const btn = $('#hmSubmit'); btn.disabled = true; btn.textContent = 'กำลังตรวจสอบ…';
+    try {
+      const ep = isRot ? '/hermes/tokens/rotate' : '/hermes/tokens/reveal';
+      const out = await Remote.req(ep, { method:'POST', body:{ password, poolSize:20 } });
+      Store.ui._revealedHermesTokens = out.tokens || [];
+      closeModal();
+      await loadHermesTokens(true);
+      toast(isRot ? 'หมุนเปลี่ยนชุด 20 API Tokens ใหม่เรียบร้อย ✓' : 'พร้อมใช้งานชุด 20 API Tokens แล้ว ✓', 'ok');
+    } catch(e){
+      toast(e.message || 'รหัสผ่านไม่ถูกต้อง', 'err');
+      btn.disabled = false;
+      btn.textContent = isRot ? 'ยืนยันและหมุนเปลี่ยน 20 ตัวใหม่' : 'ยืนยันรหัสผ่าน';
+    }
+  };
+}
+
+function toggleHermesStrictAuth(){
+  if(!Remote.on) return;
+  const next = !(Store.data._hermesPool?.strictDualAuth);
+  openModal(`
+    <div class="modal-head">
+      <h3>${next ? '🔒 เปิดโหมด Strict Dual-Auth' : '🔓 ปิดโหมด Strict Dual-Auth'}</h3>
+      <button class="modal-x" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="f-group">
+        <label>รหัสผ่านปัจจุบันของ ${esc(Remote.user?.email || '')} *</label>
+        <input type="password" id="hmStrictPass" autocomplete="current-password" placeholder="กรอกรหัสผ่านเพื่อเปลี่ยนนโยบายความปลอดภัย">
+      </div>
+      <p style="font-size:11.5px;color:var(--muted);line-height:1.6;margin-top:8px">
+        ${next
+          ? 'เมื่อเปิดโหมดนี้ ทุก API Request ที่ใช้ Token จะต้องแนบ <code>X-Auth-Email</code> และ <code>X-Auth-Password</code> คู่กับ Token ทุกครั้ง (Python Client ของระบบรองรับอัตโนมัติ)'
+          : 'เมื่อปิดโหมดนี้ AI จะยืนยัน <code>email + password</code> ตอนเรียก <code>POST /api/hermes/login</code> เพื่อรับ 20 Tokens แล้วหมุนเวียนแนบเฉพาะ Token ใน Header ได้ตามปกติ'}
+      </p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
+      <button class="btn btn-primary" id="hmStrictSave">บันทึกนโยบาย</button>
+    </div>`);
+  $('#hmStrictSave').onclick = async ()=>{
+    const password = $('#hmStrictPass')?.value || '';
+    if(!password) return toast('กรุณากรอกรหัสผ่าน', 'warn');
+    try {
+      await Remote.req('/hermes/tokens/policy', { method:'POST', body:{ password, strictDualAuth: next } });
+      closeModal();
+      await loadHermesTokens(true);
+      toast(next ? 'เปิดโหมด Strict Dual-Auth แล้ว ✓' : 'กลับสู่โหมด Token Pool มาตรฐานแล้ว ✓');
+    } catch(e){ toast(e.message || 'บันทึกไม่สำเร็จ', 'err'); }
+  };
+}
+
+function revokeHermesTokens(){
+  confirmDlg('เพิกถอน 20 API Tokens ทั้งหมด?',
+    'API Token ทั้ง 20 ตัวของบัญชีนี้จะถูกยกเลิกทันที (Hermes จะต้องล็อกอินด้วย User/Password ใหม่อีกครั้งจึงจะใช้งานต่อได้)',
+    async ()=>{
+      try {
+        await Remote.req('/hermes/tokens', { method:'DELETE' });
+        Store.ui._revealedHermesTokens = null;
+        await loadHermesTokens(true);
+        toast('เพิกถอน API Tokens ทั้งหมดแล้ว', 'warn');
+      } catch(e){ toast('เพิกถอนไม่สำเร็จ: '+e.message, 'err'); }
+    }, 'เพิกถอนทั้งหมด');
+}
+
+function copyHermesTokens(fmt = 'json'){
+  const list = Store.ui._revealedHermesTokens || [];
+  if(!list.length) return toast('กรุณากดยืนยันรหัสผ่านเพื่อดูชุด 20 Tokens ก่อน', 'warn');
+  const origin = location.origin || 'https://mng.uarea.in';
+  const email = Remote.user?.email || 'ai@mng.co.th';
+  const txt = fmt === 'env'
+    ? [
+        `MNG_ERP_URL="${origin}"`,
+        `MNG_ERP_EMAIL="${email}"`,
+        `MNG_ERP_PASSWORD="<ใส่รหัสผ่านบัญชี AI>"`,
+        `MNG_ERP_TOKENS="${list.map(t => t.token).join(',')}"`,
+      ].join('\n')
+    : JSON.stringify({
+        baseUrl: origin,
+        email,
+        rotationPolicy: 'round-robin-20',
+        tokens: list.map(t => t.token),
+      }, null, 2);
+  navigator.clipboard?.writeText(txt).then(
+    () => toast(fmt === 'env' ? 'คัดลอกค่า .env สำหรับ Hermes แล้ว ✓' : 'คัดลอก JSON ทั้ง 20 Tokens แล้ว ✓'),
+    () => toast('เบราว์เซอร์ไม่อนุญาตให้คัดลอกอัตโนมัติ — คัดลอกจากกล่องด้านล่างได้เลย', 'warn')
+  );
 }
 
 /* ---------- boot ---------- */

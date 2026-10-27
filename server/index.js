@@ -6,6 +6,7 @@ const express = require('express');
 const cfg = require('./config');
 const { ensureSchema, healthCheck, workPool } = require('./db');
 const auth = require('./auth');
+const hermes = require('./hermes');
 const api = require('./routes');
 
 const app = express();
@@ -43,16 +44,31 @@ const waitDbReady = () => dbReadyResolved
   ? Promise.resolve()
   : Promise.race([dbInitPromise, new Promise(resolve => setTimeout(resolve, 15000))]);
 
-/* tiny request log + API no-store */
+/* tiny request log + API no-store + CORS for Hermes / external AI agents */
 app.use('/api', (req, res, next) => {
   setNoStore(res);
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Token, X-Auth-Email, X-Auth-Password, X-MNG-Email, X-MNG-Password, X-Hermes-Agent');
+  res.setHeader('Access-Control-Expose-Headers', 'X-Token-Slot, X-Next-Recommended-Slot');
+  if (req.method === 'OPTIONS') return res.status(204).end();
   console.log(`[api] ${req.method} ${req.path}`);
   next();
 });
 
 /* ---------- public endpoints ---------- */
 app.get('/api/health', async (_req, res) => {
-  res.json({ ok: true, dbReady: dbReadyResolved, ...(await healthCheck()) });
+  res.json({ ok: true, dbReady: dbReadyResolved, hermesApi: true, ...(await healthCheck()) });
+});
+
+app.get('/api/hermes/manual.md', hermes.serveMarkdownDoc('docs/API-MANUAL.md'));
+app.get('/api/hermes/skill.md', hermes.serveMarkdownDoc('skills/mng-erp/SKILL.md'));
+app.get('/api/hermes/client.py', hermes.serveMarkdownDoc('skills/mng-erp/scripts/mng_erp_client.py', 'text/x-python; charset=utf-8'));
+
+app.post('/api/hermes/login', async (req, res) => {
+  if (cfg.demoOnly) return res.status(503).json({ error: 'โหมดสาธิต (ยังไม่ได้ตั้งค่าฐานข้อมูล MariaDB)' });
+  await waitDbReady();
+  return hermes.loginHermesHandler(req, res);
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -79,6 +95,7 @@ app.post('/api/auth/logout', async (req, res) => {
 });
 
 /* ---------- protected API ---------- */
+app.use('/api/hermes', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, hermes.router);
 app.use('/api/users', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, require('./users'));
 app.use('/api', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, api);
 

@@ -71,6 +71,26 @@ const TABLES = [
      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  `CREATE TABLE IF NOT EXISTS erp_api_tokens (
+     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     user_id BIGINT UNSIGNED NOT NULL,
+     slot TINYINT UNSIGNED NOT NULL,
+     token_hash CHAR(64) NOT NULL,
+     token_enc VARCHAR(260) NOT NULL,
+     token_preview VARCHAR(40) NOT NULL,
+     label VARCHAR(80) DEFAULT 'hermes-pool',
+     strict_dual_auth TINYINT(1) DEFAULT 0,
+     use_count BIGINT UNSIGNED DEFAULT 0,
+     last_used_at TIMESTAMP NULL,
+     last_agent VARCHAR(140) NULL,
+     revoked TINYINT(1) DEFAULT 0,
+     expires_at TIMESTAMP NOT NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     UNIQUE KEY uk_token_hash (token_hash),
+     UNIQUE KEY uk_user_slot (user_id, slot),
+     INDEX idx_user (user_id)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   /* ---------- iPlay Workspace / Agency OS additive tables ---------- */
   `CREATE TABLE IF NOT EXISTS erp_ai_agents (
      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

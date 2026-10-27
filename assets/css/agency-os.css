@@ -1276,6 +1276,55 @@
   font-weight: 600;
 }
 
+/* Hermes & AI 20-Token Rotating Pool Grid */
+.hermes-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.hermes-slot-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  font-size: 11.5px;
+}
+.hermes-slot-chip.active {
+  border-color: #d6d0fb;
+  background: #faf9ff;
+}
+.hermes-slot-chip .slot-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  color: var(--ink);
+}
+.hermes-slot-chip code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--violet);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hermes-code-box {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: #1d203e;
+  color: #eef0ff;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.65;
+  overflow-x: auto;
+  max-height: 220px;
+}
+
 @media (max-width: 1260px) {
   .ai-strip-grid { grid-template-columns: repeat(3, 1fr); }
   .dash-tri-grid { grid-template-columns: 1fr; }

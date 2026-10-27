@@ -1028,8 +1028,67 @@ function renderSettings(){
           : `<div style="margin-top:10px;font-size:12px;color:var(--muted)">กำลังดึงจำนวนแถวจริงจากตาราง MariaDB…</div>`}
     </div>`;
 
+  const hPool = Store.data._hermesPool;
+  const hRevealed = Store.ui._revealedHermesTokens;
+  const hermesSection = `
+    <div class="card card-pad" style="grid-column:1/-1">
+      <div class="card-head" style="padding:0 0 8px;flex-wrap:wrap;gap:8px">
+        <div class="card-title">🤖 เชื่อมต่อ Hermes & AI Agent ภายนอก (20-Token Rotating Pool)
+          <span class="badge b-purple">บังคับ User/Password + 20 Tokens หมุนเวียน</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a class="btn btn-ghost btn-sm" href="/api/hermes/manual.md" target="_blank" rel="noopener">📖 คู่มือ API (.md)</a>
+          <a class="btn btn-ghost btn-sm" href="/api/hermes/skill.md" target="_blank" rel="noopener">🧠 Hermes SKILL.md</a>
+          <a class="btn btn-ghost btn-sm" href="/api/hermes/client.py" target="_blank" rel="noopener">🐍 Python Client</a>
+        </div>
+      </div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.65">
+        เปิดให้ <b>Hermes Agent</b> หรือ AI ภายนอกล็อกอินด้วยบัญชีตัวเองผ่าน <code>POST /api/hermes/login</code> (ต้องมี <code>email</code> + <code>password</code> ใน <b>pacific_mng.users</b>) เพื่อรับชุด <b>API Token 20 ตัว (Slot #01–#20)</b> ไปวนใช้งานแบบ Round-Robin ลดคอขวดเมื่อรันหลาย Sub-agent พร้อมกัน
+      </p>
+      ${!Remote.on
+        ? `<div style="margin-top:10px;font-size:12.5px;color:var(--ink-2)">กรุณาเข้าสู่ระบบด้วยบัญชีจริงเพื่อจัดการชุด 20 API Tokens ของบัญชีนี้</div>`
+        : `
+          <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:10px 12px;background:var(--panel-2);border-radius:12px;border:1px solid var(--line)">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px">
+              <span>สถานะชุดโทเคน: <b style="color:var(--violet)">${hPool ? `${hPool.activeCount} / ${hPool.poolTarget} Slots พร้อมใช้` : 'กำลังตรวจสอบ…'}</b></span>
+              <span>เรียกใช้งานสะสม: <b>${hPool ? hPool.totalUses : 0} ครั้ง</b></span>
+              <span>โหมดความปลอดภัย: <b>${hPool?.strictDualAuth ? '🔒 Strict Dual-Auth (Token + Password ทุกครั้ง)' : '🔑 Login รับ 20 Tokens หมุนเวียน'}</b></span>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" data-act="hermes-reveal">🔑 สร้าง / ดู 20 Tokens</button>
+              <button class="btn btn-ghost btn-sm" data-act="hermes-rotate">🔄 หมุนเปลี่ยนใหม่ทั้ง 20 ตัว</button>
+              <button class="btn btn-ghost btn-sm" data-act="hermes-strict">${hPool?.strictDualAuth ? '🔓 ปิด Strict Dual-Auth' : '🔒 เปิด Strict Dual-Auth'}</button>
+              ${hPool?.activeCount ? `<button class="btn btn-danger btn-sm" data-act="hermes-revoke">🚫 เพิกถอนทั้งหมด</button>` : ''}
+            </div>
+          </div>
+          ${hRevealed?.length ? `
+            <div style="margin-top:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+                <b style="font-size:12.5px;color:var(--mint)">✓ ปลดล็อกชุด 20 Rotating API Tokens ของบัญชี ${esc(me.email)} แล้ว (คัดลอกไปใส่ Hermes ได้ทันที)</b>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-ghost btn-sm" data-act="hermes-copy:json">📋 คัดลอก JSON (20 ตัว)</button>
+                  <button class="btn btn-ghost btn-sm" data-act="hermes-copy:env">📋 คัดลอก .env สำหรับ Hermes</button>
+                </div>
+              </div>
+              <pre class="hermes-code-box">${esc(hRevealed.map(t => `Slot #${String(t.slot).padStart(2,'0')} : ${t.token}`).join('\n'))}</pre>
+            </div>` : ''}
+          ${hPool?.slots?.length ? `
+            <div class="hermes-slot-grid">
+              ${hPool.slots.map(s => `
+                <div class="hermes-slot-chip ${!s.revoked ? 'active' : ''}">
+                  <div class="slot-hd">
+                    <span>#${String(s.slot).padStart(2, '0')} · ${s.revoked ? '🔴 เพิกถอน' : '🟢 พร้อมใช้'}</span>
+                    <span style="color:var(--muted);font-weight:500">${s.useCount} ครั้ง</span>
+                  </div>
+                  <code>${esc(s.preview)}</code>
+                </div>`).join('')}
+            </div>` : `<div style="margin-top:10px;font-size:12px;color:var(--muted)">ยังไม่ได้ออกชุด 20 Tokens สำหรับบัญชีนี้ — กดปุ่ม <b>"🔑 สร้าง / ดู 20 Tokens"</b> หรือสั่งให้ Hermes เรียก <code>POST /api/hermes/login</code> ด้วยอีเมลและรหัสผ่านของบัญชี AI ได้ทันที</div>`}
+        `}
+    </div>`;
+
   view.innerHTML = `<div class="set-grid">
     ${dbAuditSection}
+    ${hermesSection}
     ${adminSection}
     <div class="card card-pad">
       <div class="card-title" style="margin-bottom:8px">${IC.user} โปรไฟล์ & องค์กร</div>
@@ -1083,8 +1142,9 @@ function renderSettings(){
   </div>`;
   $$('#themeDots .theme-dot').forEach(d=>d.onclick=()=>{st.theme=d.dataset.theme; Store.save(); Remote.push('/settings','PUT',st); App.applyTheme(); renderSettings(); toast('เปลี่ยนธีมสีแล้ว');});
   $$('[data-set]', view).forEach(sw=>sw.onclick=()=>{st[sw.dataset.set]=!st[sw.dataset.set]; sw.classList.toggle('on'); Store.save(); Remote.push('/settings','PUT',st);});
-  // lazy-load รายชื่อผู้ใช้ + คลังโปรเจกต์ + DB Audit
+  // lazy-load รายชื่อผู้ใช้ + คลังโปรเจกต์ + DB Audit + Hermes 20-Token Pool
   if(Remote.on && Store.data._dbAudit===undefined && typeof runDbAudit==='function') runDbAudit(true);
+  if(Remote.on && Store.data._hermesPool===undefined && typeof loadHermesTokens==='function') loadHermesTokens(true);
   if(isAdm && Store.data.authUsers===undefined) loadAuthUsers().catch(()=>{ Store.data.authUsers=[]; });
   if(isAdm && Store.data.archProjects===undefined) loadArchivedProjects().catch(()=>{ Store.data.archProjects=[]; });
 }
