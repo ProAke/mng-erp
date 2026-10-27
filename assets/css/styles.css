@@ -2,6 +2,13 @@
    MNG ERP — PlayDigital Light Workspace Theme
    Color system, typography & layout matched to i.playdigital.co.th
    ============================================================ */
+/* Prompt จาก Google Fonts (SIL OFL 1.1); เก็บไว้ในระบบเพื่อรองรับภาษาไทยแม้โหลดฟอนต์ภายนอกไม่ได้ */
+@font-face{font-family:'MNG Prompt';src:url('../fonts/Prompt-Regular.ttf') format('truetype');font-style:normal;font-weight:400;font-display:swap}
+@font-face{font-family:'MNG Prompt';src:url('../fonts/Prompt-Medium.ttf') format('truetype');font-style:normal;font-weight:500;font-display:swap}
+@font-face{font-family:'MNG Prompt';src:url('../fonts/Prompt-SemiBold.ttf') format('truetype');font-style:normal;font-weight:600;font-display:swap}
+@font-face{font-family:'MNG Prompt';src:url('../fonts/Prompt-Bold.ttf') format('truetype');font-style:normal;font-weight:700;font-display:swap}
+/* Noto Emoji ใช้เฉพาะกรณีอุปกรณ์ไม่มีฟอนต์อีโมจิ (SIL OFL 1.1) */
+@font-face{font-family:'MNG Emoji';src:url('../fonts/NotoEmoji-Regular.woff2') format('woff2');font-style:normal;font-weight:400;font-display:swap}
 :root{
   color-scheme:light;
 
@@ -49,7 +56,7 @@
   --rail-w:74px; --side-w:276px; --topbar-h:68px;
 
   /* Fonts — Prompt first (Thai-optimized), JetBrains Mono for codes/numbers */
-  --font:'Prompt','IBM Plex Sans Thai','Kanit','Sarabun',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --font:'MNG Prompt','Prompt','IBM Plex Sans Thai','Kanit','Sarabun',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','MNG Emoji',sans-serif;
   --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
 

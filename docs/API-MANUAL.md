@@ -264,6 +264,65 @@ class MngErpRotatingClient {
 - **`PATCH /api/projects/:id`** *(สิทธิ์ Manager/Admin)* — แก้ไขชื่อ รหัส งบประมาณ ลูกค้า สถานะ หรือสมาชิกโปรเจกต์
 - **`DELETE /api/projects/:id`** *(สิทธิ์ Manager/Admin)* — เก็บโปรเจกต์เข้าคลังถาวร (กู้คืนได้ที่ `POST /api/projects/:id/restore`)
 
+#### 5.3.1 Project Brief, Mindmap & Flow
+
+โปรเจกต์ใหม่จาก `POST /api/projects` จะได้รับผังตั้งต้น 4 โซนเสมอ แม้ไม่ได้ส่งบรีฟมา สามารถส่ง `brief` เพิ่มได้ เช่น:
+
+```json
+{
+  "name": "แคมเปญเปิดตัวสินค้า",
+  "code": "CMP",
+  "start": "2026-11-01",
+  "end": "2026-12-31",
+  "members": ["u1", "u2"],
+  "brief": {
+    "objective": "เพิ่มจำนวนผู้สนใจ",
+    "audience": "เจ้าของกิจการ",
+    "deliverables": "เว็บไซต์และคู่มือ",
+    "successMetric": "จำนวน Lead ที่มีคุณภาพ",
+    "marketingChannels": "เว็บไซต์และ LINE OA",
+    "salesProcess": "คัดกรองและเสนอราคา",
+    "supportPlan": "กำหนดผู้รับผิดชอบและเวลาตอบกลับ",
+    "ownerId": "u1",
+    "approverId": "u2",
+    "members": ["u1", "u2"],
+    "aiAgentId": "ai1",
+    "aiModel": "ชื่อโมเดลที่วางแผนใช้"
+  },
+  "autoCreateTasks": false
+}
+```
+
+สมาชิกและ AI Agent ที่ระบุจะต้องมีอยู่จริงในระบบ ส่วน `autoCreateTasks: true` เป็นตัวเลือกให้สร้างการ์ดงานทันที ค่าเริ่มต้นไม่สร้าง ระบบบันทึกโปรเจกต์ ผัง และงานที่เลือกสร้างใน transaction เดียวกัน
+
+| Method | Endpoint | สิทธิ์และรายละเอียด |
+|---|---|---|
+| `GET` | `/api/projects/:id/flow` | ผู้ใช้ที่เข้าสู่ระบบอ่าน `{exists, flow}`; โปรเจกต์เดิมที่ยังไม่มีผังคืน `exists: false` |
+| `PUT` | `/api/projects/:id/flow` | Manager/Admin ส่ง `flow` ทั้งชุดพร้อม `revision` ล่าสุด; สำหรับผังแรกใช้ `revision: 0` |
+| `POST` | `/api/projects/:id/flow/sync-tasks` | Manager/Admin สร้างงานเฉพาะขั้นตอนที่ยังไม่มีงาน; ส่ง `{ "nodeId": "quality", "revision": 1 }` เพื่อเลือกขั้นตอน หรือไม่ส่ง `nodeId` เพื่อสร้างทั้งหมด |
+| `GET`, `POST` | `/api/docs` | ผู้ใช้ที่เข้าสู่ระบบอ่านหรือสร้างคู่มือทีม (`title`, `body`, `summary`, `category`, `projectId`) |
+| `PATCH`, `DELETE` | `/api/docs/:id` | แก้คู่มือ; การลบจำกัด Manager/Admin (`id` เช่น `doc1`) |
+
+ตัวอย่างแก้บรีฟด้วย JavaScript หลังล็อกอินและได้ token แล้ว:
+
+```js
+const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+const r = await fetch(`${baseUrl}/api/projects/p1/flow`, { headers });
+const { exists, flow } = await r.json();
+if (!exists) throw new Error('โปรเจกต์นี้ยังไม่มีผัง กรุณาตั้งค่าบรีฟก่อน');
+flow.brief.supportPlan = 'ติดตามผลและตอบคำถามภายในเวลาที่ตกลง';
+const saved = await fetch(`${baseUrl}/api/projects/p1/flow`, {
+  method: 'PUT', headers, body: JSON.stringify(flow)
+});
+if (saved.status === 409) throw new Error('ผังถูกแก้ไขโดยผู้อื่น: โหลดใหม่และทบทวนก่อนบันทึก');
+if (!saved.ok) throw new Error(`HTTP ${saved.status}`);
+```
+
+- เซิร์ฟเวอร์สร้างเส้นเชื่อมและ Mindmap จากข้อมูลที่บันทึกใหม่ ไม่รับ `taskId` ที่ client ปลอม และเก็บลิงก์งานเดิมตามรหัสขั้นตอน
+- การสร้างงานซ้ำไม่สร้างรายการซ้ำสำหรับขั้นตอนที่มีงานเชื่อม การเปลี่ยน/ลบขั้นตอนภายหลังไม่แก้หรือลบการ์ดงานที่สร้างไปแล้ว
+- การเลือกโมเดล Agent สื่อ หรือขั้นตอนอัตโนมัติเป็น **แผนงานเท่านั้น** ไม่ได้เรียก AI เชื่อม Webhook หรือเผยแพร่จริง
+- บรีฟและคู่มือทีมมองเห็นโดยผู้ใช้ที่เข้าสู่ระบบทุกคน ไม่ควรบันทึก Token หรือข้อมูลลับ ดูคู่มือเพิ่มเติมใน `docs/PROJECT-FLOW.md` หรือเมนู **คู่มือ**
+
 ### 5.4 แชตทีม, DM 1-ต่อ-1 และไฟล์แนบ / Google Drive (Chat & Drive)
 - **`GET /api/chat/sync`** — ดึงห้องแชตทั้งหมด (`channels`), ข้อความล่าสุด (`messages`), และไฟล์ที่แชร์ (`files`) รองรับ `?channelId=ch1`
 - **`POST /api/channels`** — สร้างห้องแชตกลุ่มใหม่ `{ "name": "campaign-warroom", "emoji": "🚀", "topic": "ห้องเกาะติดแคมเปญ", "projectId": "p1" }`

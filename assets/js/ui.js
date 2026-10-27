@@ -111,6 +111,8 @@ const IC = (() => {
     bolt:    w('<path d="M13 3L5.5 13.5H12L11 21l7.5-10.5H12z"/>'),
     pause:   w('<rect x="6.5" y="5" width="3.8" height="14" rx="1.2"/><rect x="13.7" y="5" width="3.8" height="14" rx="1.2"/>'),
     play:    w('<path d="M7.5 5.5l11 6.5-11 6.5z"/>'),
+    flow:    w('<rect x="3" y="4" width="6" height="5" rx="1.5"/><rect x="15" y="4" width="6" height="5" rx="1.5"/><rect x="9" y="15" width="6" height="5" rx="1.5"/><path d="M9 6.5h6M6 9v3.5a2 2 0 0 0 2 2h1M18 9v3.5a2 2 0 0 1-2 2h-1"/>'),
+    book:    w('<path d="M4.5 5.5A2.5 2.5 0 0 1 7 3h12.5v16H7a2.5 2.5 0 0 0-2.5 2.5z"/><path d="M4.5 19.5A2.5 2.5 0 0 1 7 17h12.5"/><path d="M8.5 7.5h7M8.5 11h5"/>'),
   };
 })();
 

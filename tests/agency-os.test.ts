@@ -40,6 +40,8 @@ describe('MNG ERP (ci-workflow base) + Agency OS (i.playdigital.co.th) integrati
       'assets/js/ui.js',
       'assets/js/views.js',
       'assets/js/agency-os.js',
+      'assets/js/project-plan.js',
+      'assets/js/project-flow.js',
       'assets/js/app.js',
     ]) {
       const code = fs.readFileSync(path.join(rootDir, rel), 'utf8')
@@ -64,9 +66,9 @@ describe('MNG ERP (ci-workflow base) + Agency OS (i.playdigital.co.th) integrati
     expect(tasks.some((t: any) => t.code.startsWith('CAL-') || t.code.startsWith('ERP-'))).toBe(true)
   })
 
-  it('renders all 13 routes (9 ci-workflow + 4 Agency OS) cleanly without errors', () => {
+  it('renders all existing routes plus Project Flow and Docs cleanly', () => {
     const routes = [
-      'dashboard', 'calendar', 'tasks', 'projects',
+      'dashboard', 'calendar', 'tasks', 'projects', 'project-flow', 'docs',
       'ai', 'chat', 'hr', 'rooms',
       'finance', 'team', 'clients', 'reports', 'settings',
     ]

@@ -1,6 +1,8 @@
 /* MNG ERP — REST API (all data lives in MariaDB; two pools, merged here) */
 const express = require('express');
 const { workPool, authPool } = require('./db');
+const ProjectPlan = require('../assets/js/project-plan');
+const ProjectFlow = require('./project-flow');
 
 const router = express.Router();
 
@@ -66,7 +68,8 @@ function shapeProject(r, tasks) {
     short: (r.title || '').split('—')[0].trim().slice(0, 16),
     client: r.erp_client_id ? 'c' + r.erp_client_id : (r.erp_client || 'Internal — MNG Groups'),
     clientName: r.erp_client || '',
-    grad: r.erp_grad || pal[1], color: r.erp_color || pal[0],
+    grad: PALETTE.some(([, grad]) => grad === r.erp_grad) ? r.erp_grad : pal[1],
+    color: /^#[0-9a-f]{6}$/i.test(r.erp_color || '') ? r.erp_color : pal[0],
     status: r.erp_status || (r.stat === 'live' ? 'done' : 'doing'),
     progress: r.erp_progress || prog,
     budget: r.erp_budget ? +r.erp_budget : 0,
@@ -184,7 +187,7 @@ router.get('/bootstrap', async (req, res) => {
     const [setR]    = await workPool.query('SELECT data FROM erp_settings WHERE id = 1');
 
     // Agency OS collections (graceful fallback if any table empty)
-    let aiAgentR = [], aiRunR = [], chanR = [], msgR = [], fileR = [], roomR = [], bookR = [], checkinR = [], leaveR = [];
+    let aiAgentR = [], aiRunR = [], chanR = [], msgR = [], fileR = [], roomR = [], bookR = [], checkinR = [], leaveR = [], flowR = [], docR = [];
     try {
       [aiAgentR] = await workPool.query('SELECT * FROM erp_ai_agents ORDER BY id');
       [aiRunR]   = await workPool.query('SELECT * FROM erp_ai_runs ORDER BY id DESC LIMIT 50');
@@ -196,6 +199,12 @@ router.get('/bootstrap', async (req, res) => {
       [checkinR] = await workPool.query('SELECT * FROM erp_checkins ORDER BY date DESC, id DESC LIMIT 90');
       [leaveR]   = await workPool.query('SELECT * FROM erp_leaves ORDER BY id DESC LIMIT 60');
     } catch {}
+    // แยกการตรวจตารางใหม่จากข้อมูลเดิม เพื่อไม่ให้หน้าอื่นพังหาก migration ยังไม่สำเร็จ
+    const featureAvailability = { projectFlow: true, docs: true };
+    try { [flowR] = await workPool.query('SELECT * FROM erp_project_flows ORDER BY project_id'); }
+    catch (e) { featureAvailability.projectFlow = false; console.warn('[bootstrap] project flows unavailable:', e.message); }
+    try { [docR] = await workPool.query('SELECT * FROM erp_docs ORDER BY COALESCE(pinned,0) DESC, id DESC'); }
+    catch (e) { featureAvailability.docs = false; console.warn('[bootstrap] docs unavailable:', e.message); }
 
     const archIds = new Set(archP.map(x => 'p' + x.id));
     const tasks = taskR.map(shapeTask).filter(t => !archIds.has(t.project));
@@ -283,6 +292,21 @@ router.get('/bootstrap', async (req, res) => {
         id: 'lv' + r.id, memberId: r.member_id, kind: r.kind || 'annual',
         startDate: r.start_date, endDate: r.end_date, days: +r.days || 1,
         reason: r.reason || '', status: r.status || 'pending', approvedBy: r.approved_by || '',
+      })),
+      projectFlows: Object.fromEntries(flowR.map(r => ['p' + r.project_id, ProjectFlow.rowToFlow(r)])),
+      featureAvailability,
+      customDocs: docR.map(r => ({
+        id: 'doc' + r.id,
+        slug: r.slug,
+        category: r.category || 'playbook',
+        icon: r.icon || '📘',
+        title: r.title,
+        summary: r.summary || '',
+        body: r.body || '',
+        projectId: r.project_id ? 'p' + r.project_id : null,
+        authorName: r.author_name || '',
+        pinned: !!r.pinned,
+        updatedAt: String(r.updated_at || '').slice(0, 16),
       })),
       eventCats: EVENT_CATS,
       settings: mergedSettings,
@@ -607,20 +631,69 @@ router.get('/projects', async (req, res) => {
 
 router.post('/projects', async (req, res) => {
   const b = req.body || {};
-  if (!b.name?.trim()) return res.status(400).json({ error: 'name_required' });
-  const hub = (b.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'proj') + '-' + Date.now().toString(36);
-  const pCode = String(b.code || b.name || 'MNG').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4) || 'MNG';
+  if (b.autoCreateTasks === true && !guardManage(req, res)) return;
+  if (typeof b.name !== 'string' || !b.name.trim() || b.name.trim().length > 200) {
+    return res.status(400).json({ error: 'กรุณาระบุชื่อโปรเจกต์ไม่เกิน 200 ตัวอักษร' });
+  }
+  const isDate = d => {
+    if (!d) return true;
+    if (typeof d !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+    const time = Date.parse(d + 'T00:00:00Z');
+    return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === d;
+  };
+  if (!isDate(b.start) || !isDate(b.end) || (b.start && b.end && b.end < b.start)) {
+    return res.status(400).json({ error: 'วันที่เริ่มหรือส่งมอบไม่ถูกต้อง' });
+  }
+  if (b.budget != null && (!Number.isFinite(Number(b.budget)) || Number(b.budget) < 0 || Number(b.budget) > 9999999999999)) {
+    return res.status(400).json({ error: 'งบประมาณไม่ถูกต้อง' });
+  }
+  if ((b.color && (typeof b.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(b.color))) ||
+      (b.grad && !PALETTE.some(([, grad]) => grad === b.grad))) {
+    return res.status(400).json({ error: 'สีโปรเจกต์ไม่ถูกต้อง' });
+  }
+  const name = b.name.trim();
+  const hub = (name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'proj') + '-' + Date.now().toString(36);
+  const pCode = String(b.code || name || 'MNG').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 4) || 'MNG';
   const pal = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+  let conn;
   try {
-    const [r] = await workPool.query(
-      `INSERT INTO projects (hub_id, title, description, stat, icon, erp_code, erp_client, erp_budget, erp_start, erp_end, erp_grad, erp_color, erp_status, erp_members)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [hub, b.name.trim(), b.desc ?? null, 'prog', '📁', pCode,
-       b.clientName ?? b.client ?? null, b.budget ?? 0,
-       b.start ?? null, b.end ?? null, b.grad ?? pal[1], b.color ?? pal[0], 'todo', JSON.stringify([1])]);
-    await logActivity(`สร้างโปรเจกต์ <b>${b.name.trim()}</b>`, 1);
-    res.json({ id: 'p' + r.insertId, code: pCode });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const initial = b.flowData || ProjectPlan.build({ name, desc: b.desc || '', members: b.members || [] }, b.brief);
+    const flow = ProjectFlow.normalizeFlow(initial, name);
+    const members = b.members === undefined ? flow.brief.members : b.members;
+    if (!Array.isArray(members) || members.length > 100 || members.some(id => typeof id !== 'string' || !/^u[1-9]\d*$/.test(id) || Number(id.slice(1)) > 4294967295)) {
+      return res.status(400).json({ error: 'รหัสสมาชิกทีมไม่ถูกต้อง' });
+    }
+    flow.brief.members = [...new Set(members)];
+    flow.mindmap = ProjectPlan.makeMindmap(name, flow.brief, flow.nodes);
+    flow.aiStack = ProjectPlan.makeAiStack(flow.brief, flow.nodes);
+    conn = await workPool.getConnection();
+    await conn.beginTransaction();
+    await ProjectFlow.validateReferences(conn, flow);
+    const clientLabel = typeof (b.clientName ?? b.client) === 'string' ? (b.clientName ?? b.client).slice(0, 200) : null;
+    let clientId = null;
+    if (clientLabel) {
+      const [clients] = await conn.query('SELECT id FROM erp_clients WHERE name = ? LIMIT 1', [clientLabel]);
+      clientId = clients[0]?.id ?? null;
+    }
+    const [r] = await conn.query(
+      `INSERT INTO projects (hub_id, title, description, stat, icon, erp_code, erp_client_id, erp_client, erp_budget, erp_start, erp_end, erp_grad, erp_color, erp_status, erp_members)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [hub, name, typeof b.desc === 'string' ? b.desc.slice(0, 4000) : null, 'prog', '📁', pCode,
+        clientId, clientLabel, Number(b.budget) || 0, b.start || null, b.end || null,
+        b.grad || pal[1], b.color || pal[0], 'todo', JSON.stringify(flow.brief.members.map(id => Number(id.slice(1))))]
+    );
+    const project = { id: r.insertId, title: name, erp_code: pCode, hub_id: hub, erp_start: b.start || null, erp_end: b.end || null };
+    const created = b.autoCreateTasks === true ? await ProjectFlow.createNodeTasks(conn, project, flow) : [];
+    const savedFlow = await ProjectFlow.saveFlow(conn, project.id, flow, req.user?.name || 'User', 1);
+    await conn.commit();
+    conn.release();
+    conn = null;
+    await logActivity(`สร้างโปรเจกต์ <b>[${escS(pCode)}] ${escS(name)}</b> พร้อมบรีฟและผัง (${created.length} งาน)`, req);
+    res.json({ id: 'p' + project.id, code: pCode, tasksCreated: created.length, flow: savedFlow });
+  } catch (e) {
+    if (conn) { try { await conn.rollback(); } catch {} conn.release(); }
+    res.status(e.status || 500).json({ error: e.status ? e.message : 'สร้างโปรเจกต์ไม่สำเร็จ กรุณาลองอีกครั้ง' });
+  }
 });
 
 /* ---------------- PROJECTS: manage (แก้ไข/เก็บถาวร/กู้คืน) ---------------- */
@@ -646,6 +719,8 @@ router.patch('/projects/:id', async (req, res) => {
     if (b.budget !== undefined) { sets.push('erp_budget = ?'); vals.push(b.budget ?? 0); changes.push('งบประมาณ'); }
     if (b.start  !== undefined) { sets.push('erp_start = ?'); vals.push(b.start || null); }
     if (b.end    !== undefined) { sets.push('erp_end = ?');   vals.push(b.end || null);   }
+    if (b.grad && !PALETTE.some(([, grad]) => grad === b.grad)) return res.status(400).json({ error: 'สีโปรเจกต์ไม่ถูกต้อง' });
+    if (b.color && (typeof b.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(b.color))) return res.status(400).json({ error: 'สีโปรเจกต์ไม่ถูกต้อง' });
     if (b.grad   !== undefined) { sets.push('erp_grad = ?');  vals.push(b.grad || null); changes.push('สี'); }
     if (b.color  !== undefined) { sets.push('erp_color = ?'); vals.push(b.color || null); }
     if (b.status !== undefined) { sets.push('erp_status = ?'); vals.push(b.status || null); changes.push('สถานะ'); }
@@ -816,6 +891,8 @@ router.get('/db/audit', async (_req, res) => {
     ['erp_activity', 'บันทึกกิจกรรม (erp_activity)'],
     ['erp_settings', 'การตั้งค่าระบบ (erp_settings)'],
     ['erp_api_tokens', 'โทเคน AI/Hermes 20 ชุด (erp_api_tokens)'],
+    ['erp_project_flows', 'ผัง Flow & Mindmap โปรเจกต์ (erp_project_flows)'],
+    ['erp_docs', 'คลังคู่มือ & SOP ทีม (erp_docs)'],
   ];
   try {
     const t0 = Date.now();

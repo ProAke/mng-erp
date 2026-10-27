@@ -8,7 +8,8 @@
 /* ---------- Agency OS State & Defaults ---------- */
 function ensureAgencyData() {
   const d = Store.data;
-  if (!Array.isArray(d.aiAgents) || !d.aiAgents.length) d.aiAgents = JSON.parse(JSON.stringify(SEED.aiAgents || []));
+  // ในระบบจริง รายการว่างหมายถึงยังไม่มี Agent ไม่ควรนำ Agent ตัวอย่างมาให้เลือก
+  if (!Array.isArray(d.aiAgents) || (!Remote.on && !d.aiAgents.length)) d.aiAgents = JSON.parse(JSON.stringify(SEED.aiAgents || []));
   if (!Array.isArray(d.aiRuns))   d.aiRuns   = JSON.parse(JSON.stringify(SEED.aiRuns || []));
   if (!Array.isArray(d.channels) || !d.channels.length) d.channels = JSON.parse(JSON.stringify(SEED.channels || []));
   if (!Array.isArray(d.messages)) d.messages = JSON.parse(JSON.stringify(SEED.messages || []));
