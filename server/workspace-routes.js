@@ -687,4 +687,7 @@ router.delete('/bookings/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/* แยก Project Flow และ Docs ไว้ใน router เฉพาะ */
+router.use(require('./project-workspace-routes'));
+
 module.exports = router;

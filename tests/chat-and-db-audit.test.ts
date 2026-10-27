@@ -31,7 +31,7 @@ describe('PlayDigital Chat (i.playdigital.co.th parity) & End-to-End Real MariaD
       win.HTMLElement.prototype.scrollIntoView = () => {}
 
       const ctx = dom.getInternalVMContext()
-      for (const rel of ['assets/js/data.js', 'assets/js/ui.js', 'assets/js/views.js', 'assets/js/agency-os.js', 'assets/js/app.js']) {
+      for (const rel of ['assets/js/data.js', 'assets/js/ui.js', 'assets/js/views.js', 'assets/js/agency-os.js', 'assets/js/project-plan.js', 'assets/js/project-flow.js', 'assets/js/app.js']) {
         vm.runInContext(fs.readFileSync(path.join(rootDir, rel), 'utf8'), ctx, { filename: rel })
       }
       await vm.runInContext('App.init()', ctx)
@@ -414,7 +414,7 @@ describe('PlayDigital Chat (i.playdigital.co.th parity) & End-to-End Real MariaD
       expect(delRes.status).toBe(200)
     })
 
-    it('persists Clients CRM, Invoices CRUD, Rooms CRUD, Settings, and passes /api/db/audit across all 18 tables', async () => {
+    it('persists Clients CRM, Invoices CRUD, Rooms CRUD, Settings, and passes /api/db/audit across all 21 tables', async () => {
       // Clients CRUD
       const clCreate = await (await fetch(`${baseUrl}/api/clients`, {
         method: 'POST',
@@ -467,10 +467,10 @@ describe('PlayDigital Chat (i.playdigital.co.th parity) & End-to-End Real MariaD
       expect(setRes.ok).toBe(true)
       expect(setRes.settings.orgName).toBe('MNG Groups Thailand')
 
-      // Live DB Audit across all 19 tables (pacific_mng.users + 18 pacific_mngworks tables incl. erp_api_tokens)
+      // pacific_mng.users + 20 pacific_mngworks tables including Project Flow and Docs
       const audit = await (await fetch(`${baseUrl}/api/db/audit`)).json()
       expect(audit.ok).toBe(true)
-      expect(audit.modules.length).toBe(19)
+      expect(audit.modules.length).toBe(21)
       expect(audit.modules.every((m: any) => m.ok)).toBe(true)
       expect(executedSql.length).toBeGreaterThan(25)
     })

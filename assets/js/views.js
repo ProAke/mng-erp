@@ -686,7 +686,7 @@ function renderTasks(){
       <tbody>${items.map(t=>{const p=Store.projectOf(t),u=Store.userOf(t.assignee),ag=t.aiAgentId?aiAgentOf(t.aiAgentId):null;return `<tr data-act="open-task" data-id="${t.id}">
         <td class="t-code">${t.code}</td>
         <td><div class="t-title">${esc(t.title)} ${ag?`<span class="ai-copilot-tag">✨ ${esc(ag.code)}</span>`:''}</div>${t.subtasks.length?`<div class="t-sub">งานย่อย ${t.subtasks.filter(s=>s.d).length}/${t.subtasks.length}</div>`:''}</td>
-        <td><span class="badge" style="background:${p.color}18;color:${p.color}">${p.short}</span></td>
+        <td><span class="badge" style="background:${p.color}18;color:${p.color}">${esc(p.short)}</span></td>
         <td>${avatar(u)} ${esc(u.name)}</td>
         <td>${statusBadge(t.status)}</td><td>${prioBadge(t.priority)}</td>
         <td style="min-width:110px"><div class="progress"><div style="width:${t.progress}%;background:${STATUS_META[t.status].color}"></div></div></td>
@@ -732,6 +732,7 @@ function renderProjects(){
           <div><b style="${budgetPct>90?'color:var(--red)':''}">${p.budget?budgetPct+'%':'—'}</b><small>ใช้งบไป</small></div>
         </div>
         <div class="pc-foot"><span>${IC.clock} ส่ง ${fmtD(p.end)}</span>${avatarStack(p.members.map(id=>Store.userOf(id)))}</div>
+        <button type="button" class="btn btn-sm pf-project-link" data-act="open-project-flow" data-id="${esc(p.id)}">${IC.flow} บรีฟ · Mindmap · Flow</button>
       </div></div>`;
   }).join('')}</div>`;
 }

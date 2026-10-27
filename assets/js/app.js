@@ -58,6 +58,8 @@ const Store = {
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(this.KEY)); } catch(e){}
     this.data = saved && saved.tasks ? saved : JSON.parse(JSON.stringify(SEED));
+    if(!this.data.projectFlows) this.data.projectFlows = {};
+    if(!Array.isArray(this.data.customDocs)) this.data.customDocs = [];
     if(!this.data.settings) this.data.settings = {n1:true,n2:true,n3:false,theme:'#6C5CE7'};
     const catKeys = Object.keys(this.data.eventCats);
     this.ui = {
@@ -91,7 +93,9 @@ const Store = {
   },
   save(){
     this.data.settings.calView = this.ui.calView;
-    localStorage.setItem(this.KEY, JSON.stringify(this.data));
+    // บรีฟและคู่มือจริงอ่านจาก MariaDB หลังล็อกอินเสมอ ไม่ค้างเป็นข้อมูลสาธิตในเบราว์เซอร์
+    const snapshot = Remote.on ? { ...this.data, projectFlows: {}, customDocs: [] } : this.data;
+    localStorage.setItem(this.KEY, JSON.stringify(snapshot));
   },
 
   /* hydrate from server bootstrap (real MariaDB data) */
@@ -99,7 +103,7 @@ const Store = {
     const ui = this.ui;
     const cats = d.eventCats || {};
     Object.values(cats).forEach(c => c.on = true);
-    this.data = { ...d, eventCats: cats };
+    this.data = { ...d, eventCats: cats, projectFlows: d.projectFlows || {}, customDocs: d.customDocs || [] };
     this.ui = ui;
     if(!this.ui.calCats || !this.ui.calCats.size) this.ui.calCats = new Set(Object.keys(cats));
     if (typeof ensureAgencyData === 'function') ensureAgencyData();
@@ -174,6 +178,8 @@ const App = {
     calendar: { title:'ปฏิทินงาน',              sub:'ตารางนัดหมาย เดดไลน์งาน และคิวจองห้อง',       icon:IC.cal,    label:'ปฏิทิน',   render:renderCalendar,  badge:()=>Store.data.events.filter(e=>e.date===todayS()).length },
     tasks:    { title:'บอร์ดงาน',               sub:'ติดตามงานแบบ Kanban และตาราง',                icon:IC.task,   label:'งาน',      render:renderTasks,     badge:()=>Store.data.tasks.filter(t=>t.status!=='done').length },
     projects: { title:'โปรเจกต์ทั้งหมด',        sub:'ภาพรวมความคืบหน้าและงบประมาณ',                icon:IC.proj,   label:'โปรเจกต์', render:renderProjects },
+    'project-flow': { title:'Project Flow & Mindmap', sub:'จากบรีฟสู่แผนงาน ทีม การขาย และการดูแลลูกค้า', icon:IC.flow, label:'ผังงาน', render:renderProjectFlow },
+    docs:     { title:'คู่มือ & Docs',           sub:'คู่มือการใช้งานและคลังความรู้ของทีม',          icon:IC.book,   label:'คู่มือ',    render:renderDocs },
     ai:       { title:'AI Workforce',           sub:'เอเจนต์อัตโนมัติ · คำสั่งงาน · บันทึก Token',  icon:IC.bot,    label:'AI Hub',   render:renderAI,        badge:()=>(Store.data.aiAgents||[]).filter(a=>!a.paused).length },
     chat:     { title:'แชตทีม & #ai-feed',      sub:'ห้องสนทนาทีมและการแจ้งเตือนจาก AI',           icon:IC.chat,   label:'แชตทีม',   render:renderChat },
     hr:       { title:'ลงเวลาเข้างาน & ใบลา',    sub:'เช็กอินรายวัน · WFH · อนุมัติใบลา',           icon:IC.hr,     label:'ลงเวลา',   render:renderHR,        badge:()=>(Store.data.leaves||[]).filter(l=>l.status==='pending').length },
@@ -288,6 +294,7 @@ const App = {
     const name = (location.hash.replace('#/','')||'dashboard').split('?')[0];
     const r = this.routes[name] || this.routes.dashboard;
     Store.ui.route = name;
+    $('#appShell').classList.toggle('project-feature-route', name==='project-flow' || name==='docs');
     // reset view scroll mode
     const view = $('#view');
     view.classList.remove('no-scroll');
@@ -301,8 +308,8 @@ const App = {
   renderRail(){
     const rail = $('#rail');
     const cur = Store.ui.route;
-    const coreOrder = ['dashboard','calendar','tasks','projects','finance','team','clients','reports'];
-    const osOrder   = ['ai','chat','hr','rooms'];
+    const coreOrder = ['dashboard','calendar','tasks','projects','project-flow','finance','team','clients','reports'];
+    const osOrder   = ['ai','chat','hr','rooms','docs'];
     const btnHtml = k => {
       const r = this.routes[k];
       const b = r.badge ? r.badge() : 0;
@@ -429,6 +436,7 @@ const App = {
         case 'open-task': openTaskModal(arg||id); break;
         case 'open-event': { const [k,i]=(arg||id).split(':'); if(k==='task') openTaskModal(i); else openEventModal(i); break; }
         case 'open-project': openProjectModal(arg||id); break;
+        case 'open-project-flow': closeModal(); this.go('project-flow?project='+encodeURIComponent(arg||id)); break;
         case 'open-invoice': openInvoiceModal(arg||id); break;
         case 'open-client':  openClientModal(arg||id); break;
         case 'edit-client':  { e.stopPropagation(); const c = Store.data.clients.find(x=>x.id===id); if(c) openClientForm(c); break; }
@@ -831,6 +839,7 @@ function openProjectModal(pid){
       ${canLead() ? `<button class="btn btn-danger" id="pjDel" style="margin-right:auto">🗑 เก็บเข้าคลัง</button>` : ''}
       <button class="btn btn-ghost" onclick="closeModal()">ปิด</button>
       ${canLead() ? `<button class="btn" id="pjEdit">✏️ แก้ไขโปรเจกต์</button>` : ''}
+      <button class="btn" data-act="open-project-flow" data-id="${esc(pid)}">${IC.flow} บรีฟ & ผังงาน</button>
       <button class="btn btn-primary" id="pjGo">${IC.task} ดูงานทั้งหมดของโปรเจกต์</button>
     </div>`, {wide:true});
   $('#pjGo').onclick = ()=>{ Store.ui.f.taskProj = new Set([pid]); closeModal(); App.go('tasks'); };
@@ -842,9 +851,10 @@ const PROJ_COLORS = {'g-blue':'#2F6BF0','g-purple':'#6C5CE7','g-pink':'#F25C8B',
 const canLead = () => Remote.on && ['super_admin','admin','manager'].includes(Remote.user?.role);
 
 function openProjectForm(p){
+  if(!p){ openProjectWizard(); return; }
   const isEdit = !!p; p = p || {};
   const clientName = isEdit ? (Store.clientOf(p)?.name || p.clientName || '') : '';
-  openModal(`${modalHead(isEdit ? `แก้ไขโปรเจกต์ — ${p.name||''}` : 'เพิ่มโปรเจกต์ใหม่', isEdit ? 'บันทึกแล้วลง MariaDB ทันที คนทั้งทีมเห็นพร้อมกัน' : 'กำหนดรหัสย่อ เช่น ERP, LVT เพื่อสร้างเลขงาน <CODE>-10xx อัตโนมัติ')}
+  openModal(`${modalHead(isEdit ? `แก้ไขโปรเจกต์ — ${esc(p.name||'')}` : 'เพิ่มโปรเจกต์ใหม่', isEdit ? 'บันทึกแล้วลง MariaDB ทันที คนทั้งทีมเห็นพร้อมกัน' : 'กำหนดรหัสย่อ เช่น ERP, LVT เพื่อสร้างเลขงาน <CODE>-10xx อัตโนมัติ')}
     <div class="modal-body"><div class="form-grid">
       <div class="f-group"><label>ชื่อโปรเจกต์ *</label><input id="pName" value="${esc(p.name||'')}" placeholder="เช่น เว็บ e-commerce ร้าน X"></div>
       <div class="f-group"><label>รหัสโปรเจกต์ (2–4 ตัวอักษร)</label><input id="pCode" value="${esc(p.code||'')}" maxlength="5" placeholder="เช่น ECX, ERP"></div>
@@ -891,7 +901,7 @@ function openProjectForm(p){
 /* เก็บโปรเจกต์เข้าคลัง (กู้คืนได้ ไม่ลบทำลายตารางเดิม) */
 function archiveProject(p){
   const nTasks = Store.data.tasks.filter(t=>t.project===p.id).length;
-  confirmDlg(`เก็บโปรเจกต์ "${p.name}" เข้าคลัง?`,
+  confirmDlg(`เก็บโปรเจกต์ "${esc(p.name)}" เข้าคลัง?`,
     `โปรเจกต์และงาน <b>${nTasks} ชิ้น</b> จะถูกซ่อนจากทุกหน้า — ไม่มีข้อมูลถูกลบจริง กู้คืนได้ที่ ตั้งค่า → คลังโปรเจกต์`,
     async ()=>{
       if(Remote.on){

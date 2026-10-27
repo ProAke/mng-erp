@@ -222,11 +222,43 @@ const TABLES = [
      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
      INDEX idx_status (status)
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_project_flows (
+     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     project_id INT UNSIGNED NOT NULL,
+     template_key VARCHAR(40) DEFAULT 'full_funnel',
+     brief LONGTEXT NULL,
+     zones LONGTEXT NULL,
+     nodes LONGTEXT NULL,
+     edges LONGTEXT NULL,
+     mindmap LONGTEXT NULL,
+     ai_stack LONGTEXT NULL,
+     revision INT UNSIGNED NOT NULL DEFAULT 1,
+     updated_by VARCHAR(100) NULL,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+     UNIQUE KEY uk_proj_flow (project_id)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_docs (
+     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     slug VARCHAR(80) NOT NULL,
+     category VARCHAR(50) NOT NULL DEFAULT 'playbook',
+     icon VARCHAR(16) DEFAULT '📘',
+     title VARCHAR(240) NOT NULL,
+     summary VARCHAR(400) DEFAULT '',
+     body LONGTEXT NOT NULL,
+     project_id INT UNSIGNED NULL,
+     author_name VARCHAR(100) DEFAULT '',
+     pinned TINYINT(1) DEFAULT 0,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+     INDEX idx_cat (category)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 ];
 
 /* Additive columns — executed individually ignoring ER_DUP_FIELDNAME (1060)
    so it works identically on both MariaDB and MySQL 8 without syntax errors */
 const ADDITIVE_COLS = [
+  ['erp_project_flows', 'revision INT UNSIGNED NOT NULL DEFAULT 1'],
   ['erp_team', 'nickname VARCHAR(40) NULL'],
   ['erp_team', "presence VARCHAR(20) DEFAULT 'online'"],
   ['erp_team', 'skills LONGTEXT NULL'],
@@ -282,7 +314,7 @@ async function ensureSchema() {
     // Check existing columns first in one fast query so we don't lock tables unnecessarily!
     const [existingCols] = await conn.query(
       `SELECT TABLE_NAME t, COLUMN_NAME c FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('erp_team', 'erp_channels', 'erp_messages', 'projects', 'tasks')`
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('erp_team', 'erp_channels', 'erp_messages', 'erp_project_flows', 'projects', 'tasks')`
     );
     const colSet = new Set(existingCols.map(r => `${r.t}.${r.c}`.toLowerCase()));
     for (const [tbl, def] of ADDITIVE_COLS) {
