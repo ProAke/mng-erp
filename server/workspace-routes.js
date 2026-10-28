@@ -115,6 +115,7 @@ router.post('/teams/presence', async (req, res) => {
 
 /* ---------- AI WORKFORCE ---------- */
 router.post('/ai/agents', async (req, res) => {
+  if (!LEAD_ROLES.includes(req.user?.role)) return res.status(403).json({ error: 'เฉพาะ Admin/Manager เท่านั้นที่จัดการ AI Agent ได้' });
   const b = req.body || {};
   if (!b.name?.trim()) return res.status(400).json({ error: 'name_required' });
   try {
@@ -131,6 +132,7 @@ router.post('/ai/agents', async (req, res) => {
 });
 
 router.patch('/ai/agents/:id', async (req, res) => {
+  if (!LEAD_ROLES.includes(req.user?.role)) return res.status(403).json({ error: 'เฉพาะ Admin/Manager เท่านั้นที่จัดการ AI Agent ได้' });
   const id = numid(req.params.id);
   const b = req.body || {};
   const sets = [], vals = [];
@@ -151,6 +153,7 @@ router.patch('/ai/agents/:id', async (req, res) => {
 });
 
 router.delete('/ai/agents/:id', async (req, res) => {
+  if (!LEAD_ROLES.includes(req.user?.role)) return res.status(403).json({ error: 'เฉพาะ Admin/Manager เท่านั้นที่จัดการ AI Agent ได้' });
   try {
     await workPool.query('DELETE FROM erp_ai_agents WHERE id=?', [numid(req.params.id)]);
     res.json({ ok: true });
@@ -158,6 +161,7 @@ router.delete('/ai/agents/:id', async (req, res) => {
 });
 
 router.post('/ai/toggle-all', async (req, res) => {
+  if (!LEAD_ROLES.includes(req.user?.role)) return res.status(403).json({ error: 'เฉพาะ Admin/Manager เท่านั้นที่ควบคุม AI ทั้งทีมได้' });
   const paused = req.body?.paused ? 1 : 0;
   try {
     await workPool.query('UPDATE erp_ai_agents SET paused = ?', [paused]);
@@ -174,6 +178,7 @@ router.post('/ai/dispatch', async (req, res) => {
     const [agRows] = await workPool.query('SELECT * FROM erp_ai_agents WHERE id=?', [aid]);
     if (!agRows.length) return res.status(404).json({ error: 'agent_not_found' });
     const ag = agRows[0];
+    if (Number(ag.paused)) return res.status(409).json({ error: 'AI Agent ถูกพักไว้' });
     let taskTitle = '';
     let taskCode = '';
     if (tid) {
@@ -181,33 +186,33 @@ router.post('/ai/dispatch', async (req, res) => {
       if (tRows.length) { taskTitle = tRows[0].title; taskCode = tRows[0].erp_code || ('MNG-' + (1000 + tid)); }
       await workPool.query("UPDATE tasks SET erp_ai_agent = ? WHERE id = ? AND (erp_ai_agent IS NULL OR erp_ai_agent = '')", ['ai' + aid, tid]).catch(() => {});
     }
-    const tokens = 620 + Math.floor(Math.random() * 980);
-    const dur = 3 + Math.floor(Math.random() * 5);
-    const rawCmd = (b.action || b.instruction || '').trim();
-    const action = rawCmd || (taskCode ? `วิเคราะห์และดำเนินการ ${taskCode}` : `ประมวลผลคำสั่งโดย ${ag.name}`);
-    const detail = (b.detail && String(b.detail).trim())
-      ? String(b.detail).trim()
-      : taskTitle
-        ? `${ag.name} (${ag.model}) ตรวจสอบงาน "${taskTitle}" พร้อมสรุปแผนปฏิบัติการและเช็กลิสต์ย่อยเรียบร้อย`
-        : `${ag.name} (${ag.model}) ดำเนินการ "${action}" เสร็จสมบูรณ์`;
+    // Endpoint เดิมเป็นการจำลอง ไม่ใช่ provider: ห้ามแสดงผลหรือตัวเลขว่า AI รันจริง
+    const tokens = 0, dur = 0;
+    const rawCmd = String(b.action || b.instruction || b.prompt || '').trim();
+    const action = rawCmd || (taskCode ? `ตัวอย่างคำสั่งสำหรับ ${taskCode}` : `ตัวอย่างคำสั่งสำหรับ ${ag.name}`);
+    const context = b.detail ? String(b.detail).trim().slice(0, 2000) : (taskTitle ? `งานที่เลือก: ${taskTitle}` : 'ไม่มีบริบทเพิ่มเติม');
+    const detail = `จำลองเท่านั้น — ไม่ได้เรียก AI หรือทำงานจริง · ${context}`;
 
     const [ins] = await workPool.query(
       `INSERT INTO erp_ai_runs (agent_id, task_id, action, detail, duration_sec, tokens, status)
-       VALUES (?,?,?,?,?,?,'ok')`,
+       VALUES (?,?,?,?,?,?,'simulated')`,
       [aid, tid, action.slice(0, 155), detail, dur, tokens]
     );
     await workPool.query('UPDATE erp_ai_agents SET runs = runs + 1, tokens_today = tokens_today + ? WHERE id = ?', [tokens, aid]);
 
-    const [ch] = await workPool.query("SELECT id FROM erp_channels WHERE slug IN ('ai-feed','team-all') ORDER BY slug='ai-feed' DESC LIMIT 1");
-    if (ch.length) {
-      await workPool.query(
-        `INSERT INTO erp_messages (channel_id, sender_id, sender_name, kind, body, reactions)
-         VALUES (?,?,?,'ai',?,'{"⚡":["u1"]}')`,
-        [ch[0].id, 'ai' + aid, `${ag.name} (AI)`, `✨ <b>${escS(ag.name)}</b>: <b>${escS(action)}</b>${taskCode ? ` (${escS(taskCode)})` : ''} — ${escS(detail)}`]
-      );
+    // ค่า false สำคัญต่อความเป็นส่วนตัว: ห้ามโพสต์คำสั่งไปห้องรวมเมื่อผู้เรียกปิดไว้
+    if (b.postToFeed !== false) {
+      const [ch] = await workPool.query("SELECT id FROM erp_channels WHERE slug IN ('ai-feed','team-all') ORDER BY slug='ai-feed' DESC LIMIT 1");
+      if (ch.length) {
+        await workPool.query(
+          `INSERT INTO erp_messages (channel_id, sender_id, sender_name, kind, body, reactions)
+           VALUES (?,?,?,'ai',?,'{"⚡":["u1"]}')`,
+          [ch[0].id, 'ai' + aid, `${ag.name} (AI)`, `✨ <b>${escS(ag.name)}</b>: <b>${escS(action)}</b>${taskCode ? ` (${escS(taskCode)})` : ''} — ${escS(detail)}`]
+        );
+      }
     }
-    await logActivity(`🤖 <b>${escS(ag.name)}</b> รันงาน: ${escS(action)}`, req);
-    res.json({ ok: true, id: 'run' + ins.insertId, tokens, durationSec: dur, detail });
+    await logActivity(`🤖 <b>${escS(ag.name)}</b> บันทึกคำสั่งจำลอง: ${escS(action)}`, req);
+    res.json({ ok: true, simulated: true, id: 'run' + ins.insertId, tokens, durationSec: dur, detail });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -290,7 +295,7 @@ router.post('/channels/dm', async (req, res) => {
         `INSERT INTO erp_messages (channel_id, sender_id, sender_name, kind, body, pinned, reactions)
          VALUES (?, ?, ?, 'ai', ?, 0, '{}')`,
         [r.insertId, targetId, `${targetName} (AI)`,
-         `✨ สวัสดีครับ! ผมคือ <b>${escS(targetName)}</b> พร้อมช่วยสรุปงาน ตรวจเดดไลน์ ร่างข้อความ และวิเคราะห์ข้อมูลจากฐานข้อมูลจริง พิมพ์ถามได้เลยครับ`]
+         `✨ ห้องนี้ใช้คำตอบจากแม่แบบ ไม่ได้เรียกโมเดล AI จริง หากต้องการให้ AI ช่วยร่าง ให้ใช้ Project Flow → AI & ส่งออก`]
       );
     }
     res.status(201).json({ id: 'ch' + r.insertId, created: true });
@@ -687,7 +692,8 @@ router.delete('/bookings/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-/* แยก Project Flow และ Docs ไว้ใน router เฉพาะ */
+/* แยก Project Flow, Docs และงานดำเนินการจริงไว้ใน router เฉพาะ */
 router.use(require('./project-workspace-routes'));
+router.use(require('./flow-action-routes'));
 
 module.exports = router;

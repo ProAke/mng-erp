@@ -6,9 +6,14 @@ uploads/
 .vscode/
 .idea/
 
-# server
+# server — configuration and credentials must remain local
+.env
+.env.*
+!.env.example
 server/node_modules/
 server/.env
+server/.env.*
+!server/.env.example
 
 # web (Next.js)
 web/node_modules/

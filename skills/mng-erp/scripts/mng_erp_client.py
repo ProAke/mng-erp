@@ -310,10 +310,10 @@ def build_parser() -> argparse.ArgumentParser:
     s_inew.add_argument("--client", help="รหัสลูกค้า เช่น c1")
     s_inew.add_argument("--due", help="กำหนดชำระ YYYY-MM-DD")
 
-    s_ai = sub.add_parser("ai-dispatch", help="สั่งงาน AI Workforce ภายใน MNG ERP")
+    s_ai = sub.add_parser("ai-dispatch", help="บันทึกตัวอย่างคำสั่ง AI (จำลอง ไม่เรียกโมเดลจริง)")
     s_ai.add_argument("--agent", default="ai1", help="รหัส AI Agent เช่น ai1 (NOVA)")
     s_ai.add_argument("--prompt", required=True, help="คำสั่งงาน")
-    s_ai.add_argument("--post-to-feed", action="store_true", help="โพสต์ผลลัพธ์ลงห้องแชต #ai-feed")
+    s_ai.add_argument("--post-to-feed", action="store_true", help="โพสต์คำสั่งจำลองลงห้องแชต #ai-feed")
 
     s_req = sub.add_parser("request", help="เรียก API Endpoint ใดก็ได้ของ MNG ERP แบบกำหนดเอง")
     s_req.add_argument("method", choices=["GET", "POST", "PUT", "PATCH", "DELETE"])

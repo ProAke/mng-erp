@@ -239,6 +239,46 @@ const TABLES = [
      UNIQUE KEY uk_proj_flow (project_id)
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  /* งานส่งออกจาก Flow แยกจากงานในบอร์ดและมีประวัติทุกการเปลี่ยนสถานะ */
+  `CREATE TABLE IF NOT EXISTS erp_flow_actions (
+     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     event_id CHAR(36) NOT NULL,
+     project_id INT UNSIGNED NOT NULL,
+     node_id VARCHAR(64) NOT NULL,
+     node_title VARCHAR(200) NOT NULL,
+     kind VARCHAR(16) NOT NULL,
+     title VARCHAR(200) NOT NULL,
+     destination VARCHAR(200) NOT NULL DEFAULT '',
+     content LONGTEXT NOT NULL,
+     delivery_payload LONGTEXT NULL,
+     status VARCHAR(20) NOT NULL DEFAULT 'draft',
+     revision INT UNSIGNED NOT NULL DEFAULT 1,
+     attempts INT UNSIGNED NOT NULL DEFAULT 0,
+     created_by BIGINT UNSIGNED NOT NULL,
+     created_name VARCHAR(100) NOT NULL,
+     approved_by BIGINT UNSIGNED NULL,
+     approved_name VARCHAR(100) NULL,
+     approved_at TIMESTAMP NULL,
+     accepted_at TIMESTAMP NULL,
+     last_error VARCHAR(120) NOT NULL DEFAULT '',
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+     UNIQUE KEY uk_flow_action_event (event_id),
+     INDEX idx_flow_action_project (project_id, id),
+     INDEX idx_flow_action_status (status)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_flow_action_events (
+     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     action_id INT UNSIGNED NOT NULL,
+     event_type VARCHAR(32) NOT NULL,
+     actor_id BIGINT UNSIGNED NOT NULL,
+     actor_name VARCHAR(100) NOT NULL,
+     note VARCHAR(500) NOT NULL DEFAULT '',
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     INDEX idx_flow_action_events (action_id, id)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   `CREATE TABLE IF NOT EXISTS erp_docs (
      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
      slug VARCHAR(80) NOT NULL,
@@ -259,6 +299,7 @@ const TABLES = [
    so it works identically on both MariaDB and MySQL 8 without syntax errors */
 const ADDITIVE_COLS = [
   ['erp_project_flows', 'revision INT UNSIGNED NOT NULL DEFAULT 1'],
+  ['erp_flow_actions', 'delivery_payload LONGTEXT NULL'],
   ['erp_team', 'nickname VARCHAR(40) NULL'],
   ['erp_team', "presence VARCHAR(20) DEFAULT 'online'"],
   ['erp_team', 'skills LONGTEXT NULL'],
@@ -314,7 +355,7 @@ async function ensureSchema() {
     // Check existing columns first in one fast query so we don't lock tables unnecessarily!
     const [existingCols] = await conn.query(
       `SELECT TABLE_NAME t, COLUMN_NAME c FROM INFORMATION_SCHEMA.COLUMNS
-       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('erp_team', 'erp_channels', 'erp_messages', 'erp_project_flows', 'projects', 'tasks')`
+       WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('erp_team', 'erp_channels', 'erp_messages', 'erp_project_flows', 'erp_flow_actions', 'projects', 'tasks')`
     );
     const colSet = new Set(existingCols.map(r => `${r.t}.${r.c}`.toLowerCase()));
     for (const [tbl, def] of ADDITIVE_COLS) {

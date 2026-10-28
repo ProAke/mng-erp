@@ -50,6 +50,12 @@ describe('Plesk Phusion Passenger & Live MariaDB Production Regressions', () => 
       const html = await htmlRes.text();
       expect(html).toMatch(/agency-os\.js\?v=\d+/);
 
+      // คู่มือ integration ต้องเปิดผ่าน endpoint เดียวกับที่ Hermes Skill อ้างถึง
+      const flowDoc = await fetch(`http://127.0.0.1:${port}/api/hermes/flow-integrations.md`);
+      expect(flowDoc.status).toBe(200);
+      expect(flowDoc.headers.get('content-type')).toContain('text/markdown');
+      expect(await flowDoc.text()).toContain('X-MNG-Signature');
+
       // Verify /hub is excluded from SPA catch-all
       const hubRes = await fetch(`http://127.0.0.1:${port}/hub`);
       expect(hubRes.status).toBe(404);

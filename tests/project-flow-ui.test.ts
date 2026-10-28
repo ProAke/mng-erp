@@ -27,7 +27,7 @@ describe('Project Brief, Flow, Mindmap and Docs UI', () => {
     ctx = dom.getInternalVMContext()
     for (const rel of [
       'assets/js/data.js', 'assets/js/ui.js', 'assets/js/views.js', 'assets/js/agency-os.js',
-      'assets/js/project-plan.js', 'assets/js/project-flow.js', 'assets/js/app.js',
+      'assets/js/project-plan.js', 'assets/js/project-flow.js', 'assets/js/flow-operations.js', 'assets/js/app.js',
     ]) vm.runInContext(fs.readFileSync(path.join(root, rel), 'utf8'), ctx, { filename: rel })
     await tick()
   })
@@ -104,6 +104,28 @@ describe('Project Brief, Flow, Mindmap and Docs UI', () => {
     expect(el('#modalRoot img')).toBeNull()
     expect(el('#modalRoot').textContent).toContain('<img src=x onerror=alert(1)>')
     vm.runInContext('closeModal()', ctx)
+  })
+
+  it('tracks linked task statuses by zone and persists real local task changes without changing the flow', async () => {
+    const node = vm.runInContext(`Store.data.projectFlows[${JSON.stringify(projectId)}].nodes.find(n => n.id === 'quality')`, ctx)
+    click('[data-pf-mode="work"]')
+    expect(el('#view').textContent).toContain('ติดตามงานจากผัง')
+    expect(el('#view').textContent).toContain('งานที่เชื่อม')
+    const select = el(`[data-fw-status="${node.taskId}"]`)
+    expect(select).toBeTruthy()
+    select.value='doing'; select.dispatchEvent(new dom.window.Event('change',{bubbles:true}))
+    await tick()
+    expect(vm.runInContext(`Store.getTask(${JSON.stringify(node.taskId)}).status`, ctx)).toBe('doing')
+    let current = el(`[data-fw-status="${node.taskId}"]`)
+    current.value='done'; current.dispatchEvent(new dom.window.Event('change',{bubbles:true}))
+    await tick()
+    expect(vm.runInContext(`Store.getTask(${JSON.stringify(node.taskId)}).progress`, ctx)).toBe(100)
+    current = el(`[data-fw-status="${node.taskId}"]`)
+    current.value='todo'; current.dispatchEvent(new dom.window.Event('change',{bubbles:true}))
+    await tick()
+    expect(vm.runInContext(`Store.getTask(${JSON.stringify(node.taskId)}).progress`, ctx)).toBe(0)
+    expect(JSON.parse(dom.window.localStorage.getItem('mng_erp_v2')!).tasks.find((t:any)=>t.id===node.taskId).status).toBe('todo')
+    click('[data-pf-mode="flow"]')
   })
 
   it('renders the generated mindmap and lets users edit a node without altering its linked task', async () => {
@@ -191,6 +213,59 @@ describe('Project Brief, Flow, Mindmap and Docs UI', () => {
     vm.runInContext('Store.load()', ctx)
     expect(vm.runInContext("Store.data.customDocs.some(d => d.title === 'SOP รับบรีฟ')", ctx)).toBe(true)
     expect(requests.every(x => x === '/api/health')).toBe(true)
+  })
+
+  it('reviews AI drafts, confirms approval and sends, escapes content, and requires reconciliation on unknown results', async () => {
+    const win:any = dom.window
+    const calls:any[] = []
+    let action:any = {id:'fa1',eventId:'event-1',projectId,nodeId:'support',nodeTitle:'ดูแลลูกค้า',kind:'support',
+      title:'<img src=x onerror=alert(1)>',destination:'LINE',content:'<script>window.__xss=1</script>',status:'draft',revision:1,attempts:0,
+      createdBy:'ผู้ทดสอบ',updatedAt:'2026-10-28',approvedBy:'',approvedAt:'',lastError:'',stale:false}
+    const events:any[] = [{type:'created',actor:'ผู้ทดสอบ',note:'<script>evil</script>',at:'2026-10-28'}]
+    win.__flowMock = async (url:string, opts:any={}) => {
+      calls.push({url,method:opts.method || 'GET',body:opts.body})
+      if (url === '/flow/integrations') return {ok:true,aiReady:true,aiModel:'model',webhookReady:true}
+      if (url.endsWith('/flow/actions') && !opts.method) return {ok:true,actions:[{...action}]}
+      if (url.endsWith('/flow/actions/fa1') && !opts.method) return {ok:true,action:{...action},events}
+      if (url.endsWith('/generate')) { action={...action,content:'AI <script>unsafe</script>',revision:action.revision+2}; return {ok:true,action:{...action}} }
+      if (url.endsWith('/approve')) { action={...action,status:'approved',revision:action.revision+1,approvedBy:'ผู้ตรวจ'}; return {ok:true,action:{...action}} }
+      if (url.endsWith('/send')) { action={...action,status:'unknown',revision:action.revision+2,attempts:1,lastError:'TIMEOUT'}; return {ok:true,accepted:false,action:{...action}} }
+      if (url.endsWith('/reconcile')) { action={...action,status:'draft',revision:action.revision+1,approvedBy:'',lastError:''}; return {ok:true,action:{...action}} }
+      throw new Error('unexpected request '+url)
+    }
+    vm.runInContext(`window.__oldFlowReq=Remote.req; Remote.req=window.__flowMock; Remote.on=true; Remote.user={role:'manager'}; Store.ui.projectFlowMode='actions'; location.hash='#/project-flow?project=${projectId}'; App.route()`,ctx)
+    await tick()
+    expect(el('#faPanel').textContent).toContain('Webhook: ตั้งค่าแล้ว')
+    expect(el('#faPanel img')).toBeNull()
+    click('[data-fa-open="fa1"]'); await tick()
+    expect(el('#modalRoot script')).toBeNull()
+    expect(el('#fadContent').value).toContain('<script>')
+    set('#fadContent','ข้อความที่แก้แต่ยังไม่บันทึก')
+    click('#faApprove')
+    expect(el('#cfYes')).toBeNull()
+    expect(calls.some(c=>c.url.endsWith('/approve'))).toBe(false)
+    expect(el('#toastRoot').textContent).toContain('กรุณาบันทึกการแก้ไขก่อนอนุมัติ')
+    set('#fadContent','<script>window.__xss=1</script>')
+    click('#faGenerate'); set('#fagPrompt','ช่วยร่างคำตอบ')
+    el('#fagConsent').checked=true
+    click('#fagRun'); await tick(); await tick()
+    expect(calls.some(c=>c.url.endsWith('/generate') && c.body.confirm===true)).toBe(true)
+    expect(calls.some(c=>c.url.endsWith('/send'))).toBe(false)
+    expect(el('#fadContent').value).toContain('AI <script>')
+    expect(el('#modalRoot script')).toBeNull()
+    click('#faApprove'); click('#cfYes'); await tick(); await tick()
+    expect(el('#modalRoot').textContent).toContain('อนุมัติแล้ว')
+    click('#faSend'); expect(el('#modalRoot').textContent).toContain('ส่งให้ webhook จริง')
+    click('#cfYes'); await tick(); await tick()
+    expect(el('#modalRoot').textContent).toContain('ต้องตรวจสอบผล')
+    expect(calls.filter(c=>c.url.endsWith('/send'))).toHaveLength(1)
+    click('#faReconcile'); set('#farResolution','not_accepted'); set('#farNote','ตรวจบันทึกปลายทางแล้วไม่พบ event')
+    click('#farSave'); await tick(); await tick()
+    expect(calls.some(c=>c.url.endsWith('/reconcile') && c.body.resolution==='not_accepted')).toBe(true)
+    expect(el('#faSave')).toBeNull()
+    expect(el('#modalRoot').textContent).toContain('เนื้อหาถูกล็อก')
+    expect(win.__xss).toBeUndefined()
+    vm.runInContext("closeModal(); Remote.req=window.__oldFlowReq; Remote.on=false; Store.ui.projectFlowMode='flow'",ctx)
   })
 
   it('prevents edits if the server reports the flow table unavailable', () => {

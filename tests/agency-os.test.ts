@@ -42,6 +42,7 @@ describe('MNG ERP (ci-workflow base) + Agency OS (i.playdigital.co.th) integrati
       'assets/js/agency-os.js',
       'assets/js/project-plan.js',
       'assets/js/project-flow.js',
+      'assets/js/flow-operations.js',
       'assets/js/app.js',
     ]) {
       const code = fs.readFileSync(path.join(rootDir, rel), 'utf8')
@@ -96,10 +97,14 @@ describe('MNG ERP (ci-workflow base) + Agency OS (i.playdigital.co.th) integrati
     vm.runInContext(`openAiDispatchModal('ai1', 't1');`, ctx)
     const form = dom.window.document.querySelector('#aiDispForm') as HTMLFormElement
     expect(form).not.toBeNull()
+    expect(dom.window.document.querySelector('#modalRoot')?.textContent).toContain('เป็นการจำลอง')
     form.dispatchEvent(new dom.window.Event('submit', { bubbles: true, cancelable: true }))
     await new Promise(resolve => setTimeout(resolve, 20))
     const afterFeed = vm.runInContext(`Store.data.messages.filter(m => m.channelId === 'ch5').length`, ctx)
     expect(afterFeed).toBe(beforeFeed + 1)
+    expect(vm.runInContext(`Store.data.aiRuns[0].status`, ctx)).toBe('simulated')
+    expect(vm.runInContext(`Store.data.aiRuns[0].tokens`, ctx)).toBe(0)
+    expect(vm.runInContext(`Store.data.aiRuns[0].detail`, ctx)).toContain('ไม่ได้เรียก AI')
   })
 
   it('supports Team Chat: posting messages with @NOVA auto-reply, reactions, and pins', async () => {
@@ -107,8 +112,9 @@ describe('MNG ERP (ci-workflow base) + Agency OS (i.playdigital.co.th) integrati
     const before = vm.runInContext(`Store.data.messages.filter(m => m.channelId === 'ch1').length`, ctx)
     await vm.runInContext(`postChatMessage('ch1', 'สวัสดีทีม @NOVA ช่วยเช็กแผนวันนี้หน่อย');`, ctx)
     const after = vm.runInContext(`Store.data.messages.filter(m => m.channelId === 'ch1').length`, ctx)
-    // User message + @NOVA AI reply
+    // User message + a clearly labelled template reply, not a real model call
     expect(after).toBe(before + 2)
+    expect(vm.runInContext(`Store.data.messages.filter(m => m.channelId === 'ch1').at(-1).body`, ctx)).toContain('ไม่ได้เรียก AI')
 
     vm.runInContext(`toggleChatReaction('m1', '🚀'); toggleChatPin('m2');`, ctx)
     expect(vm.runInContext(`Store.data.messages.find(m => m.id === 'm1').reactions['🚀'].includes('u1')`, ctx)).toBe(true)
