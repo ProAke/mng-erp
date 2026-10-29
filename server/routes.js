@@ -269,7 +269,7 @@ router.get('/bootstrap', async (req, res) => {
         id: 'run' + r.id, agentId: 'ai' + r.agent_id,
         taskId: r.task_id ? 't' + r.task_id : null,
         action: r.action, detail: r.detail || '',
-        durationSec: +r.duration_sec || 3, tokens: +r.tokens || 0,
+        durationSec: r.duration_sec != null ? +r.duration_sec : 0, tokens: +r.tokens || 0,
         status: r.status || 'ok', at: String(r.created_at || '').slice(0, 16),
       })),
       channels: chanR.map(shapeChannel),
@@ -391,7 +391,7 @@ router.patch('/tasks/:id', async (req, res) => {
   try {
     vals.push(id);
     await workPool.query(`UPDATE tasks SET ${sets.join(', ')} WHERE id=?`, vals);
-    if (b.status) await logActivity(`อัปเดตสถานะงาน #${id} → <b>${b.status}</b>`, 1);
+    if (b.status) await logActivity(`อัปเดตสถานะงาน #${id} → <b>${escS(b.status)}</b>`, 1);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -892,6 +892,8 @@ router.get('/db/audit', async (_req, res) => {
     ['erp_settings', 'การตั้งค่าระบบ (erp_settings)'],
     ['erp_api_tokens', 'โทเคน AI/Hermes 20 ชุด (erp_api_tokens)'],
     ['erp_project_flows', 'ผัง Flow & Mindmap โปรเจกต์ (erp_project_flows)'],
+    ['erp_flow_actions', 'รายการดำเนินการจากผัง (erp_flow_actions)'],
+    ['erp_flow_action_events', 'ประวัติอนุมัติและส่งออก (erp_flow_action_events)'],
     ['erp_docs', 'คลังคู่มือ & SOP ทีม (erp_docs)'],
   ];
   try {

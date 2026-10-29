@@ -1,6 +1,6 @@
 /* ============================================================
    MNG ERP — Project Brief, Mindmap, System Flow และคู่มือ
-   ผังเป็นแผนงาน: การเลือกโมเดล/ช่องทางไม่ได้สั่ง AI หรือเผยแพร่จริง
+   ผังเป็นแผนงาน; การสั่ง AI/ส่งออกต้องตั้งค่าบริการและกดดำเนินการแยก
    ============================================================ */
 'use strict';
 
@@ -335,7 +335,7 @@ function renderProjectFlow() {
   Store.ui.flowProjectId = project.id;
   const saved = !!Store.data.projectFlows?.[project.id];
   const flow = previewProjectFlow(project);
-  const mode = ['flow','mindmap','brief'].includes(Store.ui.projectFlowMode) ? Store.ui.projectFlowMode : 'flow';
+  const mode = ['flow','mindmap','brief','work','actions'].includes(Store.ui.projectFlowMode) ? Store.ui.projectFlowMode : 'flow';
   const allNodes = Array.isArray(flow.nodes) ? flow.nodes : [];
   const linked = allNodes.filter(n => n.taskId).length;
   const members = (flow.brief?.members || []).map(flowMemberName).join(', ');
@@ -356,14 +356,16 @@ function renderProjectFlow() {
     </header>
     ${statusHint}
     <div class="pf-intro"><div><div class="pf-eyebrow">PROJECT BLUEPRINT <span>✦</span> จากไอเดียสู่ผลลัพธ์</div>
-      <h3>${mode==='flow'?'มองเห็นทุกขั้นตอนในภาพเดียว':mode==='mindmap'?'Mindmap ของโปรเจกต์':'บรีฟ & การตั้งค่า'}</h3>
-      <p>${mode==='flow'?'เชื่อมการตลาด การขาย การผลิต และการดูแลลูกค้าให้ทำงานไปในทิศทางเดียวกัน':mode==='mindmap'?'สรุปเป้าหมาย สิ่งส่งมอบ ทีม และโอกาสต่อยอดจากบรีฟของคุณ':'ข้อมูลตั้งต้นที่ช่วยให้ทุกคนเข้าใจเป้าหมายและบทบาทตรงกัน'}</p></div>
+      <h3>${mode==='flow'?'มองเห็นทุกขั้นตอนในภาพเดียว':mode==='mindmap'?'Mindmap ของโปรเจกต์':mode==='work'?'ติดตามงานจากผัง':mode==='actions'?'AI & การส่งออก':'บรีฟ & การตั้งค่า'}</h3>
+      <p>${mode==='flow'?'เชื่อมการตลาด การขาย การผลิต และการดูแลลูกค้าให้ทำงานไปในทิศทางเดียวกัน':mode==='mindmap'?'สรุปเป้าหมาย สิ่งส่งมอบ ทีม และโอกาสต่อยอดจากบรีฟของคุณ':mode==='work'?'ดูผู้รับผิดชอบและสถานะงานจริงในแต่ละขั้นตอน':mode==='actions'?'สร้างร่าง ตรวจอนุมัติ และส่งให้ระบบที่เชื่อมต่ออย่างปลอดภัย':'ข้อมูลตั้งต้นที่ช่วยให้ทุกคนเข้าใจเป้าหมายและบทบาทตรงกัน'}</p></div>
       <div class="pf-mode-tabs" role="tablist" aria-label="มุมมองโปรเจกต์">
         <button type="button" role="tab" aria-selected="${mode==='flow'}" class="pf-mode-tab ${mode==='flow'?'on':''}" data-pf-mode="flow">${IC.flow} Flow</button>
         <button type="button" role="tab" aria-selected="${mode==='mindmap'}" class="pf-mode-tab ${mode==='mindmap'?'on':''}" data-pf-mode="mindmap">✳ Mindmap</button>
+        <button type="button" role="tab" aria-selected="${mode==='work'}" class="pf-mode-tab ${mode==='work'?'on':''}" data-pf-mode="work">${IC.task} ติดตามงาน</button>
+        <button type="button" role="tab" aria-selected="${mode==='actions'}" class="pf-mode-tab ${mode==='actions'?'on':''}" data-pf-mode="actions">${IC.send} AI & ส่งออก</button>
         <button type="button" role="tab" aria-selected="${mode==='brief'}" class="pf-mode-tab ${mode==='brief'?'on':''}" data-pf-mode="brief">${IC.doc} บรีฟ</button>
       </div></div>
-    ${mode==='flow' ? flowDiagram(flow) : mode==='mindmap' ? flowMindmap(project, flow) : flowBrief(project, flow, members)}
+    ${mode==='flow' ? flowDiagram(flow) : mode==='mindmap' ? flowMindmap(project, flow) : mode==='work' ? flowWorkView(project, flow) : mode==='actions' ? flowActionPanel(project, flow, saved) : flowBrief(project, flow, members)}
   </div>`;
   $$('[data-pf-mode]', view).forEach(btn => btn.onclick = () => { Store.ui.projectFlowMode = btn.dataset.pfMode; App.route(); });
   if ($('#pfEditBrief')) $('#pfEditBrief').onclick = () => openProjectWizard(project);
@@ -382,6 +384,8 @@ function renderProjectFlow() {
     $$('[data-pf-node]', view).forEach(btn => btn.onclick = () => openFlowNodeEditor(project.id, btn.dataset.pfNode));
     wireFlowCanvas();
   }
+  if (mode === 'work') wireFlowWork(project, flow);
+  if (mode === 'actions') wireFlowActions(project, flow, saved);
 }
 
 function flowDiagram(flow) {
@@ -429,7 +433,7 @@ function flowDiagram(flow) {
     return `<button type="button" class="pf-node ${zoneFilter && zoneFilter!==n.zone?'dimmed':''}" data-pf-node="${esc(n.id)}" style="left:${p.x}px;top:${p.y}px;height:${cardHeight}px" aria-label="รายละเอียดขั้นตอน ${esc(n.title)}">
       <div class="pf-node-top"><span class="pf-node-ico">${esc(n.icon || '📌')}</span><span class="pf-actor-badge pf-actor-${actor[1]}">${actor[0]}</span></div>
       <div class="pf-node-title">${esc(n.title)}</div><div class="pf-node-desc">${esc(n.desc || 'คลิกเพื่อเพิ่มรายละเอียดและผู้รับผิดชอบ')}</div>
-      <div class="pf-node-foot"><span class="pf-human-chip">${ai?'🤖 '+esc(ai):'👤 '+esc(person)}</span>${n.taskId?`<span class="pf-task-chip">${esc(n.taskCode || 'งาน')} ${task && task.status==='done'?'✓':''}</span>`:'<span class="pf-node-planned">แผนงาน</span>'}</div></button>`;
+      <div class="pf-node-foot"><span class="pf-human-chip">${ai?'🤖 '+esc(ai):'👤 '+esc(person)}</span>${n.taskId?`<span class="pf-task-chip">${esc(n.taskCode || 'งาน')} · ${esc(task ? (STATUS_META[task.status]?.label || task.status) : 'ไม่พบงาน')}</span>`:'<span class="pf-node-planned">แผนงาน</span>'}</div></button>`;
   }).join('');
   return `<div class="pf-zone-strip">${ProjectPlan.ZONES.map((z,i)=>`<button type="button" class="pf-zone-banner ${zoneFilter===z.id?'active':''}" data-pf-zone="${z.id}" style="--z-color:${z.color}">
       <span class="zb-top"><span class="zb-title">${z.icon} โซน ${i+1} · ${esc(z.title)}</span><span class="pf-zone-count">${groups[i].length}</span></span><span class="zb-sub">${esc(z.subtitle)}</span></button>`).join('')}</div>
@@ -446,7 +450,7 @@ function flowDiagram(flow) {
     </div>
     <div class="pf-legend-bar"><div class="pf-legend-items"><b>สัญลักษณ์</b>${Object.values(FLOW_ACTORS).map(a=>`<span class="pf-actor-badge pf-actor-${a[1]}">${a[0]}</span>`).join('')}</div>
       <div class="pf-legend-items"><span class="pf-line-sample"><i class="solid"></i> ขั้นตอนหลัก</span><span class="pf-line-sample"><i class="dashed"></i> Feedback / ต่อยอด</span></div></div>
-    <p class="pf-disclaimer">ผังแสดงแผนและผู้รับผิดชอบ ไม่ได้เชื่อม Webhook ส่งข้อความ เผยแพร่สื่อ หรือเรียก AI อัตโนมัติ</p>`;
+    <p class="pf-disclaimer">ผังไม่ได้เชื่อม Webhook หรือเรียก AI โดยอัตโนมัติ หากตั้งค่าบริการแล้ว สามารถสร้างร่าง ตรวจอนุมัติ และสั่งส่งด้วยตนเองในแท็บ AI & ส่งออก</p>`;
 }
 
 function wireFlowCanvas() {
@@ -676,8 +680,20 @@ Mindmap สรุปคำตอบเป็นหมวดหมู่ Flow แ
 - ระบุผู้ตรวจความถูกต้อง ข้อเท็จจริง สิทธิ์สื่อ และข้อมูลลูกค้าก่อนเผยแพร่
 - เลือกชื่อโมเดลที่ทีมตั้งใจใช้ และตรวจสอบสิทธิ์ ค่าใช้จ่าย และนโยบายข้อมูลกับผู้ให้บริการแยกต่างหาก
 ## ข้อจำกัดสำคัญ
-การบันทึก Agent หรือโมเดลในบรีฟเป็นเพียงการวางแผน ระบบไม่ได้เชื่อมผู้ให้บริการ เรียกโมเดล หรือเริ่มงานอัตโนมัติจากผังนี้
+การบันทึก Agent หรือโมเดลในบรีฟเป็นเพียงการวางแผน ไม่ได้เชื่อมผู้ให้บริการหรือเริ่มงานอัตโนมัติ หากตั้งค่าเซิร์ฟเวอร์แล้ว Manager สามารถให้ AI ช่วยร่างในแท็บ AI & ส่งออก โดยต้องยืนยันส่งข้อมูลออกและตรวจผลด้วยคน
+ปุ่มพัก Agent ทั้งทีมใน AI Hub บล็อกการเริ่ม AI ใหม่จาก Flow แต่ไม่ยกเลิกคำขอที่เริ่มไปแล้ว ส่วนการสั่งงาน AI Hub เดิมและคำตอบ @AI ใน Chat เป็นตัวอย่าง/แม่แบบ ไม่ได้เรียกโมเดลจริง
 อย่าใส่รหัสผ่าน API Key Token หรือข้อมูลลูกค้าที่ไม่จำเป็นลงในบรีฟและคู่มือ` },
+  { id:'guide-operations', icon:'📋', category:'โปรเจกต์', title:'ติดตามงานและส่งออกจาก Flow', summary:'ติดตามงานจริง สร้างร่าง ตรวจอนุมัติ และตรวจผล webhook', body:`# ติดตามงานและส่งออก
+## ติดตามงาน
+เมื่อสร้างงานจากผังแล้ว เปิดแท็บ ติดตามงาน เพื่อดูสถานะในแต่ละโซน เปิดการ์ดงานหรือเปลี่ยนสถานะได้ หากงานถูกย้ายหรือเก็บเข้าคลังจะแสดงว่าไม่พบ
+## ร่าง ตรวจ และส่ง
+1. Admin/Manager เปิดแท็บ AI & ส่งออก สร้างร่าง เลือกขั้นตอน ประเภท ปลายทาง และเนื้อหา
+2. หากผู้ดูแลตั้งค่า AI แล้ว สามารถกดช่วยร่างด้วย AI หลังยืนยันการส่งข้อมูลไปภายนอก ผลยังต้องตรวจข้อเท็จจริงและสิทธิ์ก่อนใช้ ชื่อโมเดลจริงตั้งที่เซิร์ฟเวอร์ ไม่ได้เลือกตามบรีฟ
+3. คนตรวจแล้วกดอนุมัติ และกดส่ง webhook พร้อมยืนยันอีกครั้ง การอนุมัติยังไม่ส่งข้อมูลออก
+4. Webhook รับแล้ว หมายถึงตัวรับตอบ 2xx เท่านั้น ไม่ยืนยันว่าเผยแพร่หรือส่งถึงลูกค้า ตัวรับต้องเชื่อม workflow ช่องทางจริงและป้องกัน event ซ้ำ
+## เมื่อผลส่งไม่แน่นอน
+ห้ามส่งซ้ำจนตรวจปลายทาง กดบันทึกผลตรวจสอบพร้อมหลักฐาน หากยืนยันว่าไม่ได้รับต้องอนุมัติใหม่ก่อนส่งซ้ำ โดยใช้ payload และ eventId เดิม ไม่มี retry อัตโนมัติ
+สำหรับผู้ดูแล อ่านคู่มือ AI & Webhook จากบทความ API & Hermes และตั้ง secret ใน environment ของเซิร์ฟเวอร์เท่านั้น` },
   { id:'guide-growth', icon:'📣', category:'สื่อ & การขาย', title:'สื่อ การขาย และการส่งมอบ', summary:'ใช้ Flow วางแผนตั้งแต่สร้างความสนใจจนส่งมอบอย่างมีคุณภาพ', body:`# วางเส้นทางตั้งแต่การตลาดถึงส่งมอบ
 ## Marketing & Media
 กำหนดกลุ่มเป้าหมาย เนื้อหา ช่องทาง ตัวชี้วัด และผู้อนุมัติ ตรวจข้อเท็จจริงและสิทธิ์ก่อนเผยแพร่
@@ -706,6 +722,7 @@ Flow ช่วยวางแผน แต่ยังไม่ใช่ระ�
 4. ทดสอบในสภาพแวดล้อมที่ได้รับอนุญาตก่อนใช้งานจริง
 ## Project Flow API
 GET /api/projects/:id/flow ใช้อ่านผัง และ PUT ใช้บันทึกโดยส่ง revision ล่าสุด ผู้ใช้ระดับ Admin/Manager สร้างงานที่ยังไม่เชื่อมได้ผ่าน POST /api/projects/:id/flow/sync-tasks
+รายการ AI & ส่งออกมี API แยก ต้องมีสิทธิ์ Admin/Manager ตรวจ revision และได้รับอนุญาตจากคนก่อนเรียก AI อนุมัติ ส่ง หรือบันทึกผลตรวจสอบ อ่านรายละเอียดในคู่มือ AI & Webhook
 การเลือกโมเดลในผังไม่เท่ากับการเชื่อมต่อผู้ให้บริการ AI` },
 ];
 
@@ -758,7 +775,7 @@ function renderDocs() {
       <div>${!selected.builtin && docsAvailable()?`<button class="btn btn-sm" id="docsEdit">${IC.edit} แก้ไข</button> ${flowCanEdit()?`<button class="btn btn-danger btn-sm" id="docsDelete">${IC.trash} ลบ</button>`:''}`:''}</div></div>${status}
       <header class="doc-title-block"><div class="docs-card-icon docs-tone-0">${esc(selected.icon)}</div><div><div class="pf-eyebrow">${esc(selected.category)} · ${selected.builtin?'คู่มือระบบ':'คู่มือทีม'}</div><h2>${esc(selected.title)}</h2><p>${esc(selected.summary || '')}${project?' · '+esc(project.name):''}</p></div></header>
       <article class="doc-article-card">${guideMarkdown(selected.body)}
-      ${selected.id==='guide-api'?`<div class="doc-callout">📘 <a href="/api/hermes/manual.md" target="_blank" rel="noopener noreferrer">เปิดคู่มือ REST API ฉบับเต็ม</a> · <a href="/api/hermes/skill.md" target="_blank" rel="noopener noreferrer">เปิด Hermes SKILL.md</a></div>`:''}</article></div>`;
+      ${selected.id==='guide-api'?`<div class="doc-callout">📘 <a href="/api/hermes/manual.md" target="_blank" rel="noopener noreferrer">คู่มือ REST API</a> · <a href="/api/hermes/flow-integrations.md" target="_blank" rel="noopener noreferrer">คู่มือ AI & Webhook</a> · <a href="/api/hermes/skill.md" target="_blank" rel="noopener noreferrer">Hermes SKILL.md</a></div>`:''}</article></div>`;
     $('#docsBack').onclick = () => { Store.ui.selectedGuide = null; App.route(); };
     if ($('#docsEdit')) $('#docsEdit').onclick = () => openGuideEditor(selected);
     if ($('#docsDelete')) $('#docsDelete').onclick = () => deleteGuide(selected);

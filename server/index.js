@@ -62,6 +62,7 @@ app.get('/api/health', async (_req, res) => {
 });
 
 app.get('/api/hermes/manual.md', hermes.serveMarkdownDoc('docs/API-MANUAL.md'));
+app.get('/api/hermes/flow-integrations.md', hermes.serveMarkdownDoc('docs/FLOW-INTEGRATIONS.md'));
 app.get('/api/hermes/skill.md', hermes.serveMarkdownDoc('skills/mng-erp/SKILL.md'));
 app.get('/api/hermes/client.py', hermes.serveMarkdownDoc('skills/mng-erp/scripts/mng_erp_client.py', 'text/x-python; charset=utf-8'));
 

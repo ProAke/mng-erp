@@ -306,10 +306,10 @@ function renderAI() {
           <span class="badge ${allPaused ? 'b-yellow' : 'b-green'}">${allPaused ? 'PAUSED' : 'ONLINE'}</span>
         </div>
         <div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-bottom:10px">
-          ${allPaused ? 'ระบบหยุดการทำงานอัตโนมัติของ AI ทุกตัวชั่วคราว' : 'หยุดการทำงานอัตโนมัติของ AI ทุกตัวทันทีในคลิกเดียว'}
+          ${allPaused ? 'คำขอ AI ใหม่จาก Project Flow ถูกบล็อก หากเพิ่มหรือเปิด Agent อีกครั้งอาจเริ่มได้' : 'พัก Agent ทั้งหมดเพื่อบล็อกคำขอ AI ใหม่จาก Project Flow คำขอที่เริ่มแล้วไม่ถูกยกเลิก'}
         </div>
         <button class="btn ${allPaused ? 'btn-primary' : 'btn-danger'} btn-sm" style="width:100%;justify-content:center"
-          onclick="toggleAllAiAgents(${allPaused ? 'false' : 'true'})">
+          ${Remote.on && !canLead() ? 'disabled title="เฉพาะ Admin/Manager"' : ''} onclick="toggleAllAiAgents(${allPaused ? 'false' : 'true'})">
           ${allPaused ? '▶ เปิดการทำงาน AI ทั้งทีม' : '⏸ หยุดพัก AI ทั้งทีมทันที'}
         </button>
       </div>
@@ -330,10 +330,10 @@ function renderAI() {
           <b>${totalTok.toLocaleString('en-US')} tok</b>
         </div>
         <div class="progress"><div style="width:${Math.min(100, Math.round(totalTok / 1500))}%;background:linear-gradient(90deg,#6C5CE7,#3BA7FF)"></div></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:6px">โควตา 150,000 tok/วัน · ประหยัดเวลาทีม ~14 ชม./สัปดาห์</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">ตัวเลขจากข้อมูลเดิม ไม่ใช่สถิติหรือโควตาจริงของผู้ให้บริการ</div>
       </div>
     </div>` +
-    promoCard('สั่ง AI ช่วยเคลียร์งาน!', 'กดปุ่มเพื่อสั่งวิเคราะห์ความเสี่ยง ร่าง Copy หรือตรวจ QA แล้วส่งผลเข้าห้อง #ai-feed ทันที', '⚡ สั่งงาน AI ทันที', 'ai-dispatch');
+    promoCard('ตัวอย่างคำสั่ง AI', 'บันทึกคำสั่งจำลองใน #ai-feed โดยไม่เรียกโมเดลจริง หากต้องการ AI จริงให้ใช้ Project Flow → AI & ส่งออก', '⚡ ทดลองคำสั่ง', 'ai-dispatch');
 
   wireSideCommon(view);
   $$('[data-aiflt]', side).forEach(el => el.onclick = () => { Store.ui.aiFilter = el.dataset.aiflt; App.refresh(); });
@@ -349,19 +349,19 @@ function renderAI() {
     <div class="sec-head">
       <div>
         <h2>ศูนย์ควบคุมทีม AI (AI Workforce Hub)</h2>
-        <div class="sub">บริหารจัดการ AI Co-pilot ทั้ง ${agents.length} ตัว ปรับระดับ Autonomy และดูบันทึกการทำงานสด</div>
+        <div class="sub">จัดการรายชื่อและสถานะ AI ทั้ง ${agents.length} ตัว · การส่งคำสั่งจากหน้านี้เป็นการจำลอง ไม่เรียกโมเดลจริง</div>
       </div>
       <div class="sec-actions">
         <button class="btn btn-ghost" onclick="Store.ui.activeChannel=(Store.data.channels.find(c=>c.slug==='ai-feed')||{id:'ch5'}).id;App.go('chat')">✨ ดูห้อง #ai-feed</button>
-        <button class="btn btn-primary" onclick="openAiDispatchModal()">${IC.bolt} สั่งงาน AI ทันที</button>
+        <button class="btn btn-primary" onclick="openAiDispatchModal()">${IC.bolt} ทดลองคำสั่ง AI</button>
       </div>
     </div>
 
     <div class="kpi-grid">
-      ${pdKpi({ icon: IC.bot, grad: 'var(--grad-violet)', num: `${activeCnt}/${agents.length}`, label: 'AI พร้อมทำงาน', pill: 'ออนไลน์', pillCls: 'k-up' })}
-      ${pdKpi({ icon: IC.bolt, grad: 'var(--grad-cyan)', num: totalRuns, label: 'ภารกิจสำเร็จสะสม', pill: `+${runs.length} ล่าสุด`, pillCls: 'k-violet' })}
-      ${pdKpi({ icon: IC.check, grad: 'var(--grad-mint)', num: `${avgSucc}%`, label: 'ความแม่นยำเฉลี่ย', pill: 'เสถียร', pillCls: 'k-up' })}
-      ${pdKpi({ icon: IC.flame, grad: 'var(--grad-amber)', num: `${(totalTok / 1000).toFixed(1)}k`, label: 'Tokens วันนี้', pill: 'จาก 150k', pillCls: 'k-neutral' })}
+      ${pdKpi({ icon: IC.bot, grad: 'var(--grad-violet)', num: `${activeCnt}/${agents.length}`, label: 'Agent ไม่ได้พัก', pill: 'รายชื่อ', pillCls: 'k-up' })}
+      ${pdKpi({ icon: IC.bolt, grad: 'var(--grad-cyan)', num: totalRuns, label: 'รายการเดิม / จำลอง', pill: `+${runs.length} ล่าสุด`, pillCls: 'k-violet' })}
+      ${pdKpi({ icon: IC.check, grad: 'var(--grad-mint)', num: `${avgSucc}%`, label: 'สถิติที่ตั้งไว้', pill: 'ตัวอย่าง', pillCls: 'k-up' })}
+      ${pdKpi({ icon: IC.flame, grad: 'var(--grad-amber)', num: `${(totalTok / 1000).toFixed(1)}k`, label: 'Tokens ในข้อมูลเดิม', pill: 'ไม่ใช่ usage จริง', pillCls: 'k-neutral' })}
     </div>
 
     <div class="ai-grid">
@@ -396,19 +396,19 @@ function renderAI() {
 
           <div class="ai-auto-row">
             <span>Autonomy</span>
-            <input type="range" min="10" max="100" step="5" value="${a.autonomy}"
+            <input type="range" min="10" max="100" step="5" value="${a.autonomy}" ${Remote.on && !canLead() ? 'disabled' : ''}
               onchange="updateAiAgent('${a.id}', {autonomy: +this.value})"/>
             <b style="min-width:34px;text-align:right;color:var(--purple)">${a.autonomy}%</b>
           </div>
 
           <div style="display:flex;gap:8px;margin-top:auto">
-            <button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center"
+            <button class="btn btn-ghost btn-sm" style="flex:1;justify-content:center" ${Remote.on && !canLead() ? 'disabled' : ''}
               onclick="updateAiAgent('${a.id}', {paused: ${!a.paused}})">
               ${a.paused ? '▶ เปิดใช้งาน' : '⏸ พักชั่วคราว'}
             </button>
             <button class="btn btn-primary btn-sm" style="flex:1;justify-content:center"
               ${a.paused ? 'disabled' : ''} onclick="openAiDispatchModal('${a.id}')">
-              ⚡ สั่งงาน ${esc(a.code)}
+              ⚡ ทดลอง ${esc(a.code)}
             </button>
           </div>
         </div>`;
@@ -417,7 +417,7 @@ function renderAI() {
 
     <div class="card">
       <div class="card-head">
-        <div class="card-title">${IC.bolt} บันทึกการทำงานสดของ AI (Live Execution Logs)</div>
+        <div class="card-title">${IC.bolt} บันทึกคำสั่งเดิม / จำลอง (ไม่ใช่ผล AI จริง)</div>
         <span class="badge b-purple">${runs.length} รายการล่าสุด</span>
       </div>
       <div class="tbl-wrap" style="border:0;box-shadow:none">
@@ -432,9 +432,9 @@ function renderAI() {
                 <td><span class="badge" style="background:${ag.color}18;color:${ag.color}">🤖 ${esc(ag.code)}</span></td>
                 <td><b>${esc(r.action)}</b>${tk ? ` <span class="t-code" style="cursor:pointer;color:var(--purple)" onclick="openTaskModal('${tk.id}')">${esc(tk.code)}</span>` : ''}</td>
                 <td style="max-width:340px;color:var(--ink-2);font-size:12.5px">${esc(r.detail)}</td>
-                <td>${r.durationSec || 3}s</td>
+                <td>${Number(r.durationSec || 0)}s</td>
                 <td>${Number(r.tokens || 0).toLocaleString('en-US')}</td>
-                <td><span class="badge b-green">สำเร็จ</span></td>
+                <td><span class="badge b-purple">${r.status === 'simulated' ? 'จำลอง' : 'ข้อมูลเดิม'}</span></td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -444,24 +444,32 @@ function renderAI() {
   `;
 }
 
-function updateAiAgent(agentId, patch) {
+async function updateAiAgent(agentId, patch) {
   const a = aiAgentOf(agentId);
   if (!a) return;
+  if (Remote.on) {
+    if (!canLead()) return toast('เฉพาะ Admin/Manager เท่านั้นที่จัดการ AI ได้', 'warn');
+    try { await Remote.req('/ai/agents/' + encodeURIComponent(agentId), {method:'PATCH', body:patch}); }
+    catch (e) { return toast('บันทึกไม่สำเร็จ: ' + esc(e.message), 'err'); }
+  }
   Object.assign(a, patch);
   Store.save();
-  Remote.push('/ai/agents/' + agentId, 'PATCH', patch);
   App.refresh();
-  toast(`อัปเดต ${a.code} เรียบร้อย`);
+  toast(`อัปเดต ${esc(a.code)} เรียบร้อย`);
 }
 
-function toggleAllAiAgents(paused) {
+async function toggleAllAiAgents(paused) {
   ensureAgencyData();
+  if (Remote.on) {
+    if (!canLead()) return toast('เฉพาะ Admin/Manager เท่านั้นที่ควบคุม AI ได้', 'warn');
+    try { await Remote.req('/ai/toggle-all', {method:'POST', body:{paused:!!paused}}); }
+    catch (e) { return toast('เปลี่ยนสถานะไม่สำเร็จ: ' + esc(e.message), 'err'); }
+  }
   Store.data.aiAgents.forEach(a => { a.paused = !!paused; });
   Store.logActivity(paused ? '⏸ เปิดโหมด <b>Master Kill-Switch</b> หยุดพัก AI ทั้งทีม' : '▶ เปิดการทำงาน <b>AI Workforce</b> ทั้งทีมอีกครั้ง');
   Store.save();
-  Remote.push('/ai/toggle-all', 'POST', { paused: !!paused });
   App.refresh();
-  toast(paused ? 'หยุดพัก AI ทั้งทีมชั่วคราวแล้ว' : 'เปิดการทำงาน AI ทั้งทีมเรียบร้อย');
+  toast(paused ? 'พัก AI แล้ว: คำขอใหม่ถูกบล็อก แต่คำขอที่เริ่มไปแล้วไม่ถูกยกเลิก' : 'เปิดการทำงาน AI ทั้งทีมเรียบร้อย');
 }
 
 function openAiDispatchModal(preAgentId = '', preTaskId = '') {
@@ -476,7 +484,7 @@ function openAiDispatchModal(preAgentId = '', preTaskId = '') {
   const preTask = preTaskId ? Store.getTask(preTaskId) : null;
 
   openModal(`
-    ${modalHead('⚡ สั่งงาน AI Workforce ทันที', 'เลือกผู้ช่วย AI และงานที่ต้องการให้ช่วยวิเคราะห์ ร่างเนื้อหา หรือตรวจ QA')}
+    ${modalHead('⚡ ทดลองคำสั่ง AI Workforce', 'เป็นการจำลองและบันทึกตัวอย่างในแชต ไม่เรียกโมเดลจริง หากต้องการใช้ AI จริงให้เปิด Project Flow → AI & ส่งออก')}
     <form id="aiDispForm">
       <div class="modal-body">
         <div class="form-grid">
@@ -506,7 +514,7 @@ function openAiDispatchModal(preAgentId = '', preTaskId = '') {
       </div>
       <div class="modal-foot">
         <button type="button" class="btn btn-ghost" onclick="closeModal()">ยกเลิก</button>
-        <button type="submit" class="btn btn-primary">🚀 เริ่มประมวลผล & ส่งเข้า #ai-feed</button>
+        <button type="submit" class="btn btn-primary">บันทึกตัวอย่างใน #ai-feed</button>
       </div>
     </form>
   `);
@@ -522,15 +530,12 @@ function openAiDispatchModal(preAgentId = '', preTaskId = '') {
 
     const ag = aiAgentOf(agentId);
     const tk = taskId ? Store.getTask(taskId) : null;
-    const tokens = 680 + Math.floor(Math.random() * 520);
-    const dur = 2 + Math.floor(Math.random() * 4);
-    const summary = extra
-      ? `${extra} — ดำเนินการโดย ${ag.code} เสร็จสมบูรณ์ พร้อมคำแนะนำปฏิบัติการสำหรับทีม`
-      : `วิเคราะห์โจทย์ "${action}"${tk ? ` (${tk.code})` : ''} เรียบร้อย สรุปแนวทางปฏิบัติและจุดตรวจเช็กครบถ้วน`;
+    const tokens = 0, dur = 0;
+    const summary = `จำลองเท่านั้น — ไม่ได้เรียก AI หรือทำงานจริง · ${extra || (tk ? `งานที่เลือก: ${tk.title}` : 'ไม่มีบริบทเพิ่มเติม')}`;
 
     if (Remote.on) {
       try {
-        await Remote.req('/ai/dispatch', { method: 'POST', body: { agentId, taskId, action, detail: summary } });
+        await Remote.req('/ai/dispatch', { method: 'POST', body: { agentId, taskId, action, detail: extra } });
         await Remote.refreshAll();
       } catch (e) {
         toast('สั่งงานไม่สำเร็จ: ' + e.message, 'err');
@@ -539,7 +544,7 @@ function openAiDispatchModal(preAgentId = '', preTaskId = '') {
     } else {
       const nowAt = `${todayS()} ${nowHM()}`;
       Store.data.aiRuns.unshift({
-        id: uid('run'), agentId, taskId, action, detail: summary, durationSec: dur, tokens, status: 'ok', at: nowAt,
+        id: uid('run'), agentId, taskId, action, detail: summary, durationSec: dur, tokens, status: 'simulated', at: nowAt,
       });
       ag.runs = (+ag.runs || 0) + 1;
       ag.tokensToday = (+ag.tokensToday || 0) + tokens;
@@ -549,17 +554,17 @@ function openAiDispatchModal(preAgentId = '', preTaskId = '') {
       if (aiChan) {
         Store.data.messages.push({
           id: uid('m'), channelId: aiChan.id, senderId: ag.id, senderName: `${ag.name} (AI)`, kind: 'ai',
-          body: `✨ <b>${esc(ag.name)}</b> ดำเนินการเสร็จสิ้น: <b>${esc(action)}</b>${tk ? ` (${esc(tk.code)})` : ''} — ${esc(summary)}`,
+          body: `✨ <b>${esc(ag.name)}</b> คำสั่งตัวอย่าง: <b>${esc(action)}</b>${tk ? ` (${esc(tk.code)})` : ''} — ${esc(summary)}`,
           pinned: false, reactions: { '⚡': ['u1'] }, at: nowAt,
         });
       }
-      Store.logActivity(`🤖 <b>${esc(ag.code)}</b> ประมวลผล "${esc(action)}" เสร็จใน ${dur}s`);
+      Store.logActivity(`🤖 <b>${esc(ag.code)}</b> บันทึกคำสั่งจำลอง "${esc(action)}"`);
       Store.save();
     }
 
     closeModal();
     App.refresh();
-    toast(`🤖 ${ag.code} ดำเนินการเสร็จสิ้น และโพสต์ผลใน #ai-feed แล้ว!`);
+    toast(`🤖 บันทึกคำสั่งตัวอย่างของ ${esc(ag.code)} แล้ว — ไม่ได้เรียก AI จริง`, 'warn');
   };
 }
 
@@ -981,7 +986,7 @@ function renderChat() {
             <button class="btn ${drawerMode === 'members' ? 'btn-primary' : 'btn-ghost'} btn-sm" onclick="toggleChatDrawer('members')">
               👥 สมาชิก (${roomMembers.length})
             </button>
-            <button class="btn btn-ghost btn-sm" onclick="askAiInChannel('${curChan?.id}')">✨ ให้ AI สรุป</button>
+            <button class="btn btn-ghost btn-sm" onclick="askAiInChannel('${curChan?.id}')" title="สรุปจากแม่แบบ ไม่เรียก AI">✨ สรุปพื้นฐาน</button>
             ${!isDm ? `<button class="icon-btn" style="width:34px;height:34px" title="ตั้งค่าห้อง / ปักหมุด / ลบห้อง" onclick="openChannelForm('${curChan?.id}')">⚙️</button>` : ''}
           </div>
         </div>
@@ -1152,7 +1157,7 @@ async function openDirectChat(targetId) {
     if (partner.kind === 'ai') {
       Store.data.messages.push({
         id: uid('m'), channelId: id, senderId: partner.id, senderName: `${partner.code || partner.name} (AI)`, kind: 'ai',
-        body: `✨ สวัสดีครับ! ผมคือ <b>${esc(partner.name)}</b> พร้อมช่วยสรุปงาน ตรวจเดดไลน์ ร่างข้อความ และวิเคราะห์ข้อมูลจริง พิมพ์ถามได้เลยครับ`,
+        body: `✨ ห้องนี้ใช้คำตอบจากแม่แบบ ไม่ได้เรียกโมเดล AI จริง หากต้องการให้ AI ช่วยร่าง ให้ใช้ Project Flow → AI & ส่งออก`,
         pinned: false, reactions: {}, at: `${todayS()} ${nowHM()}`,
       });
     }
@@ -1242,7 +1247,7 @@ async function postChatMessage(channelId, body) {
   }
 
   if (targetAi && !targetAi.paused) {
-    const reply = buildSmartAiReply(targetAi, body || att?.name || '', chan);
+    const reply = `ตัวอย่างจากแม่แบบ (ไม่ได้เรียก AI) · ${buildSmartAiReply(targetAi, body || att?.name || '', chan)}`;
     if (Remote.on) {
       await Remote.req(`/channels/${channelId}/messages`, {
         method: 'POST',
@@ -1495,7 +1500,7 @@ async function askAiInChannel(channelId) {
 
   const openCnt = (Store.data.tasks || []).filter(t => t.status !== 'done').length;
   const lastTopics = chanMsgs.slice(-3).map(m => `${m.senderName}: "${String(m.body || '').replace(/<[^>]+>/g, '').slice(0, 36)}"`).join(' · ');
-  const summary = `✨ <b>สรุปห้อง #${esc(chan.name)}</b> (${chanMsgs.length} ข้อความ · งานคงค้างในระบบ ${openCnt} ชิ้น)${lastTopics ? ` — ประเด็นล่าสุด: ${esc(lastTopics)}` : ' — พร้อมเริ่มต้นพูดคุยและแชร์ไฟล์ในห้องนี้ครับ'}`;
+  const summary = `✨ <b>สรุปพื้นฐานจากแม่แบบ (ไม่ได้เรียก AI) · ห้อง #${esc(chan.name)}</b> (${chanMsgs.length} ข้อความ · งานคงค้างในระบบ ${openCnt} ชิ้น)${lastTopics ? ` — ประเด็นล่าสุด: ${esc(lastTopics)}` : ' — พร้อมเริ่มต้นพูดคุยและแชร์ไฟล์ในห้องนี้ครับ'}`;
 
   if (Remote.on) {
     await Remote.req(`/channels/${channelId}/messages`, {

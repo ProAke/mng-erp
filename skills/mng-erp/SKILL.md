@@ -35,7 +35,8 @@ Connect Hermes Agent or any autonomous AI agent directly to MNG ERP (`https://mn
 - Reading executive overviews, urgent tasks, overdue milestones, or MariaDB live table audits in MNG ERP.
 - Creating, filtering, or updating Kanban tasks (`todo`, `doing`, `review`, `done`), projects, and calendar events.
 - Posting status updates, replies, or Google Drive links into MNG ERP team chat channels (`#general`, `#ai-feed`) or 1-on-1 DMs.
-- Managing CRM clients, generating 7% VAT invoices, or dispatching internal AI Workforce runs (`@NOVA`, `@PIXEL`, `@BYTE`, `@ORBIT`).
+- Managing CRM clients or generating 7% VAT invoices. Legacy AI Workforce dispatch and @AI Chat replies are simulations, not model calls.
+- Inspecting Project Flow, linked task statuses, and manager-only draft/approval/webhook records. Actual AI generation and webhook delivery require server configuration and explicit human authorization.
 
 ## Prerequisites
 
@@ -74,7 +75,17 @@ Every invocation after `login` automatically selects the next token slot (`1 -> 
 | Send message to chat room | `python3 skills/mng-erp/scripts/mng_erp_client.py chat-send --channel ch1 --text "..."` | `POST /api/channels/:id/messages` |
 | List/create calendar events | `python3 skills/mng-erp/scripts/mng_erp_client.py event-create --title "..." --date 2026-11-01` | `POST /api/events` |
 | List/create 7% VAT invoices | `python3 skills/mng-erp/scripts/mng_erp_client.py invoice-create --title "..." --amount 50000` | `POST /api/invoices` |
+| Read Flow & linked tasks | `python3 skills/mng-erp/scripts/mng_erp_client.py request GET /api/projects/p1/flow` | `GET /api/projects/:id/flow` |
+| List Flow export actions (manager) | `python3 skills/mng-erp/scripts/mng_erp_client.py request GET /api/projects/p1/flow/actions` | `GET /api/projects/:id/flow/actions` |
 | Arbitrary REST endpoint | `python3 skills/mng-erp/scripts/mng_erp_client.py request GET /api/endpoints` | Any `/api/*` route |
+
+## Project Flow AI & Webhook safety
+
+- The brief's AI Agent and model are planning metadata, not a provider connection. Real generation uses server-configured `FLOW_AI_URL`/`FLOW_AI_KEY`/`FLOW_AI_MODEL`; webhooks use `FLOW_WEBHOOK_URL`/`FLOW_WEBHOOK_SECRET`. Never ask users to paste secrets into chat or store them in a brief.
+- Only a manager/admin/super-admin may read or change export actions. Read the latest action and `revision` before each change. Ask for explicit human authorization before `generate` (shares data with AI), `approve`, `send` (external effect), or `reconcile`. Respect a `409`: reload and re-review, never blindly retry.
+- `accepted` means the configured webhook receiver returned 2xx, not that publication or customer delivery occurred. `unknown` or stale `sending` requires checking the receiver and recording evidence via `reconcile`; do not retry automatically. First-send `eventId` and body remain fixed across authorized retries; the receiver must verify HMAC and deduplicate durably.
+- Pausing all agents in AI Hub blocks new Flow AI generation but does not cancel in-flight requests or stop a human-confirmed webhook. `/api/ai/dispatch` and Chat's template replies are simulated and do not call AI.
+- Read the complete integration/security guide from `{MNG_ERP_URL}/api/hermes/flow-integrations.md` and the API schemas from `{MNG_ERP_URL}/api/hermes/manual.md` before taking external actions.
 
 ## Procedure
 

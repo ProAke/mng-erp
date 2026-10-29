@@ -40,6 +40,13 @@ python3 ~/.hermes/skills/mng-erp/scripts/mng_erp_client.py overview # ใช้ 
 - *"ช่วยดึงภาพรวมงานด่วนและบิลค้างชำระใน MNG ERP วันนี้ให้หน่อย"*
 - *"สร้างการ์ดงานใหม่ในโปรเจกต์ p1 ชื่อ 'เตรียมสไลด์ประชุมลูกค้า Q4' ความสำคัญ high กำหนดส่ง 2026-11-10"*
 - *"ส่งข้อความแจ้งความคืบหน้าเข้าห้องแชต ch1 ใน MNG ERP"*
+- *"อ่านผังและรายการงานที่เชื่อมกับโปรเจกต์ p1 แล้วสรุปสถานะให้หน่อย"*
+
+## Project Flow และการส่งออกอย่างปลอดภัย
+
+Hermes ใช้คำสั่งทั่วไปอ่านผังได้ เช่น `python3 ~/.hermes/skills/mng-erp/scripts/mng_erp_client.py request GET /api/projects/p1/flow` ส่วน `/api/projects/:id/flow/actions` ต้องใช้บัญชี Manager/Admin อ่านคู่มือ [Project Flow AI & Webhook](FLOW-INTEGRATIONS.md) หรือเรียก `{MNG_ERP_URL}/api/hermes/flow-integrations.md`
+
+การสั่ง AI จริงส่งข้อมูลไปผู้ให้บริการ และการส่ง webhook อาจนำข้อมูลไปเผยแพร่หรือส่งลูกค้าได้ ต้องขออนุญาตคนชัดเจนก่อน `generate`, `approve`, `send` หรือ `reconcile` โหลด revision ล่าสุดทุกครั้ง และไม่ retry เองเมื่อผลไม่แน่นอน `accepted` หมายถึง webhook ตอบรับ ไม่ยืนยันผลปลายทาง การสั่งงาน `/api/ai/dispatch` เดิมและคำตอบ @AI ใน Chat เป็นการจำลอง ไม่ได้เรียกโมเดลจริง
 
 ---
 

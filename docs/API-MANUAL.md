@@ -221,7 +221,7 @@ class MngErpRotatingClient {
 | `GET` | `/api/hermes/overview` | **แนะนำสำหรับ AI**: สรุปยอดโปรเจกต์ งานค้าง งานด่วน บิลรอเก็บ นัดหมาย และข้อความล่าสุดใน Payload ขนาดกะทัดรัด |
 | `GET` | `/api/hermes/endpoints` | ดึงรายการ API Catalog ทั้งหมดในรูปแบบ JSON |
 | `GET` | `/api/bootstrap` | ดึงข้อมูลดิบครบทั้ง 13 โมดูลของระบบในครั้งเดียว |
-| `GET` | `/api/db/audit` | ตรวจสอบการเชื่อมต่อและนับจำนวนแถวสดของตาราง MariaDB ทั้ง 19 ตาราง |
+| `GET` | `/api/db/audit` | ตรวจสอบการเชื่อมต่อและนับจำนวนแถวของ 23 ตารางรวม Auth DB; ไม่ตรวจความครบถ้วนของทุกคอลัมน์หรือการเชื่อมต่อภายนอก |
 
 ### 5.2 การ์ดงาน Kanban & Sprint (Tasks)
 - **`GET /api/tasks`**
@@ -320,14 +320,30 @@ if (!saved.ok) throw new Error(`HTTP ${saved.status}`);
 
 - เซิร์ฟเวอร์สร้างเส้นเชื่อมและ Mindmap จากข้อมูลที่บันทึกใหม่ ไม่รับ `taskId` ที่ client ปลอม และเก็บลิงก์งานเดิมตามรหัสขั้นตอน
 - การสร้างงานซ้ำไม่สร้างรายการซ้ำสำหรับขั้นตอนที่มีงานเชื่อม การเปลี่ยน/ลบขั้นตอนภายหลังไม่แก้หรือลบการ์ดงานที่สร้างไปแล้ว
-- การเลือกโมเดล Agent สื่อ หรือขั้นตอนอัตโนมัติเป็น **แผนงานเท่านั้น** ไม่ได้เรียก AI เชื่อม Webhook หรือเผยแพร่จริง
+- การเลือกโมเดล Agent สื่อ หรือขั้นตอนอัตโนมัติเป็น **แผนงานเท่านั้น** ไม่เริ่ม AI หรือส่งออกเอง การเรียก AI และส่ง webhook ต้องใช้รายการส่งออกแยกตามขั้นตอนด้านล่าง
 - บรีฟและคู่มือทีมมองเห็นโดยผู้ใช้ที่เข้าสู่ระบบทุกคน ไม่ควรบันทึก Token หรือข้อมูลลับ ดูคู่มือเพิ่มเติมใน `docs/PROJECT-FLOW.md` หรือเมนู **คู่มือ**
+
+### 5.3.1 รายการ AI และส่งออกจากผัง (Manager/Admin)
+
+รายการเหล่านี้จำกัด Manager/Admin/Super Admin และต้องผ่าน auth ก่อนใช้งาน ดูสัญญา HMAC, การตั้งค่า server และตัวอย่างตรวจลายเซ็นใน [FLOW-INTEGRATIONS.md](FLOW-INTEGRATIONS.md) หรือ `{baseUrl}/api/hermes/flow-integrations.md`
+
+| Method | Endpoint | การทำงาน |
+|---|---|---|
+| `GET` | `/api/flow/integrations` | ดูว่า AI/webhook ตั้งค่าแล้วหรือไม่ ไม่คืน URL/key |
+| `GET`, `POST` | `/api/projects/:id/flow/actions` | อ่านรายการหรือสร้างร่าง `{nodeId,kind,title,destination,content,eventId?}` โดย `kind` เป็น `media`, `sales`, `support`; `eventId` เป็น UUID v4 ที่ client ใช้ซ้ำเมื่อ retry การสร้าง |
+| `GET`, `PATCH` | `/api/projects/:id/flow/actions/:actionId` | อ่านรายการและประวัติ หรือแก้ร่างที่ไม่เคยส่ง พร้อม `revision` ล่าสุด |
+| `POST` | `.../:actionId/generate` | `{revision,confirm:true,instruction}` ส่งข้อมูลไป AI จริงที่ผู้ดูแลตั้งค่าแล้ว เก็บผลเป็นร่าง |
+| `POST` | `.../:actionId/approve`, `.../return-draft`, `.../cancel` | `{revision,confirm:true}` ตรวจอนุมัติ ถอนอนุมัติ หรือยกเลิกโดยไม่ส่งออก |
+| `POST` | `.../:actionId/send` | `{revision,confirm:true}` ส่ง webhook ที่ตั้งค่าไว้; ตรวจ `accepted` และ `action.status` ใน response |
+| `POST` | `.../:actionId/reconcile` | `{revision,confirm:true,resolution,note}` บันทึกผลตรวจสอบเมื่อผลส่งไม่แน่นอนหรือคำขอค้าง โดย `note` อย่างน้อย 10 ตัวอักษร |
+
+ก่อน `generate`, `approve`, `send` หรือ `reconcile` ต้องได้รับอนุญาตชัดเจนจากผู้ใช้และตรวจข้อมูลส่วนบุคคล/สิทธิ์สื่อ `409` หมายถึงสถานะหรือ revision เปลี่ยน ให้โหลดและทบทวนใหม่ ห้าม retry อัตโนมัติ หาก `status: unknown` ต้องตรวจปลายทางก่อน reconcile; `accepted` หมายถึง webhook ตอบรับ ไม่ใช่ยืนยันเผยแพร่หรือส่งถึงลูกค้า
 
 ### 5.4 แชตทีม, DM 1-ต่อ-1 และไฟล์แนบ / Google Drive (Chat & Drive)
 - **`GET /api/chat/sync`** — ดึงห้องแชตทั้งหมด (`channels`), ข้อความล่าสุด (`messages`), และไฟล์ที่แชร์ (`files`) รองรับ `?channelId=ch1`
 - **`POST /api/channels`** — สร้างห้องแชตกลุ่มใหม่ `{ "name": "campaign-warroom", "emoji": "🚀", "topic": "ห้องเกาะติดแคมเปญ", "projectId": "p1" }`
 - **`POST /api/channels/dm`** — เปิดหรือสร้างห้องสนทนาส่วนตัว 1-ต่อ-1 `{ "targetId": "u2" }` (หรือ `"ai1"`)
-- **`POST /api/channels/:id/messages`** — ส่งข้อความเข้าห้องแชตหรือ DM (หากพิมพ์ `@NOVA`, `@PIXEL`, `@BYTE`, `@ORBIT` AI Co-pilot ในห้องจะตอบกลับอัตโนมัติด้วย)
+- **`POST /api/channels/:id/messages`** — ส่งข้อความเข้าห้องแชตหรือ DM ในหน้า Chat หากพิมพ์ `@NOVA`, `@PIXEL`, `@BYTE`, `@ORBIT` อาจมีคำตอบแม่แบบ **ไม่ใช่การเรียก AI จริง**
   ```json
   {
     "body": "อัปเดตสถานะงาน MNG-1042 เสร็จเรียบร้อย 100% ครับ",
@@ -373,7 +389,8 @@ if (!saved.ok) throw new Error(`HTTP ${saved.status}`);
 - **`POST /api/invoices/:id/pay`** — บันทึกรับชำระเงิน (`status = 'paid'`)
 
 ### 5.7 AI Workforce, HR เช็กอิน/ใบลา & จองห้องประชุม (Agency OS)
-- **`POST /api/ai/dispatch`** — สั่งรัน AI Agent ภายใน ERP (`{ "agentId": "ai1", "prompt": "วิเคราะห์งานคอขวดสัปดาห์นี้", "postToFeed": true }`)
+- **`POST /api/ai/dispatch`** — สร้างตัวอย่างการสั่งงาน (`{ "agentId": "ai1", "prompt": "วิเคราะห์งานคอขวดสัปดาห์นี้", "postToFeed": false }`); เป็น **การจำลอง ไม่เรียก AI จริง** response มี `simulated: true`, `tokens: 0` และ `durationSec: 0` ค่า `postToFeed: false` ป้องกันการโพสต์คำสั่งลงห้องรวม (ถ้าไม่ระบุจะโพสต์เมื่อมีห้อง) แต่คำสั่งยังอยู่ในประวัติ AI และ activity ที่สมาชิกเห็นได้ จึงห้ามใส่ข้อมูลลับ ส่วนการเรียก AI จริงใช้ Project Flow ตามข้อ 5.3.1
+- การเพิ่ม/แก้ไข/ลบ Agent และ `POST /api/ai/toggle-all` (`{"paused":true|false}`) จำกัด Manager/Admin; การพัก Agent ทั้งทีมบล็อกการเริ่ม AI ใหม่จาก Flow แต่ไม่ยกเลิกคำขอที่กำลังทำงาน
 - **`GET /api/teams`** — ดูรายชื่อทีมงานและสถานะออนไลน์ (`online`, `working`, `focus`, `away`)
 - **`POST /api/teams/presence`** — อัปเดตสถานะการทำงาน (`{ "presence": "working" }`)
 - **`POST /api/checkins/clock`** — ลงเวลาเข้างาน (`{ "mode": "office", "note": "พร้อมลุยงาน" }`)
