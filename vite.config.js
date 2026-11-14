@@ -13,6 +13,11 @@ module.exports = defineConfig({
         if (!name.endsWith('.js')) continue;
         this.emitFile({ type: 'asset', fileName: `assets/js/${name}`, source: fs.readFileSync(path.join(sourceDir, name)) });
       }
+      // Three.js โหลดภายในหน้า Office เท่านั้น ไม่พึ่ง CDN หรือ node_modules บน Passenger
+      const vendorDir = path.join(__dirname, 'assets', 'vendor');
+      for (const name of fs.readdirSync(vendorDir)) {
+        this.emitFile({ type: 'asset', fileName: `assets/vendor/${name}`, source: fs.readFileSync(path.join(vendorDir, name)) });
+      }
     },
   }],
 });

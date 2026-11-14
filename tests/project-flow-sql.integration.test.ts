@@ -41,14 +41,16 @@ suite('Project Flow against a real local MySQL/MariaDB engine', () => {
     // Minimal legacy ci-workflow tables; ensureSchema adds all erp_* columns.
     await admin.query(`CREATE TABLE projects (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, hub_id VARCHAR(200), title VARCHAR(250), description TEXT, stat VARCHAR(20), icon VARCHAR(20), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
     await admin.query(`CREATE TABLE tasks (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, project_id INT UNSIGNED, title VARCHAR(300), description TEXT, status VARCHAR(20), priority VARCHAR(20), due_date DATE NULL, progress INT DEFAULT 0, archived TINYINT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
+    // ตารางทีมรุ่นเดิมไม่มี department: ตรวจ migration แบบ additive และรักษาข้อมูลเดิม
+    await admin.query(`CREATE TABLE erp_team (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, role VARCHAR(80) NOT NULL DEFAULT '', color VARCHAR(20) NOT NULL DEFAULT '#8E7CF3', email VARCHAR(255), phone VARCHAR(30), is_me TINYINT(1) DEFAULT 0, auth_user_id BIGINT UNSIGNED NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
+    await admin.query('INSERT INTO erp_team (name,role,email,is_me) VALUES (?,?,?,1)', ['ผู้ทดสอบ','Project Manager','flow-test@example.test'])
     const cfg = require('../server/config')
     cfg.authDb = { ...common, database:authName, connectionLimit:4 }
     cfg.workDb = { ...common, database:workName, connectionLimit:6 }
     cfg.demoOnly = false
-    for (const mod of ['../server/db','../server/hermes','../server/auth','../server/routes','../server/workspace-routes','../server/project-workspace-routes','../server/flow-action-routes']) delete require.cache[require.resolve(mod)]
+    for (const mod of ['../server/db','../server/hermes','../server/auth','../server/routes','../server/office-routes','../server/workspace-routes','../server/project-workspace-routes','../server/flow-action-routes']) delete require.cache[require.resolve(mod)]
     db = require('../server/db')
     await db.ensureSchema()
-    await db.workPool.query('INSERT INTO erp_team (name,role,email,is_me) VALUES (?,?,?,1)', ['ผู้ทดสอบ','Project Manager','flow-test@example.test'])
     await db.workPool.query('INSERT INTO erp_ai_agents (code,name,role,model) VALUES (?,?,?,?)', ['TEST','Test Agent','Planner','Test Model'])
     // รับ HTTP เฉพาะในชุดทดสอบ; URL ที่ adapter ตรวจยังเป็น HTTPS และ production ไม่มีทางเลือก HTTP
     receiver = http.createServer((req, res) => {
@@ -107,6 +109,99 @@ suite('Project Flow against a real local MySQL/MariaDB engine', () => {
     })
     return {status:response.status, json:await response.json()}
   }
+
+  it('migrates legacy departments and persists the Office snapshot on real MariaDB', async () => {
+    const [columns]:any=await db.workPool.query("SHOW COLUMNS FROM erp_team LIKE 'department'")
+    expect(columns).toHaveLength(1)
+    const [[legacy]]:any=await db.workPool.query('SELECT name, role, department FROM erp_team WHERE id=1')
+    expect(legacy).toMatchObject({name:'ผู้ทดสอบ',role:'Project Manager',department:null})
+    expect((await req('/office/snapshot','GET',undefined,false)).status).toBe(401)
+    // หาก migration ไม่พร้อม หน้าต้องเห็นข้อผิดพลาดแทนจำนวนศูนย์ จากนั้นทดสอบกู้ migration
+    await db.workPool.query('ALTER TABLE erp_team DROP COLUMN department')
+    try { expect((await req('/office/snapshot')).status).toBe(503) } finally { await db.ensureSchema() }
+    expect((await req('/teams','POST',{name:'ไม่อนุญาต',department:'Ops'},userToken)).status).toBe(403)
+    expect((await req('/teams','POST',{name:'ข้อมูลเกิน',department:'x'.repeat(81)})).status).toBe(400)
+    const office=await req('/teams','POST',{name:'สมาชิกออฟฟิศ',role:'Dev',department:'  Development  '})
+    const home=await req('/teams','POST',{name:'สมาชิกบ้าน',role:'Designer',department:'Creative'})
+    expect(office.status).toBe(201); expect(home.status).toBe(201)
+    expect((await req(`/teams/${office.json.id}`,'PATCH',{department:'  Product   & Design  '})).status).toBe(200)
+    expect((await req(`/teams/${office.json.id}`,'PATCH',{department:['bad']})).status).toBe(400)
+    const teams=await req('/teams')
+    expect(teams.json.members.find((m:any)=>m.id===office.json.id)).toMatchObject({role:'Dev',department:'Product & Design'})
+    const clock=await req('/office/snapshot')
+    const today=clock.json.date
+    expect(clock.json.timezone).toBe('Asia/Bangkok')
+    expect((await req('/checkins/clock','POST',{memberId:office.json.id,mode:'office',date:today,time:'08:00',note:'ข้อมูลลับไม่อยู่ใน snapshot'})).status).toBe(200)
+    expect((await req('/checkins/clock','POST',{memberId:home.json.id,mode:'wfh',date:today,time:'08:30'})).status).toBe(200)
+    const meetingTitle='นัดทดสอบ <img src=x onerror=alert(1)>'
+    const meeting=await req('/events','POST',{title:meetingTitle,cat:'meeting',date:today,start:'00:00',end:'23:59',members:[office.json.id,home.json.id],loc:'https://meet.google.com/abc-defg-hij',desc:'ข้อมูลรายละเอียด'})
+    expect(meeting.status).toBe(200)
+    const [[eventActivity]]:any = await db.workPool.query('SELECT text FROM erp_activity WHERE text LIKE ? ORDER BY id DESC LIMIT 1',['สร้างกิจกรรม%'])
+    expect(eventActivity.text).toContain('&lt;img')
+    expect(eventActivity.text).not.toContain('<img')
+    // ทั้ง Office และหน้าลงเวลาต้องเห็นเช็กอินวันนี้ แม้เกิน LIMIT 90 เดิมของ bootstrap
+    const many=Array.from({length:110},()=>['u999999',today,'08:00','office'])
+    await db.workPool.query('INSERT INTO erp_checkins (member_id,date,clock_in,mode) VALUES ?', [many])
+    const first=await req('/office/snapshot')
+    expect(first.status).toBe(200)
+    expect(first.json.checkins.length).toBeGreaterThanOrEqual(112)
+    expect(first.json.checkins.find((c:any)=>c.memberId===office.json.id)).toMatchObject({mode:'office',clockOut:''})
+    expect(first.json.checkins.find((c:any)=>c.memberId===office.json.id).note).toBeUndefined()
+    expect(first.json.events.find((e:any)=>e.id===meeting.json.id)).toMatchObject({title:meetingTitle,members:[office.json.id,home.json.id],loc:'https://meet.google.com/abc-defg-hij'})
+    expect(first.json.events.find((e:any)=>e.id===meeting.json.id).desc).toBeUndefined()
+    expect((await req('/checkins/clock-out','POST',{memberId:home.json.id,date:today,time:'17:00'})).status).toBe(200)
+    const second=await req('/office/snapshot')
+    expect(second.json.checkins.find((c:any)=>c.memberId===home.json.id).clockOut).toBe('17:00')
+    const bootstrap=await req('/bootstrap')
+    expect(bootstrap.json.team.find((m:any)=>m.id===office.json.id).department).toBe('Product & Design')
+    expect(bootstrap.json.checkins.length).toBeGreaterThanOrEqual(112)
+    expect(bootstrap.json.checkins.find((c:any)=>c.memberId===office.json.id)).toMatchObject({mode:'office',clockOut:''})
+    expect(bootstrap.json.checkins.find((c:any)=>c.memberId===home.json.id).clockOut).toBe('17:00')
+    expect((await req(`/teams/${home.json.id}`,'PATCH',{department:null})).status).toBe(200)
+    const [[persisted]]:any=await db.workPool.query('SELECT role,department FROM erp_team WHERE id=?',[Number(office.json.id.slice(1))])
+    expect(persisted).toMatchObject({role:'Dev',department:'Product & Design'})
+    expect((await req('/teams')).json.members.find((m:any)=>m.id===home.json.id).department).toBe('')
+  }, 30000)
+
+  it('preserves attendance history when clocking in again and serializes concurrent requests', async () => {
+    const member = await req('/teams','POST',{name:'ทดสอบหลายรอบ',department:'Operations'})
+    expect(member.status).toBe(201)
+    const memberId = member.json.id
+    const numericId = memberId.slice(1)
+    const today = (await req('/office/snapshot')).json.date
+    expect((await req('/checkins/clock-out','POST',{memberId,date:today,time:'08:00'})).status).toBe(409)
+    expect((await req('/checkins/clock','POST',{memberId:'u999999',date:today,time:'08:00'})).status).toBe(404)
+    expect((await req('/checkins/clock','POST',{memberId,date:'2026-02-31',time:'08:00'})).status).toBe(400)
+    expect((await req('/checkins/clock','POST',{memberId,date:today,time:'25:00'})).status).toBe(400)
+    expect((await req('/checkins/clock','POST',{memberId,date:today,time:'08:00',mode:'unknown'})).status).toBe(400)
+    expect((await req('/checkins/clock','POST',{memberId,date:today,time:'08:00',mode:'office'})).json.clockIn).toBe('08:00')
+    expect((await req('/checkins/clock-out','POST',{memberId,date:today,time:'07:59'})).json.error).toBe('checkout_before_checkin')
+    // ข้อมูลเก่าบางชุดเก็บ member_id เป็นตัวเลขล้วน ยังคงปิดรอบเดิมได้
+    await db.workPool.query('UPDATE erp_checkins SET member_id=? WHERE member_id=? AND date=?',[numericId,memberId,today])
+    expect((await req('/checkins/clock-out','POST',{memberId,date:today,time:'12:00'})).json.clockOut).toBe('12:00')
+    expect((await req('/checkins/clock-out','POST',{memberId,date:today,time:'12:05'})).json.clockOut).toBe('12:00')
+    expect((await req('/checkins/clock','POST',{memberId,date:today,time:'11:59',mode:'wfh'})).json.error).toBe('checkin_before_previous_out')
+    const parallel = await Promise.all([
+      req('/checkins/clock','POST',{memberId,date:today,time:'13:00',mode:'wfh'}),
+      req('/checkins/clock','POST',{memberId:numericId,date:today,time:'13:00',mode:'wfh'}),
+    ])
+    expect(parallel.map(x=>x.status)).toEqual([200,200])
+    expect((await req('/checkins/clock','POST',{memberId,date:today,time:'14:00',mode:'wfh'})).json.clockIn).toBe('13:00')
+    const [openRows]:any = await db.workPool.query('SELECT member_id,clock_in,clock_out,mode FROM erp_checkins WHERE member_id IN (?,?) AND date=? ORDER BY id',[memberId,numericId,today])
+    expect(openRows).toHaveLength(2)
+    expect(openRows[0]).toMatchObject({member_id:numericId,clock_in:'08:00',clock_out:'12:00',mode:'office'})
+    expect(openRows[1]).toMatchObject({member_id:memberId,clock_in:'13:00',clock_out:null,mode:'wfh'})
+    const boot = await req('/bootstrap')
+    expect(boot.json.checkins.filter((c:any)=>c.memberId===memberId).map((c:any)=>c.clockIn)).toEqual(['13:00','08:00'])
+    const snapshot = await req('/office/snapshot')
+    expect(snapshot.json.checkins.filter((c:any)=>c.memberId===memberId).map((c:any)=>[c.clockIn,c.clockOut,c.mode]))
+      .toEqual([['13:00','','wfh'],['08:00','12:00','office']])
+    expect((await req('/checkins/clock-out','POST',{memberId,date:today,time:'17:00'})).json.clockOut).toBe('17:00')
+    const [closedRows]:any = await db.workPool.query('SELECT clock_in,clock_out FROM erp_checkins WHERE member_id IN (?,?) AND date=? ORDER BY id',[memberId,numericId,today])
+    expect(closedRows.map((r:any)=>[r.clock_in,r.clock_out])).toEqual([['08:00','12:00'],['13:00','17:00']])
+    const [[team]]:any=await db.workPool.query('SELECT presence FROM erp_team WHERE id=?',[Number(numericId)])
+    expect(team.presence).toBe('away')
+  }, 30000)
 
   it('migrates schemas, authenticates, persists the brief, nodes, tasks, docs, and bootstrap', async () => {
     expect((await req('/docs','GET',undefined,false)).status).toBe(401)

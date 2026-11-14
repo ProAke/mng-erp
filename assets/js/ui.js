@@ -66,6 +66,7 @@ const IC = (() => {
     cal:     w('<rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="8.5" cy="14.5" r="1.2" fill="currentColor"/><circle cx="12" cy="14.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="14.5" r="1.2" fill="currentColor"/>'),
     task:    w('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>'),
     proj:    w('<path d="M3.5 8a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>'),
+    office:  w('<path d="M4 20V7l8-4 8 4v13M2.5 20h19M9 20v-5h6v5M8 9h1M15 9h1M8 12h1M15 12h1"/>'),
     money:   w('<circle cx="12" cy="12" r="8.5"/><path d="M9 9.5h6M9 12.5h6M12 7v10"/>'),
     team:    w('<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5c.6-3.2 2.8-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.8" cy="9.5" r="2.4"/><path d="M16 14.4c2.3.3 3.9 1.9 4.4 4.3"/>'),
     client:  w('<path d="M4 20V8.5L12 4l8 4.5V20"/><path d="M4 20h16M9.5 20v-5h5v5"/><path d="M9.5 10.5h5"/>'),

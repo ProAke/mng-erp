@@ -15,6 +15,7 @@ const TABLES = [
      email VARCHAR(255), phone VARCHAR(30), is_me TINYINT(1) DEFAULT 0,
      auth_user_id BIGINT UNSIGNED NULL,
      nickname VARCHAR(40) NULL,
+     department VARCHAR(80) NULL,
      presence VARCHAR(20) DEFAULT 'online',
      skills LONGTEXT NULL,
      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -301,6 +302,7 @@ const ADDITIVE_COLS = [
   ['erp_project_flows', 'revision INT UNSIGNED NOT NULL DEFAULT 1'],
   ['erp_flow_actions', 'delivery_payload LONGTEXT NULL'],
   ['erp_team', 'nickname VARCHAR(40) NULL'],
+  ['erp_team', 'department VARCHAR(80) NULL'],
   ['erp_team', "presence VARCHAR(20) DEFAULT 'online'"],
   ['erp_team', 'skills LONGTEXT NULL'],
 

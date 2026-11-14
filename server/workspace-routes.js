@@ -540,43 +540,106 @@ router.delete('/files/:id', async (req, res) => {
 });
 
 /* ---------- HR ATTENDANCE & LEAVES ---------- */
+function checkinMember(value) {
+  const match = /^u?(\d+)$/i.exec(String(value ?? '').trim());
+  const id = Number(match?.[1]);
+  return Number.isSafeInteger(id) && id > 0 ? { id, key: 'u' + id } : null;
+}
+function checkinError(status, code, detail) {
+  return Object.assign(new Error(code), { status, detail });
+}
+function validCheckinTime(value) {
+  return typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+function validCheckinDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split('-').map(Number);
+  return year >= 1000 && new Date(Date.UTC(year, month - 1, day)).toISOString().slice(0, 10) === value;
+}
+async function withCheckinLock(member, date, operation) {
+  const conn = await workPool.getConnection();
+  try {
+    await conn.beginTransaction();
+    // ล็อกสมาชิกก่อนอ่านรายการล่าสุด เพื่อไม่ให้คำขอพร้อมกันเปิดรอบทำงานซ้ำ
+    const [team] = await conn.query('SELECT id FROM erp_team WHERE id=? FOR UPDATE', [member.id]);
+    if (!team.length) throw checkinError(404, 'member_not_found', 'ไม่พบสมาชิกทีม');
+    // รองรับข้อมูลเก่าที่เก็บเป็นตัวเลขล้วน แต่รายการใหม่ใช้รูปแบบ u1 เสมอ
+    const [rows] = await conn.query(
+      'SELECT id, clock_in, clock_out FROM erp_checkins WHERE member_id IN (?,?) AND date=? ORDER BY id DESC LIMIT 1 FOR UPDATE',
+      [member.key, String(member.id), date]
+    );
+    const result = await operation(conn, rows[0] || null);
+    await conn.commit();
+    return result;
+  } catch (e) {
+    await conn.rollback().catch(() => {});
+    throw e;
+  } finally { conn.release(); }
+}
+function sendCheckinError(res, e) {
+  res.status(e.status || 500).json({ error: e.message, ...(e.detail ? { detail: e.detail } : {}) });
+}
+
 router.post(['/checkins/clock', '/checkins/in'], async (req, res) => {
   const b = req.body || {};
   const actorTid = await resolveActorTeamId(req);
-  const memberId = b.memberId || ('u' + actorTid);
+  const member = checkinMember(b.memberId || ('u' + actorTid));
+  if (!member) return res.status(400).json({ error: 'invalid_member_id' });
   const now = bkkNow();
   const today = b.date || now.date;
   const time = b.time || now.time;
+  const mode = b.mode || 'office';
+  if (!validCheckinDate(today) || !validCheckinTime(time)) return res.status(400).json({ error: 'invalid_checkin_datetime', detail: 'วันที่หรือเวลาเช็กอินไม่ถูกต้อง' });
+  if (!['office', 'wfh'].includes(mode)) return res.status(400).json({ error: 'invalid_checkin_mode', detail: 'รูปแบบเช็กอินต้องเป็นออฟฟิศหรือ WFH' });
   try {
-    const [ex] = await workPool.query('SELECT id FROM erp_checkins WHERE member_id=? AND date=? LIMIT 1', [memberId, today]);
-    if (ex.length) {
-      await workPool.query('UPDATE erp_checkins SET clock_in=COALESCE(NULLIF(clock_in,""), ?), mode=?, note=? WHERE id=?',
-        [time, b.mode || 'office', b.note || null, ex[0].id]);
-    } else {
-      await workPool.query(
-        'INSERT INTO erp_checkins (member_id, date, clock_in, mode, note) VALUES (?,?,?,?,?)',
-        [memberId, today, time, b.mode || 'office', b.note || null]
-      );
-    }
-    await workPool.query("UPDATE erp_team SET presence = 'working' WHERE id = ?", [numid(memberId)]).catch(() => {});
-    await logActivity(`⏱ ลงเวลาเข้างาน (${b.mode === 'wfh' ? 'WFH' : 'เข้าออฟฟิศ'}) เวลา <b>${time}</b>`, req);
-    res.json({ ok: true, clockIn: time });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const result = await withCheckinLock(member, today, async (conn, latest) => {
+      if (latest?.clock_in && !validCheckinTime(latest.clock_in)) throw checkinError(409, 'invalid_previous_checkin', 'เวลาเช็กอินเดิมไม่ถูกต้อง กรุณาติดต่อผู้ดูแล');
+      if (latest?.clock_out && (!validCheckinTime(latest.clock_out) || latest.clock_out < (latest.clock_in || '00:00'))) throw checkinError(409, 'invalid_previous_checkin', 'เวลาออกเดิมไม่ถูกต้อง กรุณาติดต่อผู้ดูแล');
+      if (latest?.clock_out && time < latest.clock_out) throw checkinError(409, 'checkin_before_previous_out', 'เวลาเช็กอินรอบใหม่ก่อนเวลาออกเดิม กรุณาตรวจสอบเวลา');
+      let clockIn = time;
+      if (latest && !latest.clock_out) {
+        // การกดซ้ำในรอบที่ยังเปิดอยู่คงเวลาเข้าเดิมและปรับรูปแบบได้
+        clockIn = latest.clock_in || time;
+        await conn.query('UPDATE erp_checkins SET clock_in=?, mode=?, note=? WHERE id=?',
+          [clockIn, mode, b.note || null, latest.id]);
+      } else {
+        // กลับเข้าทำงานในวันเดียวกัน: เก็บเวลาเข้า/ออกเดิมไว้ แล้วสร้างรอบใหม่
+        await conn.query('INSERT INTO erp_checkins (member_id, date, clock_in, mode, note) VALUES (?,?,?,?,?)',
+          [member.key, today, time, mode, b.note || null]);
+      }
+      await conn.query("UPDATE erp_team SET presence = 'working' WHERE id = ?", [member.id]);
+      return { clockIn };
+    });
+    await logActivity(`⏱ ลงเวลาเข้างาน (${mode === 'wfh' ? 'WFH' : 'เข้าออฟฟิศ'}) เวลา <b>${escS(result.clockIn)}</b>`, req);
+    res.json({ ok: true, clockIn: result.clockIn });
+  } catch (e) { sendCheckinError(res, e); }
 });
 
 router.post(['/checkins/clock-out', '/checkins/out'], async (req, res) => {
   const b = req.body || {};
   const actorTid = await resolveActorTeamId(req);
-  const memberId = b.memberId || ('u' + actorTid);
+  const member = checkinMember(b.memberId || ('u' + actorTid));
+  if (!member) return res.status(400).json({ error: 'invalid_member_id' });
   const now = bkkNow();
   const today = b.date || now.date;
   const time = b.time || now.time;
+  if (!validCheckinDate(today) || !validCheckinTime(time)) return res.status(400).json({ error: 'invalid_checkin_datetime', detail: 'วันที่หรือเวลาลงออกไม่ถูกต้อง' });
   try {
-    await workPool.query('UPDATE erp_checkins SET clock_out=? WHERE member_id=? AND date=?', [time, memberId, today]);
-    await workPool.query("UPDATE erp_team SET presence = 'away' WHERE id = ?", [numid(memberId)]).catch(() => {});
-    await logActivity(`👋 ลงเวลาออกงาน เวลา <b>${time}</b>`, req);
-    res.json({ ok: true, clockOut: time });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const result = await withCheckinLock(member, today, async (conn, latest) => {
+      if (!latest) throw checkinError(409, 'no_checkin', 'ยังไม่มีรายการเช็กอินสำหรับวันนี้');
+      if (!validCheckinTime(latest.clock_in) || (latest.clock_out && (!validCheckinTime(latest.clock_out) || latest.clock_out < latest.clock_in))) {
+        throw checkinError(409, 'invalid_previous_checkin', 'เวลาเช็กอินเดิมไม่ถูกต้อง กรุณาติดต่อผู้ดูแล');
+      }
+      // การกดออกซ้ำไม่เขียนทับประวัติเวลาเดิม
+      if (latest.clock_out) return { clockOut: latest.clock_out, alreadyClosed: true };
+      if (time < latest.clock_in) throw checkinError(409, 'checkout_before_checkin', 'เวลาออกก่อนเวลาเข้า กรุณาตรวจสอบเวลา');
+      await conn.query('UPDATE erp_checkins SET clock_out=? WHERE id=?', [time, latest.id]);
+      await conn.query("UPDATE erp_team SET presence = 'away' WHERE id = ?", [member.id]);
+      return { clockOut: time, alreadyClosed: false };
+    });
+    if (!result.alreadyClosed) await logActivity(`👋 ลงเวลาออกงาน เวลา <b>${escS(result.clockOut)}</b>`, req);
+    res.json({ ok: true, clockOut: result.clockOut });
+  } catch (e) { sendCheckinError(res, e); }
 });
 
 router.post('/leaves', async (req, res) => {

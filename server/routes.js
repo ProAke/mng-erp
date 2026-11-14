@@ -9,6 +9,10 @@ const router = express.Router();
 /* ---------------- helpers ---------------- */
 const J = (x, fb) => { if (x == null) return fb; if (typeof x !== 'string') return x; try { return JSON.parse(x); } catch { return fb; } };
 const numid = fid => parseInt(String(fid).replace(/^[a-z]/i, ''), 10);
+const checkinTeamId = value => {
+  const match = /^u?(\d+)$/i.exec(String(value ?? ''));
+  return match && Number(match[1]) > 0 ? 'u' + Number(match[1]) : value;
+};
 const pad = n => String(n).padStart(2, '0');
 const escS = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const LEAD_ROLES = ['super_admin', 'admin', 'manager'];
@@ -196,7 +200,11 @@ router.get('/bootstrap', async (req, res) => {
       [fileR]    = await workPool.query('SELECT * FROM erp_files ORDER BY id DESC LIMIT 120');
       [roomR]    = await workPool.query('SELECT * FROM erp_rooms ORDER BY id');
       [bookR]    = await workPool.query('SELECT * FROM erp_bookings ORDER BY date, start');
-      [checkinR] = await workPool.query('SELECT * FROM erp_checkins ORDER BY date DESC, id DESC LIMIT 90');
+      // HR ต้องเห็นรอบล่าสุดของทุกคนในวันนี้ แม้มีมากกว่า 90 รายการ; ประวัติวันอื่นจำกัด 90 รายการเหมือนเดิม
+      const today = bkkDate();
+      const [todayCheckins] = await workPool.query('SELECT * FROM erp_checkins WHERE date=? ORDER BY id DESC', [today]);
+      const [olderCheckins] = await workPool.query('SELECT * FROM erp_checkins WHERE date<>? ORDER BY date DESC, id DESC LIMIT 90', [today]);
+      checkinR = [...todayCheckins, ...olderCheckins];
       [leaveR]   = await workPool.query('SELECT * FROM erp_leaves ORDER BY id DESC LIMIT 60');
     } catch {}
     // แยกการตรวจตารางใหม่จากข้อมูลเดิม เพื่อไม่ให้หน้าอื่นพังหาก migration ยังไม่สำเร็จ
@@ -250,7 +258,7 @@ router.get('/bootstrap', async (req, res) => {
       team: team.map(r => ({
         id: 'u' + r.id, name: r.name, nickname: r.nickname || '',
         presence: r.presence || 'online', skills: J(r.skills, []),
-        role: r.role, color: r.color, email: r.email || '', phone: r.phone || '',
+        role: r.role, department: r.department || '', color: r.color, email: r.email || '', phone: r.phone || '',
         me: matchedMe ? r.id === matchedMe.id : !!r.is_me,
         authUserId: authByEmail[r.email]?.id || null, authRole: authByEmail[r.email]?.role || null, authStatus: authByEmail[r.email]?.status || null
       })),
@@ -285,7 +293,7 @@ router.get('/bootstrap', async (req, res) => {
         members: J(r.members, []), note: r.note || '',
       })),
       checkins: checkinR.map(r => ({
-        id: 'ck' + r.id, memberId: r.member_id, date: r.date,
+        id: 'ck' + r.id, memberId: checkinTeamId(r.member_id), date: r.date,
         clockIn: r.clock_in || '', clockOut: r.clock_out || '', mode: r.mode || 'office', note: r.note || '',
       })),
       leaves: leaveR.map(r => ({
@@ -427,7 +435,7 @@ router.post('/events', async (req, res) => {
       [b.title.trim(), b.cat || 'meeting', b.date, b.start || '10:00', b.end || '11:00', b.allday ? 1 : 0,
        b.loc || null, b.desc || null, JSON.stringify((b.members || []).map(numid)),
        b.project ? numid(b.project) : null, b.task ? numid(b.task) : null]);
-    await logActivity(`สร้างกิจกรรม <b>${b.title.trim()}</b>`, 1);
+    await logActivity(`สร้างกิจกรรม <b>${escS(b.title.trim())}</b>`, 1);
     res.json({ id: 'e' + r.insertId });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -775,6 +783,14 @@ router.get('/projects/archived', async (req, res) => {          // รายก�
 });
 
 /* ---------------- TEAMS (erp_team — CRUD + ผูกสิทธิ์ auth) ---------------- */
+// แผนกเป็นข้อมูลที่ผู้ดูแลระบุเอง ไม่อนุมานจากชื่อตำแหน่ง
+function normalizeDepartment(value) {
+  if (value == null) return '';
+  if (typeof value !== 'string') throw new Error('invalid_department');
+  const name = value.trim().replace(/\s+/g, ' ');
+  if ([...name].length > 80 || /[\u0000-\u001f\u007f]/.test(name)) throw new Error('invalid_department');
+  return name;
+}
 router.get('/teams', async (_req, res) => {
   try {
     const [rows] = await workPool.query('SELECT * FROM erp_team ORDER BY id');
@@ -786,6 +802,7 @@ router.get('/teams', async (_req, res) => {
         name: r.name,
         nickname: r.nickname || '',
         role: r.role || '',
+        department: r.department || '',
         email: r.email || '',
         phone: r.phone || '',
         presence: r.presence || 'online',
@@ -801,13 +818,16 @@ router.post('/teams', async (req, res) => {
   try {
     const b = req.body || {};
     if (!b.name?.trim()) return res.status(400).json({ error: 'name_required' });
+    let department;
+    try { department = normalizeDepartment(b.department); }
+    catch { return res.status(400).json({ error: 'invalid_department' }); }
     const email = String(b.email || '').trim().toLowerCase() || null;
     let authId = null;
     if (email) { const [u] = await authPool.query('SELECT id FROM users WHERE email = ? LIMIT 1', [email]); authId = u[0]?.id ?? null; }
     const [r] = await workPool.query(
-      'INSERT INTO erp_team (name, nickname, presence, skills, role, color, email, phone, auth_user_id, is_me) VALUES (?,?,?,?,?,?,?,?,?,0)',
+      'INSERT INTO erp_team (name, nickname, presence, skills, role, department, color, email, phone, auth_user_id, is_me) VALUES (?,?,?,?,?,?,?,?,?,?,0)',
       [b.name.trim(), b.nickname?.trim() || null, b.presence || 'online', JSON.stringify(b.skills || []),
-       b.role?.trim() || 'สมาชิกทีม', b.color || '#6C5CE7', email, b.phone?.trim() || null, authId]);
+       b.role?.trim() || 'สมาชิกทีม', department || null, b.color || '#6C5CE7', email, b.phone?.trim() || null, authId]);
     await logActivity(`เพิ่มสมาชิกทีม <b>${escS(b.name.trim())}</b>`, 1);
     res.status(201).json({ id: 'u' + r.insertId, authUserId: authId });
   } catch (e) { console.error('[teams/post]', e.message); res.status(500).json({ error: e.message }); }
@@ -827,6 +847,12 @@ router.patch('/teams/:id', async (req, res) => {
     if (b.presence !== undefined) { sets.push('presence = ?'); vals.push(b.presence || 'online'); }
     if (b.skills   !== undefined) { sets.push('skills = ?');   vals.push(JSON.stringify(b.skills || [])); }
     if (b.role !== undefined)  { sets.push('role = ?');  vals.push(b.role || null);  changes.push('ตำแหน่ง'); }
+    if (b.department !== undefined) {
+      let department;
+      try { department = normalizeDepartment(b.department); }
+      catch { return res.status(400).json({ error: 'invalid_department' }); }
+      sets.push('department = ?'); vals.push(department || null); changes.push('แผนก');
+    }
     if (b.color !== undefined) { sets.push('color = ?'); vals.push(b.color || null); changes.push('สี'); }
     if (b.phone !== undefined) { sets.push('phone = ?'); vals.push(b.phone || null); changes.push('เบอร์'); }
     if (b.email !== undefined) {
@@ -925,7 +951,8 @@ router.get('/db/audit', async (_req, res) => {
   }
 });
 
-/* ---------------- AGENCY OS WORKSPACE ROUTES ---------------- */
+/* ---------------- 3D OFFICE + AGENCY OS WORKSPACE ROUTES ---------------- */
+router.use(require('./office-routes'));
 router.use(require('./workspace-routes'));
 
 module.exports = router;
