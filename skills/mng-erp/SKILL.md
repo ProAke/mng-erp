@@ -82,7 +82,7 @@ Every invocation after `login` automatically selects the next token slot (`1 -> 
 ## วันและเวลาไทยสำหรับ Agent
 
 - วันที่ `YYYY-MM-DD` และเวลา `HH:mm` ของปฏิทินและลงเวลาเป็น **Asia/Bangkok (UTC+07:00)** ไม่ใช่วันที่ UTC; `00:00` เป็นนัดที่มีเวลา ส่วนกิจกรรมตลอดวันต้องส่ง `allday: true` นัดแบบระบุเวลาต้องสิ้นสุดหลังเริ่มภายในวันเดียวกัน
-- `GET /api/clock` เป็น endpoint สาธารณะสำหรับเทียบเวลา: `serverTime` เป็น ISO UTC ลงท้าย `Z`; `date`/`time` จาก Office และสตริง `expiresAt` ของ Hermes จากฐานข้อมูลเป็นเวลาไทย อย่า parse สตริงไร้ timezone ตามเครื่องของ Agent
+- `GET /api/clock` เป็น endpoint สาธารณะสำหรับเทียบเวลา: `serverTime`, `generatedAt` ของ Office และ `expiresAt`/`lastUsedAt` ของ Hermes เป็น ISO UTC ลงท้าย `Z`; `date`/`time` จาก Office และสตริงเวลาของ session MariaDB เป็นเวลาไทย อย่า parse สตริงไร้ timezone ตามเครื่องของ Agent
 - การลงเวลาปัจจุบันให้ละ `date`/`time` เพื่อใช้เวลาเซิร์ฟเวอร์; ถ้าระบุเอง API ถือเป็นวัน/เวลาไทยแต่ไม่ยืนยันว่าเป็นเวลาที่เกิดขึ้นจริง รอบทำงานข้ามเที่ยงคืนยังไม่รองรับ นาฬิกาของเซิร์ฟเวอร์ต้องเทียบเวลาจริง ดูคู่มือ `docs/TIMEZONE.md` ใน repository หรือหัวข้อเวลาใน `/api/hermes/manual.md`
 
 ## Project Flow AI & Webhook safety

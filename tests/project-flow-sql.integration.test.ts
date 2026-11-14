@@ -234,9 +234,10 @@ suite('Project Flow against a real local MySQL/MariaDB engine', () => {
   it('keeps Hermes expiry, rotation, and response timestamps consistent with MariaDB', async () => {
     const hermes = require('../server/hermes')
     const first = await hermes.ensureTokenPool(1, {poolSize:2,days:1})
+    const asUtc = (s:string) => new Date(s.replace(' ','T') + '+07:00').toISOString()
     const [stored]:any = await db.workPool.query('SELECT slot,expires_at FROM erp_api_tokens WHERE user_id=1 ORDER BY slot')
-    expect(first.tokens.map((t:any)=>t.expiresAt)).toEqual(stored.map((r:any)=>r.expires_at))
-    expect(first.tokens[0].expiresAt).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+    expect(first.tokens.map((t:any)=>t.expiresAt)).toEqual(stored.map((r:any)=>asUtc(r.expires_at)))
+    expect(first.tokens[0].expiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/)
     await db.workPool.query('UPDATE erp_api_tokens SET expires_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE user_id=1 AND slot=1')
     await db.workPool.query('UPDATE erp_api_tokens SET expires_at=DATE_ADD(NOW(),INTERVAL 1 MINUTE) WHERE user_id=1 AND slot=2')
     const stats = await req('/hermes/tokens')
@@ -246,9 +247,12 @@ suite('Project Flow against a real local MySQL/MariaDB engine', () => {
     const next = await hermes.ensureTokenPool(1, {poolSize:2,days:1})
     expect(next.tokens[0].token).not.toBe(first.tokens[0].token)
     expect(next.tokens[1].token).toBe(first.tokens[1].token)
-    const [after]:any = await db.workPool.query('SELECT slot,expires_at FROM erp_api_tokens WHERE user_id=1 ORDER BY slot')
-    expect(next.tokens.map((t:any)=>t.expiresAt)).toEqual(after.map((r:any)=>r.expires_at))
-    expect((await req('/hermes/tokens')).json.activeCount).toBe(2)
+    const [after]:any = await db.workPool.query('SELECT slot,expires_at,last_used_at FROM erp_api_tokens WHERE user_id=1 ORDER BY slot')
+    expect(next.tokens.map((t:any)=>t.expiresAt)).toEqual(after.map((r:any)=>asUtc(r.expires_at)))
+    const finalStats = (await req('/hermes/tokens')).json
+    expect(finalStats.activeCount).toBe(2)
+    expect(finalStats.slots.map((t:any)=>t.expiresAt)).toEqual(after.map((r:any)=>asUtc(r.expires_at)))
+    expect(finalStats.slots[1].lastUsedAt).toBe(asUtc(after[1].last_used_at))
   }, 30000)
 
   it('migrates legacy departments and persists the Office snapshot on real MariaDB', async () => {

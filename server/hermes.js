@@ -15,6 +15,18 @@ const BangkokTime = require('../assets/js/bangkok-time');
 const DEFAULT_POOL_SIZE = 20;
 const DEFAULT_TOKEN_DAYS = parseInt(process.env.API_TOKEN_DAYS || '30', 10);
 
+// TIMESTAMP จาก pool เป็นสตริงเวลาไทยตาม session; API ส่ง instant ISO ที่มี Z
+// เพื่อคงรูปแบบที่ client Hermes ใช้อยู่โดยไม่ parse ตาม timezone ของเครื่อง Node
+function tokenTimestampIso(value) {
+  if (value == null) return null;
+  const text = value instanceof Date ? value.toISOString() : String(value);
+  const bkk = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?$/.test(text);
+  if (!bkk && !/(?:Z|[+-]\d{2}:\d{2})$/.test(text)) throw new Error('invalid_token_timestamp');
+  const ms = Date.parse(bkk ? text.replace(' ', 'T') + '+07:00' : text);
+  if (!Number.isFinite(ms)) throw new Error('invalid_token_timestamp');
+  return new Date(ms).toISOString();
+}
+
 function deriveKey() {
   const secret = process.env.API_TOKEN_SECRET
     || process.env.DB_WORK_PASS
@@ -131,8 +143,8 @@ async function ensureTokenPool(userId, opts = {}) {
         token: rawExisting,
         preview: cur.token_preview,
         useCount: Number(cur.use_count) || 0,
-        lastUsedAt: cur.last_used_at || null,
-        expiresAt: cur.expires_at,
+        lastUsedAt: tokenTimestampIso(cur.last_used_at),
+        expiresAt: tokenTimestampIso(cur.expires_at),
       });
       continue;
     }
@@ -165,12 +177,12 @@ async function ensureTokenPool(userId, opts = {}) {
   }
 
   if (generated) {
-    // ส่งวันหมดอายุที่ฐานข้อมูลบันทึกจริง ไม่สร้างสตริง UTC ที่ดูเหมือนเวลาไทย
+    // ส่ง instant ของวันหมดอายุที่ฐานข้อมูลบันทึกจริง ไม่ประมาณจากนาฬิกา Node
     const [saved] = await workPool.query('SELECT slot, expires_at FROM erp_api_tokens WHERE user_id = ? ORDER BY slot ASC', [userId]);
     const savedBySlot = new Map(saved.map(r => [Number(r.slot), r.expires_at]));
     for (const token of outTokens) {
       if (!savedBySlot.has(token.slot)) throw new Error('token_pool_not_persisted');
-      token.expiresAt = savedBySlot.get(token.slot);
+      token.expiresAt = tokenTimestampIso(savedBySlot.get(token.slot));
     }
   }
   return { poolSize, strictDualAuth: !!strictDual, tokens: outTokens };
@@ -322,10 +334,10 @@ router.get('/tokens', async (req, res) => {
         preview: r.token_preview,
         label: r.label || 'hermes-pool',
         useCount: Number(r.use_count) || 0,
-        lastUsedAt: r.last_used_at || null,
+        lastUsedAt: tokenTimestampIso(r.last_used_at),
         lastAgent: r.last_agent || null,
         revoked: !!r.revoked,
-        expiresAt: r.expires_at,
+        expiresAt: tokenTimestampIso(r.expires_at),
       })),
     });
   } catch (e) {

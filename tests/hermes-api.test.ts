@@ -284,6 +284,7 @@ describe('Hermes & External AI API — Mandatory User/Password + 20 Rotating Tok
     expect(uniqueTokens.size).toBe(20)
     expect(data1.tokens[0].slot).toBe(1)
     expect(data1.tokens[0].token).toMatch(/^mng_s01_[0-9a-f]{48}$/)
+    expect(data1.tokens[0].expiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/)
     expect(data1.tokens[19].slot).toBe(20)
     expect(data1.tokens[19].token).toMatch(/^mng_s20_[0-9a-f]{48}$/)
 
@@ -326,6 +327,8 @@ describe('Hermes & External AI API — Mandatory User/Password + 20 Rotating Tok
     const stats = await statsRes.json()
     expect(stats.activeCount).toBe(20)
     expect(stats.totalUses).toBeGreaterThanOrEqual(21)
+    expect(stats.slots[0].expiresAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/)
+    expect(stats.slots[0].lastUsedAt).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/)
     expect(stats.slots.every((s: any) => s.useCount >= 1)).toBe(true)
   })
 

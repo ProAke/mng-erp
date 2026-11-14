@@ -72,14 +72,14 @@ curl -X POST "https://mng.uarea.in/api/hermes/login" \
   "rotationPolicy": "round-robin",
   "usageHint": "นำ tokens[0..19] ไปวนใช้งานสลับกันแบบ Round-Robin ใน Header Authorization: Bearer <token> หรือ X-API-Token: <token>",
   "tokens": [
-    { "slot": 1, "token": "mng_s01_8f4c...a91b", "expiresAt": "2026-12-26 15:00:00" },
-    { "slot": 2, "token": "mng_s02_2d19...77e0", "expiresAt": "2026-12-26 15:00:00" },
+    { "slot": 1, "token": "mng_s01_8f4c...a91b", "expiresAt": "2026-12-26T08:00:00.000Z" },
+    { "slot": 2, "token": "mng_s02_2d19...77e0", "expiresAt": "2026-12-26T08:00:00.000Z" },
     "... จนครบ slot 20 ..."
   ]
 }
 ```
 
-`expiresAt` และ `lastUsedAt` ที่อ่านจาก MariaDB เป็นสตริงเวลาไทย `YYYY-MM-DD HH:mm:ss` โดยไม่มีตัวระบุเขตเวลา ไม่ใช่ ISO UTC; การตรวจหมดอายุใช้เวลาฐานข้อมูลและเงื่อนไข SQL เดียวกับการตรวจ Token จริง อย่า parse สตริงนี้ตาม timezone ของเครื่องลูกข่าย
+`expiresAt` และ `lastUsedAt` ใน response เป็น UTC ISO instant ที่ลงท้าย `Z` เพื่อให้เชื่อมต่อ Hermes ได้ชัดเจน โดยแปลงจากค่า `TIMESTAMP` ที่อ่านผ่าน session เวลาไทย การตรวจหมดอายุใช้เวลาฐานข้อมูลและเงื่อนไข SQL เดียวกับการตรวจ Token จริง หากแสดงให้ผู้ใช้ ให้แปลง instant เป็น `Asia/Bangkok`
 
 ### 3.2 วิธีแนบ Token เวลาเรียกใช้งาน API
 รองรับทั้ง 2 รูปแบบ Header (เลือกใช้อย่างใดอย่างหนึ่ง หรือส่งคู่กันก็ได้):
