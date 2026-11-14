@@ -3,16 +3,12 @@
 
 const express = require('express');
 const { workPool } = require('./db');
+const BangkokTime = require('../assets/js/bangkok-time');
 const router = express.Router();
 
 function bangkokClock(at = new Date()) {
-  const date = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(at);
-  const time = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false,
-  }).format(at);
-  return { date, time, generatedAt: at.toISOString(), timezone: 'Asia/Bangkok' };
+  const { date, time, timezone } = BangkokTime.fromInstant(at);
+  return { date, time, generatedAt: at.toISOString(), timezone };
 }
 
 function teamId(value) {

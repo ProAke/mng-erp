@@ -35,14 +35,16 @@ function renderDashboard(){
 
   /* ----- side ----- */
   const openTasks = Store.data.tasks.filter(t=>t.status!=='done');
-  const ckToday = new Set(Store.data.checkins.filter(c=>c.date===attendanceToday()).map(c=>c.memberId)).size;
+  const ckToday = attendanceAvailable()
+    ? `${new Set(Store.data.checkins.filter(c=>c.date===attendanceToday()).map(c=>c.memberId)).size}/${Store.data.team.length}`
+    : 'ข้อมูลไม่พร้อม';
   const bkToday = Store.data.bookings.filter(b=>b.date===td).length;
 
   side.innerHTML =
     sideSearch('ค้นหางาน หรือโปรเจกต์…','dash') +
     `<div class="side-block"><h3>ทางลัดระบบงาน</h3>
       <div class="side-quick-grid">
-        <button class="side-quick-btn" data-act="nav:hr">🌿 เช็กอิน (${ckToday}/${Store.data.team.length})</button>
+        <button class="side-quick-btn" data-act="nav:hr">🌿 เช็กอิน (${ckToday})</button>
         <button class="side-quick-btn" data-act="nav:chat">💬 แชตทีม</button>
         <button class="side-quick-btn" data-act="nav:rooms">🚪 จองห้อง (${bkToday})</button>
         <button class="side-quick-btn" data-act="nav:finance">💳 การเงิน</button>
@@ -334,7 +336,7 @@ function renderDashboard(){
         <div class="today-dock-left">
           <div class="today-dock-ico">📅</div>
           <div>
-            <b>วันนี้ · ${TH_DOW[nowD.getDay()]} ${nowD.getDate()} ${TH_MONTHS[nowD.getMonth()]} ${nowD.getFullYear()+543}</b>
+            <b>วันนี้ · ${TH_DOW[nowD.getUTCDay()]} ${nowD.getUTCDate()} ${TH_MONTHS[nowD.getUTCMonth()]} ${nowD.getUTCFullYear()+543}</b>
             <span>นัดหมาย ${todayEvCnt} รายการ · งานด่วน ${urgentCnt} · AI กำลังทำงาน ${aiActive} ตัว</span>
           </div>
         </div>
@@ -370,15 +372,15 @@ function renderDashboard(){
 }
 
 function renderMiniWeek(root){
-  const t = s2d(todayS());
-  const monday = addDays(t, -(t.getDay()+6)%7);
+  const today = todayS(), t = s2d(today);
+  const monday = addDays(t, -(t.getUTCDay()+6)%7);
   let html = `<div class="pd-week-grid">`;
   for(let i=0;i<7;i++){
     const d=addDays(monday,i), ds=d2s(d), evs=Store.eventsOn(ds).slice(0,2);
-    const isToday = ds===todayS();
+    const isToday = ds===today;
     html += `<div class="pd-day-col ${isToday?'is-today':''}" data-act="cal-day" data-id="${ds}">
-      <div class="pd-day-dow">${TH_DOW_S[d.getDay()]}.</div>
-      <div class="pd-day-num">${d.getDate()}</div>
+      <div class="pd-day-dow">${TH_DOW_S[d.getUTCDay()]}.</div>
+      <div class="pd-day-num">${d.getUTCDate()}</div>
       ${evs.length
         ? evs.map(e => {
             const cls = Store.data.eventCats[e.cat]?.cls || 'ev-task';
@@ -396,6 +398,7 @@ function renderMiniWeek(root){
 function renderCalendar(){
   const view = $('#view'), side = $('#side');
   const ui = Store.ui;
+  const clock = BangkokTime.current(), today = clock.date;
   view.classList.add('no-scroll');
 
   /* ----- side: mini cal + categories + upcoming ----- */
@@ -404,10 +407,11 @@ function renderCalendar(){
     const cur = ui.calCursor;
     const mCount = monthEventsCount(cur);
     side.innerHTML =
-      `<div class="side-block"><div class="mini-cal">
-        <div class="mc-head"><b>${TH_MONTHS[cur.getMonth()]} ${cur.getFullYear()+543}</b>
+      `<button class="btn btn-ghost btn-sm cal-mobile-side-close" data-act="cal-mobile-side">ปิดตัวกรอง</button>
+      <div class="side-block"><div class="mini-cal">
+        <div class="mc-head"><b>${TH_MONTHS[cur.getUTCMonth()]} ${cur.getUTCFullYear()+543}</b>
           <span><button data-act="cal-mini-prev">‹</button> <button data-act="cal-mini-next">›</button></span></div>
-        <div class="mc-grid">${TH_DOW_S.map(d=>`<span class="dow">${d}</span>`).join('')}
+        <div class="mc-grid">${[...TH_DOW_S.slice(1), TH_DOW_S[0]].map(d=>`<span class="dow">${d}</span>`).join('')}
         ${miniCalDays(cur)}</div>
       </div></div>` +
       sideChips('หมวดหมู่อีเวนต์', Object.entries(Store.data.eventCats).map(([k,v])=>({id:k,label:v.label,color:v.color,count:mCount[k]||0})), ui.calCats, 'calCats') +
@@ -415,27 +419,27 @@ function renderCalendar(){
         <button class="link-btn" data-act="cal-view-btn" data-id="agenda">ทั้งหมด</button></div>
         ${Store.upcoming(5).map(e=>{const d=s2d(e.date);return `
         <div class="up-item" data-act="open-event" data-id="${e.kind}:${e.id}">
-          <div class="up-date"><b>${d.getDate()}</b><i>${TH_MONTHS_S[d.getMonth()]}</i></div>
-          <div class="up-info"><b>${esc(e.title)}</b><span>${relDay(e.date)}${e.start&&e.start!=='00:00'?' · '+e.start:''}</span></div>
+          <div class="up-date"><b>${d.getUTCDate()}</b><i>${TH_MONTHS_S[d.getUTCMonth()]}</i></div>
+          <div class="up-info"><b>${esc(e.title)}</b><span>${relDay(e.date)}${e.start&&!e.allday?' · '+e.start:''}</span></div>
           <span class="up-tag" style="background:${Store.catColor(e.cat)}"></span></div>`;}).join('')}
       </div>` +
       promoCard('ปฏิทินเต็มจอ','กดปุ่มขยายเต็มจอ หรือ F11 เพื่อโฟกัสกับตารางงานทั้งเดือน','ขยายเต็มจอ','cal-fullscreen');
   }
   function miniCalDays(cur){
-    const first = new Date(cur.getFullYear(), cur.getMonth(), 1);
-    const start = addDays(first, -((first.getDay()+6)%7));
+    const first = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth(), 1));
+    const start = addDays(first, -((first.getUTCDay()+6)%7));
     let out = '';
     for(let i=0;i<42;i++){
       const d=addDays(start,i), ds=d2s(d);
-      const dim = d.getMonth()!==cur.getMonth();
-      out += `<span class="d ${dim?'dim':''} ${ds===todayS()?'today':''} ${ds===ui.calSel?'sel':''} ${Store.eventsOn(ds).length?'has':''}"
-        data-act="cal-mini-day" data-id="${ds}">${d.getDate()}</span>`;
+      const dim = d.getUTCMonth()!==cur.getUTCMonth();
+      out += `<span class="d ${dim?'dim':''} ${ds===today?'today':''} ${ds===ui.calSel?'sel':''} ${Store.eventsOn(ds).length?'has':''}"
+        data-act="cal-mini-day" data-id="${ds}">${d.getUTCDate()}</span>`;
     }
     return out;
   }
   function monthEventsCount(cur){
-    const m = cur.getMonth(), y = cur.getFullYear(), c = {};
-    const s = d2s(new Date(y,m,1)), e = d2s(new Date(y,m+1,0));
+    const m = cur.getUTCMonth(), y = cur.getUTCFullYear(), c = {};
+    const s = d2s(new Date(Date.UTC(y,m,1))), e = d2s(new Date(Date.UTC(y,m+1,0)));
     let d = s2d(s);
     while(d2s(d) <= e){ Store.eventsOn(d2s(d)).forEach(ev=>{c[ev.cat]=(c[ev.cat]||0)+1;}); d=addDays(d,1); }
     return c;
@@ -444,13 +448,16 @@ function renderCalendar(){
   /* ----- main toolbar ----- */
   const cur = ui.calCursor;
   const titleTxt = ui.calView==='day'
-    ? `${fmtD(ui.calSel)} <span class="be">${TH_DOW[s2d(ui.calSel).getDay()]}</span>`
-    : `${TH_MONTHS[cur.getMonth()]} <span class="be">${cur.getFullYear()+543}</span>`;
+    ? `${fmtD(ui.calSel)} <span class="be">${TH_DOW[s2d(ui.calSel).getUTCDay()]}</span>`
+    : `${TH_MONTHS[cur.getUTCMonth()]} <span class="be">${cur.getUTCFullYear()+543}</span>`;
   $('#topbarViewSlot');
   const viewEl = $('#view');
   viewEl.innerHTML = `<div class="cal-wrap">
     <div class="cal-toolbar">
       <h2>${titleTxt}</h2>
+      <span class="cal-timezone" title="Asia/Bangkok">เวลาไทย · UTC+7</span>
+      ${Remote.on && !Remote.clockSynced ? '<span class="cal-clock-warning">ยังเทียบเวลาเซิร์ฟเวอร์ไม่ได้ · ตรวจสอบนาฬิกาอุปกรณ์</span>' : ''}
+      <button class="btn btn-ghost btn-sm cal-mobile-side-btn" data-act="cal-mobile-side" aria-controls="side" aria-expanded="${$('#appShell').classList.contains('cal-side-open')}">ตัวกรอง</button>
       <div class="cal-nav">
         <button class="icon-btn" data-act="cal-prev">${IC.chevL}</button>
         <button class="btn btn-ghost btn-sm" data-act="cal-today">วันนี้</button>
@@ -466,6 +473,7 @@ function renderCalendar(){
       <button class="icon-btn" title="เต็มจอ" data-act="cal-fullscreen">${IC.fullscreen}</button>
       <button class="btn btn-primary" data-act="new-event">${IC.plus} เพิ่มกิจกรรม</button>
     </div>
+    ${ui.calView==='week' ? '<div class="cal-scroll-hint">เลื่อนซ้าย–ขวาเพื่อดูวันอื่น</div>' : ''}
     <div class="cal-body" style="flex:1;min-height:0;display:flex;flex-direction:column" id="calBody"></div>
   </div>`;
 
@@ -479,20 +487,20 @@ function renderCalendar(){
 
   /* ---------------- month view ---------------- */
   function renderMonth(root){
-    const y=cur.getFullYear(), m=cur.getMonth();
-    const first=new Date(y,m,1);
-    const start=addDays(first,-((first.getDay()+6)%7));
-    const weeks = Math.ceil((((first.getDay()+6)%7)+new Date(y,m+1,0).getDate())/7);
+    const y=cur.getUTCFullYear(), m=cur.getUTCMonth();
+    const first=new Date(Date.UTC(y,m,1));
+    const start=addDays(first,-((first.getUTCDay()+6)%7));
+    const weeks = Math.ceil((((first.getUTCDay()+6)%7)+new Date(Date.UTC(y,m+1,0)).getUTCDate())/7);
     let cells='';
     for(let w=0;w<weeks;w++){
       cells+='<div class="cal-wk">';
       for(let i=0;i<7;i++){
         const d=addDays(start,w*7+i), ds=d2s(d);
         const evs=Store.eventsOn(ds).filter(e=>ui.calCats.has(e.cat));
-        const dim=d.getMonth()!==m, wkend=[0,6].includes(d.getDay());
+        const dim=d.getUTCMonth()!==m, wkend=[0,6].includes(d.getUTCDay());
         const shown=evs.slice(0,3), more=evs.length-3;
-        cells+=`<div class="cal-cell ${dim?'dim':''} ${ds===todayS()?'today':''} ${wkend?'wkend':''}" data-date="${ds}">
-          <span class="cal-dnum" data-act="cal-day" data-id="${ds}">${d.getDate()}</span>
+        cells+=`<div class="cal-cell ${dim?'dim':''} ${ds===today?'today':''} ${wkend?'wkend':''}" data-date="${ds}">
+          <span class="cal-dnum" data-act="cal-day" data-id="${ds}">${d.getUTCDate()}</span>
           <button class="cal-add" data-act="cal-add" data-id="${ds}" title="เพิ่มกิจกรรม">+</button>
           ${shown.map(evPill).join('')}
           ${more>0?`<span class="cal-ev more" data-act="cal-more" data-id="${ds}">+${more} เพิ่มเติม</span>`:''}
@@ -501,66 +509,79 @@ function renderCalendar(){
       cells+='</div>';
     }
     root.innerHTML = `<div class="cal-grid" style="--rows:${weeks}">
-      <div class="cal-dow">${TH_DOW.map(d=>`<div>${d}</div>`).join('')}</div>
+      <div class="cal-dow">${[...TH_DOW.slice(1), TH_DOW[0]].map((d,i)=>`<div data-short="${TH_DOW_S[(i+1)%7]}">${d}</div>`).join('')}</div>
       <div class="cal-days">${cells}</div></div>`;
     bindDnD(root);
   }
   function evPill(e){
     const cls = Store.data.eventCats[e.cat].cls;
     return `<span class="cal-ev ${cls}" draggable="true" data-drag="${e.kind}:${e.id}"
-      data-act="open-event" data-id="${e.kind}:${e.id}" title="${esc(e.title)}">${e.start&&e.start!=='00:00'&&!e.allday?`<b>${e.start}</b> `:''}${esc(e.title)}</span>`;
+      data-act="open-event" data-id="${e.kind}:${e.id}" title="${esc(e.title)}">${e.start&&!e.allday?`<b>${e.start}</b> `:''}${esc(e.title)}</span>`;
   }
 
   /* ---------------- week / day view ---------------- */
   function renderWeek(root, single){
-    const base = single ? s2d(ui.calSel) : (()=>{const t=new Date(cur); return addDays(t,-((t.getDay()+6)%7));})();
+    const base = single ? s2d(ui.calSel) : (()=>{const t=new Date(cur); return addDays(t,-((t.getUTCDay()+6)%7));})();
     const days = single ? [base] : Array.from({length:7},(_,i)=>addDays(base,i));
-    const H0=7, H1=21, pxH=52;
-    const hourLbls = Array.from({length:H1-H0},(_,i)=>`<div>${String(H0+i).padStart(2,'0')}:00</div>`).join('');
-    const cols = days.map(d=>{
-      const ds=d2s(d), evs=Store.eventsOn(ds).filter(e=>ui.calCats.has(e.cat));
-      const allday = evs.filter(e=>e.allday||!e.start||e.start==='00:00');
-      const timed  = evs.filter(e=>!(e.allday||!e.start||e.start==='00:00'));
-      return `<div class="wk-col ${ds===todayS()?'today-col':''}" data-date="${ds}">
-        ${ds===todayS()? `<div class="wk-now" style="top:${((new Date().getHours()*60+new Date().getMinutes())-H0*60)/60*pxH}px"></div>`:''}
-        ${allday.map((e,i)=>`<div class="wk-ev ${Store.data.eventCats[e.cat].cls}" style="top:${i*26+2}px;height:24px;${allday.length>1?'z-index:4;':''}"
-            data-act="open-event" data-id="${e.kind}:${e.id}">${esc(e.title)}</div>`).join('')}
+    const pxH=52, [nowH,nowM] = clock.time.split(':').map(Number);
+    const hourLbls = Array.from({length:24},(_,i)=>`<div>${String(i).padStart(2,'0')}:00</div>`).join('');
+    const eventsByDay = days.map(d => Store.eventsOn(d2s(d)).filter(e=>ui.calCats.has(e.cat)));
+    const allDayByDay = eventsByDay.map(evs => evs.filter(e=>e.allday||!e.start));
+    const hasAllDay = allDayByDay.some(evs=>evs.length);
+    const allDayRow = hasAllDay ? `<div class="wk-allday"><div class="wk-allday-label wk-pinned">ตลอดวัน</div>
+      ${allDayByDay.map((evs,i)=>`<div class="wk-allday-col" data-date="${d2s(days[i])}">${evs.map(e=>`
+        <div class="wk-ev ${Store.data.eventCats[e.cat]?.cls || 'ev-task'}" draggable="true" data-drag="${e.kind}:${e.id}"
+          data-act="open-event" data-id="${e.kind}:${e.id}" title="${esc(e.title)}">${esc(e.title)}</div>`).join('')}</div>`).join('')}</div>` : '';
+    const cols = days.map((d,i)=>{
+      const ds=d2s(d), timed=eventsByDay[i].filter(e=>!e.allday&&e.start);
+      return `<div class="wk-col ${ds===today?'today-col':''}" data-date="${ds}">
+        ${ds===today? `<div class="wk-now" title="เวลาไทย ${clock.time}" style="top:${(nowH*60+nowM)/60*pxH}px"></div>`:''}
         ${timed.map(e=>{
           const [sh,sm]=e.start.split(':').map(Number);
           const [eh,em]=(e.end||e.start).split(':').map(Number);
-          const top=((sh*60+sm)-H0*60)/60*pxH;
-          const h=Math.max(26,((eh*60+em)-(sh*60+sm))/60*pxH);
-          return `<div class="wk-ev ${Store.data.eventCats[e.cat].cls}" style="top:${top}px;height:${h}px"
-            data-act="open-event" data-id="${e.kind}:${e.id}"><small>${e.start}–${e.end||''}</small>${esc(e.title)}</div>`;
+          const top=(sh*60+sm)/60*pxH;
+          // เผื่อพื้นที่ใต้กริดเล็กน้อยให้รายการสั้นก่อนเที่ยงคืนอ่านและกดได้
+          const h=Math.max(40,((eh*60+em)-(sh*60+sm))/60*pxH);
+          return `<div class="wk-ev ${Store.data.eventCats[e.cat]?.cls || 'ev-task'}" style="top:${top}px;height:${h}px"
+            draggable="true" data-drag="${e.kind}:${e.id}" data-act="open-event" data-id="${e.kind}:${e.id}"
+            title="${esc(e.start)}–${esc(e.end||'')} · ${esc(e.title)}"><small>${esc(e.start)}–${esc(e.end||'')}</small>${esc(e.title)}</div>`;
         }).join('')}
       </div>`;
     }).join('');
-    root.innerHTML = `<div class="wk-grid" style="--cols:${days.length}">
-      <div class="wk-head"><div class="wh-cell" style="border-left:none"></div>
-        ${days.map(d=>{const ds=d2s(d);return `<div class="wh-cell ${ds===todayS()?'today':''}"><span>${TH_DOW_S[d.getDay()]}</span><b>${d.getDate()}</b></div>`;}).join('')}</div>
-      <div class="wk-body"><div class="wk-times">${hourLbls}</div>${cols}</div></div>`;
-    // keep all-day row height: add spacer offset via padding
-    $$('.wk-col', root).forEach(c=>{
-      const ds=c.dataset.date;
-      const n=Store.eventsOn(ds).filter(e=>ui.calCats.has(e.cat)&&(e.allday||!e.start||e.start==='00:00')).length;
-      if(n) c.style.paddingTop=(n*26+4)+'px';
-    });
-    $('.wk-body',root).scrollTop = (8-H0)*pxH - 20;
+    root.innerHTML = `<div class="wk-grid ${single?'wk-single':'wk-week'}" style="--cols:${days.length}">
+      <div class="wk-head"><div class="wh-cell wk-pinned" style="border-left:none"></div>
+        ${days.map(d=>{const ds=d2s(d);return `<div class="wh-cell ${ds===today?'today':''}"><span>${TH_DOW_S[d.getUTCDay()]}</span><b>${d.getUTCDate()}</b></div>`;}).join('')}</div>
+      ${allDayRow}
+      <div class="wk-body"><div class="wk-times wk-pinned">${hourLbls}</div>${cols}</div></div>`;
+    const hour = days.some(d=>d2s(d)===today) ? Math.max(0, nowH-2) : 8;
+    $('.wk-body',root).scrollTop = Math.max(0, hour*pxH-20);
+    // บนจอแคบเลื่อนแนวนอนให้วันปัจจุบัน/วันเลือกอยู่ใกล้กึ่งกลางโดยอัตโนมัติ
+    // ตรึงหลักเวลาไว้ด้านซ้ายเสมอแม้เลื่อนข้ามวัน (กริดเวลามี scroll แนวตั้งแยก)
+    const pinTimeColumn = () => $$('.wk-pinned', root).forEach(el=>{ el.style.transform = `translateX(${root.scrollLeft}px)`; });
+    root.addEventListener('scroll', pinTimeColumn, {passive:true});
+    const focusDate = days.some(d=>d2s(d)===today) ? today : d2s(cur);
+    const focusCol = $(`.wk-col[data-date="${focusDate}"]`, root);
+    if (focusCol && root.scrollWidth > root.clientWidth) {
+      const gutter = $('.wk-times', root)?.offsetWidth || 64;
+      // เผื่อขอบกริดและการปัดเศษ subpixel ไม่ให้ขอบวันปัจจุบันล้นจอ 320px
+      root.scrollLeft = Math.max(0, focusCol.offsetLeft - gutter - focusCol.offsetWidth + 2);
+    }
+    pinTimeColumn();
     bindDnD(root);
   }
 
   /* ---------------- agenda ---------------- */
   function renderAgenda(root){
-    const y=cur.getFullYear(), m=cur.getMonth();
-    const start=d2s(new Date(y,m,1)), end=d2s(new Date(y,m+1,0));
+    const y=cur.getUTCFullYear(), m=cur.getUTCMonth();
+    const start=d2s(new Date(Date.UTC(y,m,1))), end=d2s(new Date(Date.UTC(y,m+1,0)));
     let d=s2d(start), html='';
     while(d2s(d)<=end){
       const ds=d2s(d), evs=Store.eventsOn(ds).filter(e=>ui.calCats.has(e.cat));
       if(evs.length){
-        html+=`<div class="ag-day">${fmtD(ds)} — ${TH_DOW[d.getDay()]} <span class="cnt">${evs.length} รายการ</span></div>`;
+        html+=`<div class="ag-day">${fmtD(ds)} — ${TH_DOW[d.getUTCDay()]} <span class="cnt">${evs.length} รายการ</span></div>`;
         html+=evs.sort((a,b)=>(a.start||'').localeCompare(b.start||'')).map(e=>`
           <div class="ag-row" data-act="open-event" data-id="${e.kind}:${e.id}">
-            <span class="ag-time">${e.allday||!e.start||e.start==='00:00'?'ตลอดวัน':e.start+' – '+(e.end||'')}</span>
+            <span class="ag-time">${e.allday||!e.start?'ตลอดวัน':e.start+' – '+(e.end||'')}</span>
             <span class="ag-bar" style="background:${Store.catColor(e.cat)}"></span>
             <div class="ag-main"><b>${esc(e.title)}</b><small>${Store.data.eventCats[e.cat].label}${e.loc?' · '+esc(e.loc):''}</small></div>
             ${e.kind==='task'?`<span class="badge b-blue">งาน ${e.refCode||''}</span>`:''}
@@ -580,16 +601,17 @@ function renderCalendar(){
         ev.dataTransfer.effectAllowed='move';
       });
     });
-    $$('.cal-cell, .wk-col', root).forEach(cell=>{
+    $$('.cal-cell, .wk-col, .wk-allday-col', root).forEach(cell=>{
       cell.addEventListener('dragover', ev=>{ev.preventDefault(); cell.classList.add('drop-ok');});
       cell.addEventListener('dragleave', ()=>cell.classList.remove('drop-ok'));
-      cell.addEventListener('drop', ev=>{
+      cell.addEventListener('drop', async ev=>{
         ev.preventDefault(); cell.classList.remove('drop-ok');
         const payload = ev.dataTransfer.getData('text/plain');
         const [kind,id]=payload.split(':');
-        Store.moveToDate(kind, id, cell.dataset.date);
-        toast('ย้ายกำหนดการแล้ว');
-        renderCalendar();
+        if (await Store.moveToDate(kind, id, cell.dataset.date)) {
+          toast('ย้ายกำหนดการแล้ว');
+          renderCalendar();
+        }
       });
     });
   }

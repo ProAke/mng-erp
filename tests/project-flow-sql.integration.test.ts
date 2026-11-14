@@ -5,7 +5,7 @@ import http from 'node:http'
 import mysql from 'mysql2/promise'
 import bcrypt from 'bcryptjs'
 import express from 'express'
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest'
 
 const enabled = process.env.MNG_TEST_DB_ALLOW_CREATE === '1' && !!process.env.MNG_TEST_DB_SOCKET
 const suite = enabled ? describe : describe.skip
@@ -80,9 +80,11 @@ suite('Project Flow against a real local MySQL/MariaDB engine', () => {
     })
     require.cache[integrationsPath]!.exports = {...realIntegrations, ...testIntegrations}
     const auth = require('../server/auth')
+    const hermes = require('../server/hermes')
     const api = require('../server/routes')
     const app = express()
     app.use(express.json())
+    app.use('/api/hermes', auth.middleware, hermes.router)
     app.use('/api', auth.middleware, api)
     await new Promise<void>(resolve => {
       server = app.listen(0, '127.0.0.1', () => { baseUrl = `http://127.0.0.1:${(server.address() as any).port}/api`; resolve() })
@@ -109,6 +111,145 @@ suite('Project Flow against a real local MySQL/MariaDB engine', () => {
     })
     return {status:response.status, json:await response.json()}
   }
+
+  it('sets Bangkok on every pool connection and preserves TIMESTAMP instants and civil dates', async () => {
+    for (const pool of [db.authPool, db.workPool]) {
+      const connections = await Promise.all([pool.getConnection(), pool.getConnection()])
+      try {
+        const results = await Promise.all(connections.map((conn:any) => conn.query(
+          'SELECT CONNECTION_ID() AS id, @@session.time_zone AS zone, TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), NOW()) AS offset_seconds'
+        )))
+        expect(results[0][0][0].id).not.toBe(results[1][0][0].id)
+        for (const [rows] of results) expect(rows[0]).toMatchObject({zone:'+07:00',offset_seconds:25200})
+      } finally { connections.forEach((conn:any)=>conn.release()) }
+    }
+
+    await admin.query("SET SESSION time_zone = '+00:00'")
+    await admin.query(`CREATE TABLE \`${workName}\`.bkk_clock_probe (id INT PRIMARY KEY, day DATE, wall_time VARCHAR(5), stamp TIMESTAMP NOT NULL)`)
+    await admin.query(`INSERT INTO \`${workName}\`.bkk_clock_probe VALUES (1,'2026-12-31','23:59','2026-12-31 16:59:00')`)
+    const [[fromUtc]]:any = await db.workPool.query('SELECT day,wall_time,stamp FROM bkk_clock_probe WHERE id=1')
+    expect(fromUtc).toMatchObject({day:'2026-12-31',wall_time:'23:59',stamp:'2026-12-31 23:59:00'})
+    // เมื่อส่ง JS Date จริง ไดรเวอร์และ session ต้องแปลงร่วมกันโดยไม่เลื่อน instant
+    await db.workPool.query('INSERT INTO bkk_clock_probe VALUES (2,?,?,?)', ['2027-01-01','00:00',new Date('2026-12-31T17:00:00Z')])
+    const [[fromBkk]]:any = await admin.query(`SELECT day,wall_time,stamp FROM \`${workName}\`.bkk_clock_probe WHERE id=2`)
+    expect(fromBkk).toMatchObject({day:'2027-01-01',wall_time:'00:00',stamp:'2026-12-31 17:00:00'})
+    const [[session]]:any = await db.workPool.query('SELECT TIMESTAMPDIFF(SECOND, NOW(), expires_at) AS remaining FROM erp_sessions WHERE token=?', [token])
+    expect(session.remaining).toBeGreaterThan(6 * 86400)
+    expect(session.remaining).toBeLessThanOrEqual(7 * 86400)
+  }, 30000)
+
+  it('stores server-authoritative Bangkok check-ins across midnight and keeps calendar civil times unchanged', async () => {
+    const member = await req('/teams','POST',{name:'ทดสอบเวลาไทย',department:'Operations'})
+    expect(member.status).toBe(201)
+    const memberId = member.json.id
+    vi.useFakeTimers({toFake:['Date']})
+    try {
+      vi.setSystemTime(new Date('2026-12-31T16:58:00.000Z'))
+      const entry = await req('/checkins/clock','POST',{memberId,mode:'office'})
+      expect(entry.status).toBe(200)
+      expect(entry.json).toMatchObject({date:'2026-12-31',clockIn:'23:58',timezone:'Asia/Bangkok'})
+      const meeting = await req('/events','POST',{title:'นัดข้ามปี',cat:'meeting',date:'2027-01-01',start:'00:00',end:'00:30',members:[memberId]})
+      expect(meeting.status).toBe(200)
+      vi.setSystemTime(new Date('2026-12-31T16:59:00.000Z'))
+      const leave = await req('/checkins/clock-out','POST',{memberId})
+      expect(leave.json).toMatchObject({date:'2026-12-31',clockOut:'23:59',timezone:'Asia/Bangkok'})
+      vi.setSystemTime(new Date('2026-12-31T17:01:00.000Z'))
+      const next = await req('/checkins/clock','POST',{memberId,mode:'wfh'})
+      expect(next.json).toMatchObject({date:'2027-01-01',clockIn:'00:01',timezone:'Asia/Bangkok'})
+      const snapshot = await req('/office/snapshot')
+      expect(snapshot.json).toMatchObject({date:'2027-01-01',time:'00:01',timezone:'Asia/Bangkok',generatedAt:'2026-12-31T17:01:00.000Z'})
+      expect(snapshot.json.events.find((e:any)=>e.id===meeting.json.id)).toMatchObject({date:'2027-01-01',start:'00:00',end:'00:30'})
+      expect(snapshot.json.checkins.find((c:any)=>c.memberId===memberId)).toMatchObject({date:'2027-01-01',clockIn:'00:01',mode:'wfh'})
+      const [rows]:any = await db.workPool.query('SELECT date,clock_in,clock_out,mode FROM erp_checkins WHERE member_id=? ORDER BY id',[memberId])
+      expect(rows).toEqual([
+        {date:'2026-12-31',clock_in:'23:58',clock_out:'23:59',mode:'office'},
+        {date:'2027-01-01',clock_in:'00:01',clock_out:null,mode:'wfh'},
+      ])
+      // ไม่ปิดรอบก่อนโดยเผลอบันทึกเวลาออกของวันใหม่เป็นวันเก่า
+      vi.setSystemTime(new Date('2027-01-01T17:01:00.000Z'))
+      const overnight = await req('/checkins/clock-out','POST',{memberId})
+      expect(overnight.status).toBe(409)
+      expect(overnight.json.error).toBe('no_checkin')
+      const [[stillOpen]]:any = await db.workPool.query('SELECT clock_out FROM erp_checkins WHERE member_id=? AND date=?',[memberId,'2027-01-01'])
+      expect(stillOpen.clock_out).toBeNull()
+    } finally { vi.useRealTimers() }
+  }, 30000)
+
+  it('validates Bangkok calendar dates and timed ranges atomically, including partial concurrent edits', async () => {
+    for (const body of [
+      {title:'bad',date:'2026-02-31',start:'10:00',end:'11:00'},
+      {title:'bad',date:'2026-12-31',start:'24:00',end:'23:59'},
+      {title:'bad',date:'2026-12-31',start:'23:00',end:'00:30'},
+      {title:'bad',date:'2026-12-31',start:'10:00',end:'10:00'},
+    ]) expect((await req('/events','POST',body)).json.error).toBe('invalid_event_datetime')
+    const created = await req('/events','POST',{title:'ตรวจช่วงเวลา',date:'2026-12-31',start:'09:00',end:'12:00'})
+    expect(created.status).toBe(200)
+    const id = created.json.id
+    expect((await req(`/events/${id}`,'PATCH',{date:'2027-02-29'})).json.error).toBe('invalid_event_datetime')
+    expect((await req(`/events/${id}`,'PATCH',{start:'12:30'})).json.error).toBe('invalid_event_datetime')
+    const parallel = await Promise.all([
+      req(`/events/${id}`,'PATCH',{start:'11:00'}),
+      req(`/events/${id}`,'PATCH',{end:'10:00'}),
+    ])
+    expect(parallel.map(r=>r.status).sort()).toEqual([200,400])
+    const [[saved]]:any = await db.workPool.query('SELECT date,start,end FROM erp_events WHERE id=?',[Number(id.slice(1))])
+    expect(saved.date).toBe('2026-12-31')
+    expect(saved.start < saved.end).toBe(true)
+    expect((await req(`/events/${id}`,'PATCH',{allday:true,start:'00:00',end:'00:00'})).status).toBe(200)
+    expect((await req(`/events/${id}`,'PATCH',{allday:false})).json.error).toBe('invalid_event_datetime')
+    expect((await req(`/events/${id}`,'PATCH',{allday:false,start:'00:00',end:'00:30'})).status).toBe(200)
+  }, 30000)
+
+  it('includes the user’s prior open shift even after 90 other records, and flags unreadable attendance', async () => {
+    const today = (await req('/office/snapshot')).json.date
+    const yesterday = new Date(Date.parse(today + 'T00:00:00.000Z') - 86400000).toISOString().slice(0,10)
+    const tag = 'attendance-retention-test'
+    try {
+      const [mine]:any = await db.workPool.query(
+        'INSERT INTO erp_checkins (member_id,date,clock_in,mode,note) VALUES (?,?,?,?,?)',
+        ['u1',yesterday,'23:59','office',tag]
+      )
+      const rows = Array.from({length:110},()=>['u999999',yesterday,'08:00','office',tag])
+      await db.workPool.query('INSERT INTO erp_checkins (member_id,date,clock_in,mode,note) VALUES ?', [rows])
+      const boot = await req('/bootstrap')
+      expect(boot.status).toBe(200)
+      expect(boot.json.featureAvailability.attendance).toBe(true)
+      expect(boot.json.attendanceDate).toBe(today)
+      expect(boot.json.checkins.find((c:any)=>c.id==='ck'+mine.insertId)).toMatchObject({memberId:'u1',date:yesterday,clockIn:'23:59',clockOut:''})
+      // รอบที่ใหม่กว่าในวันเดียวกันปิดแล้ว ไม่ต้องถือว่ารอบก่อนหน้ายังค้าง
+      await db.workPool.query('INSERT INTO erp_checkins (member_id,date,clock_in,clock_out,mode,note) VALUES (?,?,?,?,?,?)', ['1',yesterday,'23:59','23:59','office',tag])
+      const closed = await req('/bootstrap')
+      expect(closed.json.checkins.find((c:any)=>c.id==='ck'+mine.insertId)).toBeUndefined()
+      // เมื่ออ่านตารางจริงไม่ได้ ต้องแจ้งว่าไม่พร้อม แทนการสรุปว่าไม่มีเช็กอิน
+      await db.workPool.query('RENAME TABLE erp_checkins TO erp_checkins_tmp_test')
+      try {
+        const unavailable = await req('/bootstrap')
+        expect(unavailable.status).toBe(200)
+        expect(unavailable.json.featureAvailability.attendance).toBe(false)
+        expect(unavailable.json.checkins).toEqual([])
+      } finally { await db.workPool.query('RENAME TABLE erp_checkins_tmp_test TO erp_checkins') }
+    } finally { await db.workPool.query('DELETE FROM erp_checkins WHERE note=?',[tag]) }
+  }, 30000)
+
+  it('keeps Hermes expiry, rotation, and response timestamps consistent with MariaDB', async () => {
+    const hermes = require('../server/hermes')
+    const first = await hermes.ensureTokenPool(1, {poolSize:2,days:1})
+    const [stored]:any = await db.workPool.query('SELECT slot,expires_at FROM erp_api_tokens WHERE user_id=1 ORDER BY slot')
+    expect(first.tokens.map((t:any)=>t.expiresAt)).toEqual(stored.map((r:any)=>r.expires_at))
+    expect(first.tokens[0].expiresAt).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/)
+    await db.workPool.query('UPDATE erp_api_tokens SET expires_at=DATE_SUB(NOW(),INTERVAL 1 MINUTE) WHERE user_id=1 AND slot=1')
+    await db.workPool.query('UPDATE erp_api_tokens SET expires_at=DATE_ADD(NOW(),INTERVAL 1 MINUTE) WHERE user_id=1 AND slot=2')
+    const stats = await req('/hermes/tokens')
+    expect(stats.json.activeCount).toBe(1)
+    expect((await req('/hermes/me','GET',undefined,first.tokens[0].token)).status).toBe(401)
+    expect((await req('/hermes/me','GET',undefined,first.tokens[1].token)).status).toBe(200)
+    const next = await hermes.ensureTokenPool(1, {poolSize:2,days:1})
+    expect(next.tokens[0].token).not.toBe(first.tokens[0].token)
+    expect(next.tokens[1].token).toBe(first.tokens[1].token)
+    const [after]:any = await db.workPool.query('SELECT slot,expires_at FROM erp_api_tokens WHERE user_id=1 ORDER BY slot')
+    expect(next.tokens.map((t:any)=>t.expiresAt)).toEqual(after.map((r:any)=>r.expires_at))
+    expect((await req('/hermes/tokens')).json.activeCount).toBe(2)
+  }, 30000)
 
   it('migrates legacy departments and persists the Office snapshot on real MariaDB', async () => {
     const [columns]:any=await db.workPool.query("SHOW COLUMNS FROM erp_team LIKE 'department'")

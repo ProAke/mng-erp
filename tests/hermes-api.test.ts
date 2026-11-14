@@ -138,7 +138,8 @@ describe('Hermes & External AI API — Mandatory User/Password + 20 Rotating Tok
           return [{ affectedRows: 1 }]
         }
         if (/FROM erp_api_tokens WHERE user_id = \? ORDER BY slot ASC/i.test(s)) {
-          return [apiTokensDb.filter(r => r.user_id === Number(params[0])).sort((a, b) => a.slot - b.slot)]
+          return [apiTokensDb.filter(r => r.user_id === Number(params[0])).sort((a, b) => a.slot - b.slot)
+            .map(r => ({ ...r, is_active: new Date(r.expires_at).getTime() > Date.now() ? 1 : 0 }))]
         }
         if (/UPDATE erp_api_tokens SET strict_dual_auth = \? WHERE user_id = \?/i.test(s)) {
           const val = params[0]

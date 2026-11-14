@@ -66,7 +66,7 @@ function openProjectWizard(project) {
     name: project?.name || '', code: project?.code || '',
     clientName: editing ? (Store.clientOf(project)?.name || project.clientName || 'Internal — MNG Groups') : 'Internal — MNG Groups',
     budget: project?.budget ?? 0, start: project?.start || todayS(),
-    end: project?.end || d2s(addDays(new Date(), 30)),
+    end: project?.end || dateAfterDays(30),
     brief: ProjectPlan.normalizeBrief(initialBrief), autoCreateTasks: false,
   };
   if (editing && !draft.brief.members.length) draft.brief.members = (project.members || []).slice();

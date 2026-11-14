@@ -3,8 +3,41 @@
 const mysql = require('mysql2/promise');
 const cfg = require('./config');
 
-const authPool = mysql.createPool(cfg.authDb);   // pacific_mng        (users, sessions lookup)
-const workPool = mysql.createPool(cfg.workDb);   // pacific_mngworks   (projects, tasks, erp_* tables)
+// mysql2 timezone กำหนดการแปลง Date ของไดรเวอร์เท่านั้น ไม่ได้ตั้ง timezone ของ MariaDB
+// จึงตั้ง SESSION ให้ทุก physical connection ก่อนใช้ (รวม connection ของ transaction)
+// ไม่เปลี่ยน GLOBAL และไม่แก้ค่า TIMESTAMP ที่เก็บอยู่เดิม
+function createBangkokPool(config, createPool = mysql.createPool) {
+  const pool = createPool({ ...config, dateStrings: true, timezone: '+07:00', resetOnRelease: false });
+  const initialized = new WeakSet();
+  async function getConnection() {
+    const conn = await pool.getConnection();
+    try {
+      // resetOnRelease ปิดอยู่ และโค้ดของแอปไม่เปลี่ยน session timezone ระหว่างใช้งาน
+      if (!initialized.has(conn.connection)) {
+        await conn.query("SET SESSION time_zone = '+07:00'");
+        initialized.add(conn.connection);
+      }
+      return conn;
+    } catch (err) {
+      conn.destroy(); // ห้ามคืน connection ที่ตั้งเวลาไม่สำเร็จให้ pool
+      throw err;
+    }
+  }
+  async function run(method, ...args) {
+    const conn = await getConnection();
+    try { return await conn[method](...args); }
+    finally { conn.release(); }
+  }
+  return {
+    getConnection,
+    query: (...args) => run('query', ...args),
+    execute: (...args) => run('execute', ...args),
+    end: () => pool.end(),
+  };
+}
+
+const authPool = createBangkokPool(cfg.authDb);   // pacific_mng        (users, sessions lookup)
+const workPool = createBangkokPool(cfg.workDb);   // pacific_mngworks   (projects, tasks, erp_* tables)
 
 /* ---------- schema: additive-only, safe for the existing workspace app ---------- */
 const TABLES = [
@@ -388,4 +421,4 @@ async function healthCheck() {
   return out;
 }
 
-module.exports = { authPool, workPool, ensureSchema, healthCheck, TABLES, ADDITIVE_COLS };
+module.exports = { authPool, workPool, createBangkokPool, ensureSchema, healthCheck, TABLES, ADDITIVE_COLS };

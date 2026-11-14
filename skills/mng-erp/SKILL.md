@@ -79,6 +79,12 @@ Every invocation after `login` automatically selects the next token slot (`1 -> 
 | List Flow export actions (manager) | `python3 skills/mng-erp/scripts/mng_erp_client.py request GET /api/projects/p1/flow/actions` | `GET /api/projects/:id/flow/actions` |
 | Arbitrary REST endpoint | `python3 skills/mng-erp/scripts/mng_erp_client.py request GET /api/endpoints` | Any `/api/*` route |
 
+## วันและเวลาไทยสำหรับ Agent
+
+- วันที่ `YYYY-MM-DD` และเวลา `HH:mm` ของปฏิทินและลงเวลาเป็น **Asia/Bangkok (UTC+07:00)** ไม่ใช่วันที่ UTC; `00:00` เป็นนัดที่มีเวลา ส่วนกิจกรรมตลอดวันต้องส่ง `allday: true` นัดแบบระบุเวลาต้องสิ้นสุดหลังเริ่มภายในวันเดียวกัน
+- `GET /api/clock` เป็น endpoint สาธารณะสำหรับเทียบเวลา: `serverTime` เป็น ISO UTC ลงท้าย `Z`; `date`/`time` จาก Office และสตริง `expiresAt` ของ Hermes จากฐานข้อมูลเป็นเวลาไทย อย่า parse สตริงไร้ timezone ตามเครื่องของ Agent
+- การลงเวลาปัจจุบันให้ละ `date`/`time` เพื่อใช้เวลาเซิร์ฟเวอร์; ถ้าระบุเอง API ถือเป็นวัน/เวลาไทยแต่ไม่ยืนยันว่าเป็นเวลาที่เกิดขึ้นจริง รอบทำงานข้ามเที่ยงคืนยังไม่รองรับ นาฬิกาของเซิร์ฟเวอร์ต้องเทียบเวลาจริง ดูคู่มือ `docs/TIMEZONE.md` ใน repository หรือหัวข้อเวลาใน `/api/hermes/manual.md`
+
 ## Project Flow AI & Webhook safety
 
 - The brief's AI Agent and model are planning metadata, not a provider connection. Real generation uses server-configured `FLOW_AI_URL`/`FLOW_AI_KEY`/`FLOW_AI_MODEL`; webhooks use `FLOW_WEBHOOK_URL`/`FLOW_WEBHOOK_SECRET`. Never ask users to paste secrets into chat or store them in a brief.

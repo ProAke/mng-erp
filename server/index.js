@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const cfg = require('./config');
+const BangkokTime = require('../assets/js/bangkok-time');
 const { ensureSchema, healthCheck, workPool } = require('./db');
 const auth = require('./auth');
 const hermes = require('./hermes');
@@ -57,6 +58,11 @@ app.use('/api', (req, res, next) => {
 });
 
 /* ---------- public endpoints ---------- */
+// ใช้สอบเทียบนาฬิกาเบราว์เซอร์โดยไม่รอฐานข้อมูล; instant เป็น UTC ที่ระบุ Z ชัดเจน
+app.get('/api/clock', (_req, res) => {
+  res.json({ timezone: BangkokTime.timezone, serverTime: new Date().toISOString() });
+});
+
 app.get('/api/health', async (_req, res) => {
   res.json({ ok: true, dbReady: dbReadyResolved, hermesApi: true, ...(await healthCheck()) });
 });

@@ -31,7 +31,7 @@ describe('PlayDigital Chat (i.playdigital.co.th parity) & End-to-End Real MariaD
       win.HTMLElement.prototype.scrollIntoView = () => {}
 
       const ctx = dom.getInternalVMContext()
-      for (const rel of ['assets/js/data.js', 'assets/js/ui.js', 'assets/js/views.js', 'assets/js/agency-os.js', 'assets/js/project-plan.js', 'assets/js/project-flow.js', 'assets/js/flow-operations.js', 'assets/js/app.js']) {
+      for (const rel of ['assets/js/bangkok-time.js', 'assets/js/data.js', 'assets/js/ui.js', 'assets/js/views.js', 'assets/js/agency-os.js', 'assets/js/project-plan.js', 'assets/js/project-flow.js', 'assets/js/flow-operations.js', 'assets/js/app.js']) {
         vm.runInContext(fs.readFileSync(path.join(rootDir, rel), 'utf8'), ctx, { filename: rel })
       }
       await vm.runInContext('App.init()', ctx)

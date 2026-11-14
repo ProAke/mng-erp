@@ -2,6 +2,8 @@
 
 import { useApp, useProjects, useTasks, useInvoices } from '@/lib/stores/app'
 import { useAuth } from '@/lib/stores/auth'
+import { formatBangkokDue } from '@/lib/bangkok-date'
+import { useBangkokDate } from '@/lib/use-bangkok-date'
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -9,6 +11,7 @@ export default function DashboardPage() {
   const projects = useProjects()
   const tasks = useTasks()
   const invoices = useInvoices()
+  const clock = useBangkokDate()
 
   if (loading && !data) {
     return (
@@ -88,7 +91,10 @@ export default function DashboardPage() {
 
       {/* tasks due */}
       <section className="rounded-xl bg-slate-900 border border-slate-800 p-5">
-        <h2 className="text-sm font-medium text-slate-300 mb-4">งานครบกำหนดใกล้ ๆ</h2>
+        <h2 className="text-sm font-medium text-slate-300">งานครบกำหนดใกล้ ๆ</h2>
+        <p className="text-xs text-slate-500 mt-1 mb-4">
+          เวลาไทย · {clock.synced ? 'เทียบกับเซิร์ฟเวอร์' : clock.date ? 'เวลาอุปกรณ์ — ตรวจสอบนาฬิกา' : 'กำลังเทียบเวลา'}
+        </p>
         {activeTasks.length === 0 ? (
           <p className="text-sm text-slate-600">ไม่มีงานที่ต้องทำ</p>
         ) : (
@@ -100,7 +106,7 @@ export default function DashboardPage() {
               >
                 <span className="text-sm text-slate-300 truncate">{t.title}</span>
                 <span className="text-xs text-slate-500 shrink-0">
-                  {t.due ? formatDue(t.due) : '—'}
+                  {t.due ? formatBangkokDue(t.due, clock.date) : '—'}
                 </span>
               </li>
             ))}
@@ -133,14 +139,4 @@ function LoadingState() {
       กำลังโหลดข้อมูล…
     </div>
   )
-}
-
-function formatDue(due: string) {
-  const d = new Date(due)
-  if (Number.isNaN(d.getTime())) return due
-  const now = new Date()
-  const diff = Math.ceil((d.getTime() - now.getTime()) / 86_400_000)
-  if (diff < 0) return `เลยกำหนด ${Math.abs(diff)} วัน`
-  if (diff === 0) return 'วันนี้'
-  return `อีก ${diff} วัน`
 }

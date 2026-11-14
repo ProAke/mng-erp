@@ -9,6 +9,7 @@
 const Remote = {
   token: localStorage.getItem('mng_token') || null,
   on: false,
+  clockSynced: false,
   async req(path, opts={}){
     const r = await fetch('/api'+path, {
       method: opts.method || 'GET',
@@ -21,9 +22,28 @@ const Remote = {
     if(!r.ok) throw new Error(d.detail || d.error || ('HTTP '+r.status));
     return d;
   },
+  async syncClock(){
+    const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 5000) : null;
+    try {
+      const sentAt = Date.now();
+      const r = await fetch('/api/clock', { cache:'no-store', signal:controller?.signal });
+      const receivedAt = Date.now();
+      const d = r.ok ? await r.json() : null;
+      const synced = !!d && d.timezone === BangkokTime.timezone && BangkokTime.synchronize(d.serverTime, sentAt, receivedAt);
+      if (synced) this.clockSynced = true; // หากครั้งต่อไปขัดข้อง ให้ใช้ offset ล่าสุดต่อไป
+      return synced;
+    } catch { return false; }
+    finally { if (timer) clearTimeout(timer); }
+  },
   async health(){
-    try { const d = await (await fetch('/api/health')).json(); return !!(d.auth && d.work); }
-    catch { return false; }
+    try {
+      const d = await (await fetch('/api/health')).json();
+      const healthy = !!(d.auth && d.work);
+      if (healthy) await this.syncClock();
+      else { BangkokTime.reset(); this.clockSynced = false; }
+      return healthy;
+    } catch { BangkokTime.reset(); this.clockSynced = false; return false; }
   },
   async login(email, pw){
     const d = await this.req('/auth/login', {method:'POST', body:{email, password:pw}});
@@ -36,8 +56,16 @@ const Remote = {
     this.req(path, {method, body}).catch(e => toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+e.message, 'err'));
   },
   async refreshAll(){                // refetch bootstrap (after CREATE — need real ids)
-    if(!this.on) return;
-    try { Store.hydrate(await this.req('/bootstrap')); App.refresh(); } catch {}
+    if(!this.on) return false;
+    try { Store.hydrate(await this.req('/bootstrap')); App.refresh(); return true; }
+    catch {
+      // หากโหลดล่าสุดไม่ได้ ห้ามแสดงสถานะลงเวลาจาก cache ว่าเป็นข้อมูลปัจจุบัน
+      if (this.on) {
+        Store.data.featureAvailability = { ...Store.data.featureAvailability, attendance:false };
+        if (['hr','dashboard'].includes(Store.ui?.route)) App.refresh();
+      }
+      return false;
+    }
   },
   async logout(){
     try { await this.req('/auth/logout', {method:'POST', _skipAuthGuard:true}); } catch {}
@@ -63,6 +91,7 @@ const Store = {
     if(!Array.isArray(this.data.customDocs)) this.data.customDocs = [];
     if(!this.data.settings) this.data.settings = {n1:true,n2:true,n3:false,theme:'#6C5CE7'};
     const catKeys = Object.keys(this.data.eventCats);
+    const initialDate = todayS();
     this.ui = {
       route: null,
       q: {},                                  // search strings per view
@@ -72,8 +101,8 @@ const Store = {
         projStatus:new Set(), invStatus:new Set(),
       },
       calCats: new Set(catKeys),
-      calCursor: new Date(),                  // month/week anchor
-      calSel: todayS(),                       // selected day
+      calCursor: s2d(initialDate),            // วันที่ล้วนของวันปัจจุบันในกรุงเทพ
+      calSel: initialDate,                    // selected day
       calView: this.data.settings.calView || 'month',
       taskMode: 'board',
       dashTab: 'work',
@@ -91,6 +120,17 @@ const Store = {
         t.code = `${pMap[t.project] || 'MNG'}-${num}`;
       }
     });
+  },
+  // หากกำลังดู "วันนี้" ให้ติดตามวันใหม่; วันที่ที่ผู้ใช้เลือกเองไม่ถูกเปลี่ยน
+  followToday(previous, next = todayS()){
+    if (!this.ui || !previous || previous === next) return;
+    const ui = this.ui;
+    const cursor = d2s(ui.calCursor);
+    if (ui.calSel === previous) {
+      ui.calSel = next;
+      if (cursor === previous || (['month','agenda'].includes(ui.calView) && cursor.slice(0,7) === previous.slice(0,7))) ui.calCursor = s2d(next);
+    }
+    if (ui.roomDate === previous) ui.roomDate = next;
   },
   save(){
     this.data.settings.calView = this.ui.calView;
@@ -132,23 +172,31 @@ const Store = {
     return out;
   },
   upcoming(n=5){
-    const t = todayS(), out = [];
+    const clock = BangkokTime.current(), base = s2d(clock.date), out = [];
     for(let i=0;i<45;i++){
-      const ds = d2s(addDays(new Date(), i));
-      this.eventsOn(ds).forEach(e=>{ if(ds>=t || (ds===t && (e.start||'00:00')>='00:00')) out.push(e); });
+      const ds = d2s(addDays(base, i));
+      this.eventsOn(ds).forEach(e=>{
+        if (ds !== clock.date || e.allday || !e.start || (e.end ? e.end > clock.time : e.start >= clock.time)) out.push(e);
+      });
       if(out.length>=n) break;
     }
     out.sort((a,b)=>(a.date+(a.start||'')).localeCompare(b.date+(b.start||'')));
     return out.slice(0,n);
   },
-  moveToDate(kind, id, ds){
-    if(kind==='event'){ const e=this.getEvent(id); if(e) e.date=ds; Remote.push('/events/'+id, 'PATCH', {date: ds}); }
-    else { const t=this.getTask(id); if(t) t.due=ds; Remote.push('/tasks/'+id, 'PATCH', {due: ds}); }
+  async moveToDate(kind, id, ds){
+    const item = kind==='event' ? this.getEvent(id) : kind==='task' ? this.getTask(id) : null;
+    if (!item) return false;
+    if (Remote.on) {
+      try {
+        await Remote.req(`/${kind==='event'?'events':'tasks'}/${id}`, {method:'PATCH', body:kind==='event'?{date:ds}:{due:ds}});
+      } catch (err) { toast('ย้ายกำหนดการไม่สำเร็จ: '+err.message, 'err'); return false; }
+    }
+    if (kind==='event') item.date=ds; else item.due=ds;
     this.save();
+    return true;
   },
   logActivity(text){
-    const now = new Date();
-    const at = `${todayS()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+    const at = BangkokTime.current().dateTime;
     this.data.activity.unshift({at, u:'u1', text});
     this.data.activity = this.data.activity.slice(0,30);
   },
@@ -194,9 +242,14 @@ const App = {
   },
 
   async init(){
+    BangkokTime.reset();
+    Remote.clockSynced = false;
     Store.load();
+    const initialToday = Store.ui.calSel;
     this.splash('กำลังเชื่อมต่อฐานข้อมูล MariaDB…');
     const healthy = await Remote.health();
+    // นาฬิกาเซิร์ฟเวอร์อาจทำให้วันไทยต่างจากนาฬิกาของอุปกรณ์
+    Store.followToday(initialToday);
     let needLogin = false;
     if(!healthy){
       this._bootToast = ['ไม่พบเซิร์ฟเวอร์ API — ทำงานในโหมดสาธิต (localStorage)', 'warn'];
@@ -219,8 +272,86 @@ const App = {
     window.addEventListener('hashchange', ()=>this.route());
     if(!location.hash) location.hash = '#/dashboard';
     this.route();
+    this.startClock();
     if(this._bootToast){ toast(this._bootToast[0], this._bootToast[1]); this._bootToast = null; }
-    if(Remote.on) setTimeout(()=>toast('เชื่อมต่อฐานข้อมูลจริงแล้ว ✓ ข้อมูลจาก MariaDB pacific_mngworks'), 350);
+    if(Remote.on) {
+      if (!Remote.clockSynced) toast('เทียบเวลาเซิร์ฟเวอร์ไม่สำเร็จ หน้าจอใช้เวลาอุปกรณ์ กรุณาตรวจสอบนาฬิกา', 'warn');
+      else setTimeout(()=>toast('เชื่อมต่อฐานข้อมูลจริงแล้ว ✓ ข้อมูลจาก MariaDB pacific_mngworks'), 350);
+    }
+  },
+
+  startClock(){
+    this.stopClock();
+    this._clockRunning = true;
+    this._clockDate = todayS();
+    this._clockVisibility = () => { if (document.visibilityState === 'visible') this.tickClock(); };
+    document.addEventListener('visibilitychange', this._clockVisibility);
+    this.scheduleClock();
+  },
+  stopClock(){
+    this._clockRunning = false;
+    clearTimeout(this._clockTimer);
+    this._clockTimer = null;
+    if (this._clockVisibility) document.removeEventListener('visibilitychange', this._clockVisibility);
+    this._clockVisibility = null;
+  },
+  scheduleClock(){
+    if (!this._clockRunning) return;
+    clearTimeout(this._clockTimer);
+    const delay = 60000 - (BangkokTime.now().getTime() % 60000) + 25;
+    this._clockTimer = setTimeout(() => this.tickClock(), delay);
+  },
+  async retryAttendance(){
+    const previous = todayS();
+    if (!Remote.clockSynced && !await Remote.syncClock()) {
+      toast('ยังเทียบเวลาเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่', 'warn');
+      return;
+    }
+    Store.followToday(previous);
+    this._clockDate = todayS();
+    if (!await Remote.refreshAll() || !attendanceAvailable()) {
+      toast('ยังโหลดรายการลงเวลาไม่ได้ กรุณาตรวจสอบฐานข้อมูลแล้วลองใหม่', 'warn');
+      return;
+    }
+    toast('โหลดเวลาและรายการลงเวลาล่าสุดแล้ว');
+  },
+  async tickClock(){
+    if (!this._clockRunning || this._clockTicking) return;
+    clearTimeout(this._clockTimer);
+    this._clockTicking = true;
+    try {
+      if (document.visibilityState === 'hidden') return;
+      const wasClockSynced = Remote.clockSynced;
+      if (Remote.on) await Remote.syncClock();
+      if (!this._clockRunning) return;
+      const clockBecameSynced = Remote.on && !wasClockSynced && Remote.clockSynced;
+      const clock = BangkokTime.current(), previous = this._clockDate;
+      this._clockDate = clock.date;
+      if (clock.date !== previous) {
+        Store.followToday(previous, clock.date);
+        // ซ่อนยอดเก่าทันที แล้วโหลดวันใหม่ทั้งหน้า HR และทางลัดบนแดชบอร์ด
+        if (Remote.on && ['hr','dashboard'].includes(Store.ui.route)) {
+          this.refresh();
+          if (!await Remote.refreshAll() || !attendanceAvailable()) {
+            this.refresh();
+            toast('โหลดรายการลงเวลาของวันใหม่ไม่สำเร็จ กรุณาลองเชื่อมต่ออีกครั้ง', 'warn');
+          }
+        } else if (['dashboard','calendar','hr','rooms'].includes(Store.ui.route)) this.refresh();
+      } else if (clockBecameSynced && ['calendar','hr'].includes(Store.ui.route)) this.refresh();
+      else if (Store.ui.route === 'calendar') {
+        // อัปเดตรายการกำลังจะมาถึงโดยไม่เลื่อนกริดเวลาที่ผู้ใช้กำลังดู
+        Store._refreshCalSide?.();
+        const line = $('.wk-now');
+        if (line) {
+          const [h, m] = clock.time.split(':').map(Number);
+          line.style.top = `${(h * 60 + m) / 60 * 52}px`;
+          line.title = `เวลาไทย ${clock.time}`;
+        }
+      }
+    } finally {
+      this._clockTicking = false;
+      this.scheduleClock();
+    }
   },
 
   splash(msg){
@@ -236,6 +367,7 @@ const App = {
 
   forceLogin(msg){
     if(typeof Office3D !== 'undefined') Office3D.destroy();
+    this.stopClock();
     Remote.on = false; Remote.token = null; localStorage.removeItem('mng_token');
     $('#appShell').style.display = 'none';
     closeModal();
@@ -268,6 +400,9 @@ const App = {
       try {
         await Remote.login($('#lgEmail').value.trim(), $('#lgPass').value);
         Remote.on = true;
+        const previousToday = todayS();
+        await Remote.syncClock();
+        Store.followToday(previousToday);
         Store.hydrate(await Remote.req('/bootstrap'));
         ov.remove();
         $('#appShell').style.display = '';
@@ -298,9 +433,13 @@ const App = {
     if(typeof Office3D !== 'undefined') Office3D.destroy();
     const name = (location.hash.replace('#/','')||'dashboard').split('?')[0];
     const r = this.routes[name] || this.routes.dashboard;
+    const previousRoute = Store.ui.route;
     Store.ui.route = name;
-    $('#appShell').classList.toggle('project-feature-route', name==='project-flow' || name==='docs' || name==='office' || name==='hr');
-    $('#appShell').classList.toggle('hr-route', name==='hr');
+    const shell = $('#appShell');
+    shell.classList.toggle('project-feature-route', ['project-flow','docs','office','hr','calendar'].includes(name));
+    shell.classList.toggle('hr-route', name==='hr');
+    shell.classList.toggle('calendar-route', name==='calendar');
+    if (name !== 'calendar') shell.classList.remove('cal-side-open');
     // reset view scroll mode
     const view = $('#view');
     view.classList.remove('no-scroll');
@@ -309,6 +448,12 @@ const App = {
     this.renderTopbar(r);
     r.render();
     document.title = `MNG ERP — ${r.label}`;
+    // หากเปิดหน้าอื่นค้างข้ามวัน ให้โหลดรายการวันใหม่เมื่อกลับมาหน้าลงเวลา/แดชบอร์ด
+    if (['hr','dashboard'].includes(name) && name !== previousRoute && Remote.on && Remote.clockSynced &&
+        Store.data.featureAvailability?.attendance === true && Store.data.attendanceDate !== todayS() && !this._attendanceRefresh) {
+      this._attendanceRefresh = true;
+      Remote.refreshAll().finally(() => { this._attendanceRefresh = false; });
+    }
   },
 
   renderRail(){
@@ -419,6 +564,11 @@ const App = {
   /* ---------- global delegation ---------- */
   bindGlobal(){
     document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && $('#appShell').classList.contains('cal-side-open')) {
+        $('#appShell').classList.remove('cal-side-open');
+        $('.cal-mobile-side-btn')?.setAttribute('aria-expanded', 'false');
+        $('.cal-mobile-side-btn')?.focus();
+      }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         openCommandPalette();
@@ -461,20 +611,26 @@ const App = {
         case 'new-invoice': openInvoiceForm(); break;
         case 'ai-dispatch': openAiDispatchModal(id||''); break;
         case 'new-leave': openLeaveForm(); break;
+        case 'hr-retry-clock': this.retryAttendance(); break;
         case 'new-booking': openBookingForm(); break;
         case 'cmd-palette': openCommandPalette(); break;
         case 'mark-paid': markInvoicePaid(id); e.stopPropagation(); break;
+        case 'cal-mobile-side': {
+          const isOpen = $('#appShell').classList.toggle('cal-side-open');
+          $('.cal-mobile-side-btn')?.setAttribute('aria-expanded', String(isOpen));
+          break;
+        }
         case 'cal-prev': shiftCal(-1); this.refresh(); break;
         case 'cal-next': shiftCal(1); this.refresh(); break;
-        case 'cal-today': Store.ui.calCursor=new Date(); Store.ui.calSel=todayS(); this.refresh(); break;
+        case 'cal-today': Store.ui.calSel=todayS(); Store.ui.calCursor=s2d(Store.ui.calSel); this.refresh(); break;
         case 'cal-view': Store.ui.calView=id; if(id==='day') Store.ui.calCursor=s2d(Store.ui.calSel); Store.save(); this.refresh(); break;
         case 'cal-view-btn': Store.ui.calView=id; this.refresh(); break;
         case 'cal-day': Store.ui.calSel=id; Store.ui.calCursor=s2d(id); Store.ui.calView='day'; this.refresh(); break;
         case 'cal-add': openEventForm(null, id); e.stopPropagation(); break;
         case 'cal-more': showDayPopover(id, e.clientX, e.clientY); break;
-        case 'cal-mini-day': Store.ui.calSel=id; Store.ui.calCursor=s2d(id); this.refresh(); break;
-        case 'cal-mini-prev': Store.ui.calCursor=new Date(Store.ui.calCursor.getFullYear(),Store.ui.calCursor.getMonth()-1,1); this.refresh(); break;
-        case 'cal-mini-next': Store.ui.calCursor=new Date(Store.ui.calCursor.getFullYear(),Store.ui.calCursor.getMonth()+1,1); this.refresh(); break;
+        case 'cal-mini-day': Store.ui.calSel=id; Store.ui.calCursor=s2d(id); $('#appShell').classList.remove('cal-side-open'); this.refresh(); break;
+        case 'cal-mini-prev': Store.ui.calCursor=new Date(Date.UTC(Store.ui.calCursor.getUTCFullYear(),Store.ui.calCursor.getUTCMonth()-1,1)); this.refresh(); break;
+        case 'cal-mini-next': Store.ui.calCursor=new Date(Date.UTC(Store.ui.calCursor.getUTCFullYear(),Store.ui.calCursor.getUTCMonth()+1,1)); this.refresh(); break;
         case 'cal-fullscreen': toggleFullscreen(); break;
         case 'dummy-switch': elAct.classList.toggle('on'); break;
         case 'export-csv': exportCSV(); break;
@@ -553,7 +709,7 @@ async function doLogout(){
 /* ---------- calendar nav helpers ---------- */
 function shiftCal(dir){
   const ui = Store.ui;
-  if(ui.calView==='month'||ui.calView==='agenda') ui.calCursor = new Date(ui.calCursor.getFullYear(), ui.calCursor.getMonth()+dir, 1);
+  if(ui.calView==='month'||ui.calView==='agenda') ui.calCursor = new Date(Date.UTC(ui.calCursor.getUTCFullYear(), ui.calCursor.getUTCMonth()+dir, 1));
   else if(ui.calView==='week') ui.calCursor = addDays(ui.calCursor, dir*7);
   else { ui.calSel = d2s(addDays(s2d(ui.calSel), dir)); ui.calCursor = s2d(ui.calSel); }
 }
@@ -572,7 +728,7 @@ function showDayPopover(ds, x, y){
       <div class="dp-item" data-act="open-event" data-id="${e.kind}:${e.id}">
         <span class="dp-bar" style="background:${Store.catColor(e.cat)}"></span>
         <div style="min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.title)}</b>
-        <small style="color:var(--muted)">${e.allday||!e.start||e.start==='00:00'?'ตลอดวัน':e.start+'–'+(e.end||'')} · ${Store.data.eventCats[e.cat].label}</small></div>
+        <small style="color:var(--muted)">${e.allday||!e.start?'ตลอดวัน':e.start+'–'+(e.end||'')} · ${Store.data.eventCats[e.cat].label}</small></div>
       </div>`).join('')}</div>
     <div style="padding:10px 14px;border-top:1px solid var(--line)">
       <button class="btn btn-primary btn-sm" style="width:100%;justify-content:center" data-act="cal-add" data-id="${ds}">${IC.plus} เพิ่มกิจกรรมวันนี้</button></div>`;
@@ -636,8 +792,7 @@ function openTaskModal(id){
   $('#tdAiBtn').onclick = () => openAiDispatchModal(t.aiAgentId || '', t.id);
   $('#cmtBtn').onclick = ()=>{
     const v = $('#cmtInput').value.trim(); if(!v) return;
-    const now = new Date();
-    t.comments.push({u:'u1', at:`${todayS()} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`, text:v});
+    t.comments.push({u:'u1', at:BangkokTime.current().dateTime, text:v});
     Store.logActivity(`คอมเมนต์ใน <b>${t.code}</b>: ${esc(v.slice(0,40))}`);
     Remote.push('/tasks/'+id, 'PATCH', {comments: t.comments});
     Store.save(); closeModal(); openTaskModal(id); toast('เพิ่มความคิดเห็นแล้ว');
@@ -748,10 +903,13 @@ function openEventModal(id){
       <button class="btn btn-primary" id="evEdit">${IC.edit} แก้ไข</button>
     </div>`);
   $('#evEdit').onclick = ()=>openEventForm(id);
-  $('#evDel').onclick = ()=>confirmDlg('ลบกิจกรรม?',`ต้องการลบ “${esc(e.title)}” ใช่ไหม`,()=>{
+  $('#evDel').onclick = ()=>confirmDlg('ลบกิจกรรม?',`ต้องการลบ “${esc(e.title)}” ใช่ไหม`,async ()=>{
+    if (Remote.on) {
+      try { await Remote.req('/events/'+id, {method:'DELETE'}); }
+      catch (err) { toast('ลบกิจกรรมไม่สำเร็จ: '+err.message, 'err'); return; }
+    }
     Store.data.events = Store.data.events.filter(x=>x.id!==id);
     Store.save();
-    Remote.push('/events/'+id, 'DELETE');
     App.refresh(); toast('ลบกิจกรรมแล้ว','warn');
   });
 }
@@ -762,7 +920,8 @@ function openEventForm(id, presetDate){
     id:uid('e'), title:'', cat:'meeting', date:presetDate||Store.ui.calSel||todayS(),
     start:'10:00', end:'11:00', allday:false, loc:'', members:['u1'], desc:''
   };
-  openModal(`${modalHead(id?'แก้ไขกิจกรรม':'เพิ่มกิจกรรมในปฏิทิน','รองรับประชุม เดดไลน์ การเงิน วันหยุด และนัดส่วนตัว')}
+  if (!e) return;
+  openModal(`${modalHead(id?'แก้ไขกิจกรรม':'เพิ่มกิจกรรมในปฏิทิน','วันที่และเวลาเป็นเวลาไทย Asia/Bangkok (UTC+7)')}
     <div class="modal-body"><div class="form-grid">
       <div class="f-group full"><label>ชื่อกิจกรรม *</label><input id="eTitle" value="${esc(e.title)}" placeholder="เช่น ประชุมรีวิว sprint"></div>
       <div class="f-group full"><label>หมวดหมู่</label>
@@ -775,7 +934,7 @@ function openEventForm(id, presetDate){
       <div class="f-group"><label>สถานที่ / ลิงก์ประชุม</label><input id="eLoc" value="${esc(e.loc||'')}" placeholder="ห้องประชุม หรือ https://meet.google.com/..."><small style="color:var(--muted)">3D Office เปิดลิงก์ HTTPS ของ Google Meet หรือ Zoom แยกต่างหาก</small></div>
       <div class="f-group"><label>โปรเจกต์ (ถ้ามี)</label><select id="eProj"><option value="">— ไม่ระบุ —</option>${Store.data.projects.map(p=>`<option value="${p.id}" ${p.id===e.project?'selected':''}>${esc(p.short)}</option>`).join('')}</select></div>
       <div class="f-group full"><label>ผู้เข้าร่วม</label><div class="chips" id="eMembers">
-        ${Store.data.team.map(u=>`<span class="chip ${e.members.includes(u.id)?'on':''}" data-m="${u.id}">${avatar(u)} ${esc(u.name)}</span>`).join('')}</div></div>
+        ${Store.data.team.map(u=>`<span class="chip ${(e.members||[]).includes(u.id)?'on':''}" data-m="${u.id}">${avatar(u)} ${esc(u.name)}</span>`).join('')}</div></div>
       <div class="f-group full"><label>รายละเอียด</label><textarea id="eDesc" placeholder="วาระ / หมายเหตุ…">${esc(e.desc||'')}</textarea></div>
     </div></div>
     <div class="modal-foot">
@@ -789,25 +948,31 @@ function openEventForm(id, presetDate){
     const title = $('#eTitle').value.trim();
     if(!title) return toast('กรุณาใส่ชื่อกิจกรรม','err');
     if(!$('#eDate').value) return toast('กรุณาเลือกวันที่','err');
-    Object.assign(e,{
-      title, cat, date:$('#eDate').value, allday:$('#eAllDay').checked,
-      start:$('#eStart').value||'10:00', end:$('#eEnd').value||'11:00',
+    const allday = $('#eAllDay').checked, start = $('#eStart').value, end = $('#eEnd').value;
+    if (!allday && (!validAttendanceTime(start) || !validAttendanceTime(end) || end <= start))
+      return toast('กรุณาระบุเวลาเริ่มและสิ้นสุดในวันเดียวกัน โดยเวลาสิ้นสุดต้องหลังเวลาเริ่ม', 'warn');
+    const payload = {
+      ...e, title, cat, date:$('#eDate').value, allday,
+      start: allday ? '00:00' : start, end: allday ? '23:59' : end,
       loc:$('#eLoc').value.trim(), project:$('#eProj').value||undefined,
       members:$$('#eMembers .chip.on').map(c=>c.dataset.m),
       desc:$('#eDesc').value.trim(),
-    });
-    if(e.allday){ e.start='00:00'; e.end='23:59'; }
+    };
+    const btn = $('#eSave'); btn.disabled = true;
     if(Remote.on){
-      if(id) Remote.push('/events/'+e.id, 'PATCH', e);
-      else {
-        try { await Remote.req('/events', {method:'POST', body:e}); }
-        catch(err){ toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+err.message,'err'); return; }
-      }
+      try {
+        const result = await Remote.req(id ? '/events/'+id : '/events', {method:id?'PATCH':'POST', body:payload});
+        if (!id && result.id) payload.id = result.id;
+      } catch(err){ toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+err.message,'err'); btn.disabled=false; return; }
     }
+    Object.assign(e, payload);
     if(!id){ Store.data.events.push(e); Store.logActivity(`สร้างกิจกรรม <b>${esc(title)}</b> วันที่ ${fmtD(e.date)}`); }
     Store.ui.calSel = e.date;
+    Store.ui.calCursor = s2d(e.date);
     Store.save(); closeModal();
-    if(Remote.on && !id) await Remote.refreshAll(); else App.refresh();
+    if (Remote.on) {
+      if (!await Remote.refreshAll()) { App.refresh(); toast('บันทึกกิจกรรมแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ กรุณารีเฟรช', 'warn'); return; }
+    } else App.refresh();
     toast(id?'บันทึกกิจกรรมแล้ว':`เพิ่มกิจกรรมลงปฏิทินแล้ว${Remote.on?' (MariaDB ✓)':''}`);
   };
 }
@@ -868,7 +1033,7 @@ function openProjectForm(p){
       <div class="f-group"><label>ลูกค้า</label><select id="pClient">${Store.data.clients.map(c=>`<option value="${esc(c.name)}" ${c.name===clientName?'selected':''}>${esc(c.name)}</option>`).join('')}<option value="Internal — MNG Groups" ${clientName==='Internal — MNG Groups'?'selected':''}>Internal</option></select></div>
       <div class="f-group"><label>งบประมาณ (บาท)</label><input type="number" id="pBudget" value="${isEdit? (p.budget??0) : 100000}" min="0" step="1000"></div>
       <div class="f-group"><label>เริ่ม</label><input type="date" id="pStart" value="${isEdit ? (p.start||todayS()) : todayS()}"></div>
-      <div class="f-group"><label>ส่งมอบ</label><input type="date" id="pEnd" value="${isEdit ? (p.end||d2s(addDays(new Date(),30))) : d2s(addDays(new Date(),30))}"></div>
+      <div class="f-group"><label>ส่งมอบ</label><input type="date" id="pEnd" value="${isEdit ? (p.end||dateAfterDays(30)) : dateAfterDays(30)}"></div>
       ${isEdit ? `<div class="f-group"><label>สถานะ</label><select id="pStatus">
         ${Object.entries(STATUS_META).map(([k,v])=>`<option value="${k}" ${p.status===k?'selected':''}>${v.label}</option>`).join('')}</select></div>
       <div class="f-group full"><label>รายละเอียด/ขอบเขตงาน</label><textarea id="pDesc" rows="2">${esc(p.desc||'')}</textarea></div>` : ''}
@@ -981,7 +1146,7 @@ function openInvoiceForm(inv){
   openModal(`${modalHead(isEdit ? `✏️ แก้ไขใบแจ้งหนี้ ${inv.no}` : 'สร้างใบแจ้งหนี้','ระบบคำนวณ VAT 7% ให้อัตโนมัติ และบันทึกลง MariaDB ทันที')}
     <div class="modal-body"><div class="form-grid">
       <div class="f-group"><label>ลูกค้า</label><select id="iClient">${Store.data.clients.map(c=>`<option value="${c.id}" ${inv.client===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
-      <div class="f-group"><label>ครบกำหนดชำระ</label><input type="date" id="iDue" value="${inv.due || d2s(addDays(new Date(),7))}"></div>
+      <div class="f-group"><label>ครบกำหนดชำระ</label><input type="date" id="iDue" value="${inv.due || dateAfterDays(7)}"></div>
       <div class="f-group full"><label>รายการ *</label><input id="iTitle" value="${esc(inv.title||'')}" placeholder="เช่น ค่าพัฒนางวด 2"></div>
       <div class="f-group"><label>ยอดก่อน VAT (บาท)</label><input type="number" id="iAmount" value="${isEdit ? inv.amount : 50000}" min="0" step="1000"></div>
       <div class="f-group"><label>สถานะ</label><select id="iStatus">

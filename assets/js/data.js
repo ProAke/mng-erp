@@ -155,20 +155,17 @@ window.SEED = (() => {
     if (!t.aiAgentId && aiSamples[t.id]) t.aiAgentId = aiSamples[t.id];
   });
 
-  const td = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  })();
+  const demoClock = BangkokTime.current(), td = demoClock.date;
   // นัดตัวอย่างสำหรับทดลองหน้าห้องประชุม ไม่สร้างลิงก์ประชุมปลอม
-  const demoNow = new Date(), demoMinute = demoNow.getHours() * 60 + demoNow.getMinutes();
+  const [demoHour, demoMin] = demoClock.time.split(':').map(Number);
+  const demoMinute = demoHour * 60 + demoMin;
   const demoTime = n => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
   events.push({ id:'e-demo-office', title:'ประชุมทีมประจำวัน (ตัวอย่าง)', cat:'meeting', date:td,
     start:demoTime(Math.max(0, demoMinute - 15)), end:demoTime(Math.min(1439, demoMinute + 45)),
     members:['u1','u2','u3','u5'], loc:'', desc:'ข้อมูลสาธิต ไม่ใช่การประชุมจริง' });
   const relDate = (offset) => {
-    const d = new Date();
-    d.setDate(d.getDate() + offset);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const [y, m, d] = td.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d + offset)).toISOString().slice(0, 10);
   };
 
   const aiAgents = [
