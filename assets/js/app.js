@@ -14,6 +14,7 @@ const Remote = {
       method: opts.method || 'GET',
       headers: { 'Content-Type':'application/json', ...(this.token?{Authorization:'Bearer '+this.token}:{}) },
       body: opts.body ? JSON.stringify(opts.body) : undefined,
+      signal: opts.signal,
     });
     if(r.status===401 && !opts._skipAuthGuard){ App.forceLogin('เซสชันหมดอายุ — กรณาเข้าสู่ระบบใหม่'); throw new Error('401'); }
     const d = await r.json().catch(()=>({}));
@@ -183,6 +184,7 @@ const App = {
     ai:       { title:'AI Workforce',           sub:'เอเจนต์อัตโนมัติ · คำสั่งงาน · บันทึก Token',  icon:IC.bot,    label:'AI Hub',   render:renderAI,        badge:()=>(Store.data.aiAgents||[]).filter(a=>!a.paused).length },
     chat:     { title:'แชตทีม & #ai-feed',      sub:'ห้องสนทนาทีมและการแจ้งเตือนจาก AI',           icon:IC.chat,   label:'แชตทีม',   render:renderChat },
     hr:       { title:'ลงเวลาเข้างาน & ใบลา',    sub:'เช็กอินรายวัน · WFH · อนุมัติใบลา',           icon:IC.hr,     label:'ลงเวลา',   render:renderHR,        badge:()=>(Store.data.leaves||[]).filter(l=>l.status==='pending').length },
+    office:   { title:'3D Office',               sub:'พื้นที่ทำงานของทีม · ออฟฟิศ · WFH · นัดหมาย', icon:IC.office, label:'ออฟฟิศ',  render:()=>{ if(typeof renderOffice==='function') renderOffice(); else { $('#side').innerHTML=''; $('#view').innerHTML='<div class="office-error" role="alert">ไม่สามารถโหลดหน้าออฟฟิศได้ กรุณารีเฟรชหรือติดต่อผู้ดูแลระบบ</div>'; } } },
     rooms:    { title:'จองห้องประชุม & สตูดิโอ', sub:'ตารางห้องประชุม สตูดิโอ และอุปกรณ์ออกกอง',    icon:IC.room,   label:'จองห้อง',  render:renderRooms },
     finance:  { title:'การเงิน & ใบแจ้งหนี้',   sub:'รายรับ · รอเก็บ · VAT 7%',                    icon:IC.money,  label:'การเงิน',  render:renderFinance },
     team:     { title:'ทีมงาน & ภาระงาน',       sub:'ทีมมนุษย์และ AI · สถานะสด · โหลดงาน',         icon:IC.team,   label:'ทีม',      render:renderTeam },
@@ -233,6 +235,7 @@ const App = {
   },
 
   forceLogin(msg){
+    if(typeof Office3D !== 'undefined') Office3D.destroy();
     Remote.on = false; Remote.token = null; localStorage.removeItem('mng_token');
     $('#appShell').style.display = 'none';
     closeModal();
@@ -291,10 +294,13 @@ const App = {
   refresh(){ this.renderRail(); this.route(); },
 
   route(){
+    // คืน WebGL context, listener และตัวจับเวลาเมื่อเปลี่ยนหน้าหรือ render ใหม่
+    if(typeof Office3D !== 'undefined') Office3D.destroy();
     const name = (location.hash.replace('#/','')||'dashboard').split('?')[0];
     const r = this.routes[name] || this.routes.dashboard;
     Store.ui.route = name;
-    $('#appShell').classList.toggle('project-feature-route', name==='project-flow' || name==='docs');
+    $('#appShell').classList.toggle('project-feature-route', name==='project-flow' || name==='docs' || name==='office' || name==='hr');
+    $('#appShell').classList.toggle('hr-route', name==='hr');
     // reset view scroll mode
     const view = $('#view');
     view.classList.remove('no-scroll');
@@ -309,7 +315,7 @@ const App = {
     const rail = $('#rail');
     const cur = Store.ui.route;
     const coreOrder = ['dashboard','calendar','tasks','projects','project-flow','finance','team','clients','reports'];
-    const osOrder   = ['ai','chat','hr','rooms','docs'];
+    const osOrder   = ['office','ai','chat','hr','rooms','docs'];
     const btnHtml = k => {
       const r = this.routes[k];
       const b = r.badge ? r.badge() : 0;
@@ -519,6 +525,7 @@ const App = {
 
 /* ---------- logout ---------- */
 async function doLogout(){
+  if(typeof Office3D !== 'undefined') Office3D.destroy();
   const tok = Remote.token;
   // แจ้งเซิร์ฟเวอร์ลบ session ก่อน (รอให้จบ — server เคลียร์ก่อน client)
   if(tok){
@@ -765,7 +772,7 @@ function openEventForm(id, presetDate){
       <div class="f-group"><label>&nbsp;</label><label style="display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer"><input type="checkbox" id="eAllDay" ${e.allday?'checked':''} style="width:16px;height:16px;accent-color:var(--purple)"> ตลอดทั้งวัน</label></div>
       <div class="f-group"><label>เวลาเริ่ม</label><input type="time" id="eStart" value="${e.start||'10:00'}"></div>
       <div class="f-group"><label>เวลาสิ้นสุด</label><input type="time" id="eEnd" value="${e.end||'11:00'}"></div>
-      <div class="f-group"><label>สถานที่ / ลิงก์</label><input id="eLoc" value="${esc(e.loc||'')}" placeholder="Google Meet / ห้องประชุม 1"></div>
+      <div class="f-group"><label>สถานที่ / ลิงก์ประชุม</label><input id="eLoc" value="${esc(e.loc||'')}" placeholder="ห้องประชุม หรือ https://meet.google.com/..."><small style="color:var(--muted)">3D Office เปิดลิงก์ HTTPS ของ Google Meet หรือ Zoom แยกต่างหาก</small></div>
       <div class="f-group"><label>โปรเจกต์ (ถ้ามี)</label><select id="eProj"><option value="">— ไม่ระบุ —</option>${Store.data.projects.map(p=>`<option value="${p.id}" ${p.id===e.project?'selected':''}>${esc(p.short)}</option>`).join('')}</select></div>
       <div class="f-group full"><label>ผู้เข้าร่วม</label><div class="chips" id="eMembers">
         ${Store.data.team.map(u=>`<span class="chip ${e.members.includes(u.id)?'on':''}" data-m="${u.id}">${avatar(u)} ${esc(u.name)}</span>`).join('')}</div></div>
@@ -1265,6 +1272,7 @@ function openTeamForm(u){
       <div class="f-group"><label>ชื่อ-สกุล *</label><input id="tmName" value="${esc(u.name||'')}" placeholder="เช่น น้ำฝน แสงจันทร์"></div>
       <div class="f-group"><label>ชื่อเล่น (Nickname)</label><input id="tmNick" value="${esc(u.nickname||'')}" placeholder="เช่น ฝน, เอก"></div>
       <div class="f-group"><label>ตำแหน่ง/สายงาน</label><input id="tmRole" value="${esc(u.role||'')}" placeholder="เช่น Frontend Dev"></div>
+      <div class="f-group"><label>แผนก (สำหรับ 3D Office)</label><input id="tmDepartment" list="tmDepartments" maxlength="80" value="${esc(u.department||'')}" placeholder="เช่น Creative หรือ Development"><datalist id="tmDepartments">${[...new Set((Store.data.team||[]).map(m=>m.department).filter(Boolean))].map(d=>`<option value="${esc(d)}"></option>`).join('')}</datalist><small style="color:var(--muted)">เว้นว่างหากยังไม่ระบุ · ใช้ชื่อเดียวกันเพื่อจัดให้อยู่แผนกเดียวกัน</small></div>
       <div class="f-group"><label>เบอร์โทร</label><input id="tmPhone" value="${esc(u.phone||'')}"></div>
       <div class="f-group full"><label>ทักษะ (Skills คั่นด้วยจุลภาค ,)</label><input id="tmSkills" value="${esc((u.skills||[]).join(', '))}" placeholder="เช่น Node.js, UX/UI, QA"></div>
       <div class="f-group full"><label>อีเมล (ผูกบัญชี login ให้เห็นงานทั้ง Hub)</label><input id="tmEmail" type="email" value="${esc(u.email||'')}" placeholder="name@mng.co.th"></div>
@@ -1284,6 +1292,7 @@ function openTeamForm(u){
       name:$('#tmName').value.trim(),
       nickname:$('#tmNick').value.trim(),
       role:$('#tmRole').value.trim(),
+      department:$('#tmDepartment').value.trim().replace(/\s+/g, ' '),
       phone:$('#tmPhone').value.trim(),
       email:$('#tmEmail').value.trim(),
       skills:$('#tmSkills').value.split(',').map(s=>s.trim()).filter(Boolean),

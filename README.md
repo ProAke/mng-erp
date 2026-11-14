@@ -142,7 +142,8 @@ mng-erp/
 
 - Layout ตามภาพ reference: icon rail + แถบตัวกรอง (chips มีปุ่ม ×) + การ์ด gradient
 - ฟอนต์ Prompt/Kanit (Google Fonts, มี fallback ภาษาไทยครบ)
-- Zero-dependency: ไม่มี framework, ไม่มี chart library — SVG เขียนเองทั้งหมด
+- UI คง Vanilla JS SPA และ SVG charts เขียนเอง; หน้า 3D Office โหลด Three.js แบบ local เฉพาะเมื่อเปิดหน้า (MIT license อยู่ใน `assets/vendor/THREE-LICENSE.txt`)
+- คู่มือหน้าออฟฟิศ แผนก เช็กอิน และนัดประชุม: `docs/3D-OFFICE.md`
 
 ---
 

@@ -35,7 +35,7 @@ function renderDashboard(){
 
   /* ----- side ----- */
   const openTasks = Store.data.tasks.filter(t=>t.status!=='done');
-  const ckToday = Store.data.checkins.filter(c=>c.date===td).length;
+  const ckToday = new Set(Store.data.checkins.filter(c=>c.date===attendanceToday()).map(c=>c.memberId)).size;
   const bkToday = Store.data.bookings.filter(b=>b.date===td).length;
 
   side.innerHTML =
@@ -806,9 +806,9 @@ function renderTeam(){
   $$('[data-ttab]', side).forEach(el => el.onclick = () => { Store.ui.teamTab = el.dataset.ttab; App.refresh(); });
 
   const q=(Store.ui.q.team||'').toLowerCase();
-  const _lead = Remote.on && ['super_admin','admin','manager'].includes(Remote.user?.role);
+  const _lead = !Remote.on || ['super_admin','admin','manager'].includes(Remote.user?.role);
   const ROLE_TH_T = { super_admin:'Super Admin', admin:'Admin', manager:'Manager', user:'User', viewer:'Viewer' };
-  const humanList = tab==='ai' ? [] : Store.data.team.filter(u=>!q||`${u.name} ${u.nickname||''} ${u.role} ${(u.skills||[]).join(' ')}`.toLowerCase().includes(q));
+  const humanList = tab==='ai' ? [] : Store.data.team.filter(u=>!q||`${u.name} ${u.nickname||''} ${u.role} ${u.department||''} ${(u.skills||[]).join(' ')}`.toLowerCase().includes(q));
   const aiList = tab==='human' ? [] : Store.data.aiAgents.filter(a=>!q||`${a.code} ${a.name} ${a.role} ${a.model} ${(a.skills||[]).join(' ')}`.toLowerCase().includes(q));
 
   view.innerHTML = `<div class="team-grid">${humanList.map(u=>{
@@ -821,7 +821,7 @@ function renderTeam(){
       <div style="display:flex;justify-content:flex-end;margin-bottom:-10px">${presenceBadge(u.presence||'online')}</div>
       <div class="av av-xl" style="background:${u.color};display:flex;align-items:center;justify-content:center;color:#fff">${initials(u.name)}</div>
       <b class="name">${esc(u.name)}${u.nickname?` <small style="color:var(--muted);font-weight:500">(${esc(u.nickname)})</small>`:''}${u.me?' <span class="badge b-purple" style="font-size:9px">คุณ</span>':''}</b>
-      <div class="role">${esc(u.role)}</div>
+      <div class="role">${esc(u.role)} · ${esc(u.department || 'ยังไม่ระบุแผนก')}</div>
       ${(u.skills&&u.skills.length)?`<div class="skill-row" style="justify-content:center;margin:6px 0">${u.skills.map(s=>`<span class="skill-chip">${esc(s)}</span>`).join('')}</div>`:''}
       <div class="t-stats"><div><b>${open.length}</b><small>งานคงค้าง</small></div><div><b>${done}</b><small>ปิดแล้ว</small></div><div><b>${Math.round(hrs)}</b><small>ชม.เหลือ</small></div></div>
       <div style="text-align:left;font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between"><span>ภาระงาน (${Math.round(hrs)}/40 ชม.)</span><b style="color:${col}">${pct}%</b></div>

@@ -11,6 +11,9 @@ window.SEED = (() => {
     { id:'u5', name:'Art Pongsakorn',nickname:'อาร์ต', presence:'online',  skills:['MariaDB','API','Cron'],     role:'Back-end Dev',   color:'#22C793', email:'art@mnggroups.co',    phone:'095-888-2211' },
     { id:'u6', name:'Fah Chanya',    nickname:'ฟ้า',   presence:'away',    skills:['QA','E2E','UAT'],           role:'QA Tester',      color:'#FFB020', email:'fah@mnggroups.co',    phone:'097-333-4455' },
   ];
+  // ข้อมูลแผนกชุดสาธิตเท่านั้น — ข้อมูลจริงกำหนดโดยผู้ดูแลจากหน้าทีม
+  const demoDepartments = ['Management', 'Creative', 'Development', 'Development', 'Development', 'Quality Assurance'];
+  team.forEach((member, i) => { member.department = demoDepartments[i]; });
 
   const projects = [
     { id:'p1', code:'CAL', name:'Calmat — Chat โทรศัพท์/Facebook/LINE', short:'Calmat', client:'Calmat Co., Ltd.', grad:'g-blue',
@@ -156,6 +159,12 @@ window.SEED = (() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   })();
+  // นัดตัวอย่างสำหรับทดลองหน้าห้องประชุม ไม่สร้างลิงก์ประชุมปลอม
+  const demoNow = new Date(), demoMinute = demoNow.getHours() * 60 + demoNow.getMinutes();
+  const demoTime = n => `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`;
+  events.push({ id:'e-demo-office', title:'ประชุมทีมประจำวัน (ตัวอย่าง)', cat:'meeting', date:td,
+    start:demoTime(Math.max(0, demoMinute - 15)), end:demoTime(Math.min(1439, demoMinute + 45)),
+    members:['u1','u2','u3','u5'], loc:'', desc:'ข้อมูลสาธิต ไม่ใช่การประชุมจริง' });
   const relDate = (offset) => {
     const d = new Date();
     d.setDate(d.getDate() + offset);
@@ -224,11 +233,11 @@ window.SEED = (() => {
   ];
 
   const checkins = [
-    { id:'ck1', memberId:'u1', date:td,         clockIn:'09:02', clockOut:'',      mode:'office', note:'เข้าออฟฟิศ ประชุมเช้า' },
-    { id:'ck2', memberId:'u2', date:td,         clockIn:'09:15', clockOut:'',      mode:'wfh',    note:'WFH ปั่นงานดีไซน์การ์ดข่าว LoveIT' },
-    { id:'ck3', memberId:'u3', date:td,         clockIn:'08:54', clockOut:'',      mode:'office', note:'เตรียมเทสต์ระบบ LINE OA' },
-    { id:'ck4', memberId:'u4', date:td,         clockIn:'09:22', clockOut:'',      mode:'office', note:'ทำหน้า UI 29 หน้า' },
-    { id:'ck5', memberId:'u5', date:td,         clockIn:'09:10', clockOut:'',      mode:'wfh',    note:'ดูแลเซิร์ฟเวอร์และฐานข้อมูล' },
+    { id:'ck1', memberId:'u1', date:td,         clockIn:demoTime(Math.max(0,demoMinute-30)), clockOut:'', mode:'office', note:'เข้าออฟฟิศ ประชุมเช้า' },
+    { id:'ck2', memberId:'u2', date:td,         clockIn:demoTime(Math.max(0,demoMinute-25)), clockOut:'', mode:'wfh',    note:'WFH ปั่นงานดีไซน์การ์ดข่าว LoveIT' },
+    { id:'ck3', memberId:'u3', date:td,         clockIn:demoTime(Math.max(0,demoMinute-35)), clockOut:'', mode:'office', note:'เตรียมเทสต์ระบบ LINE OA' },
+    { id:'ck4', memberId:'u4', date:td,         clockIn:demoTime(Math.max(0,demoMinute-20)), clockOut:'', mode:'office', note:'ทำหน้า UI 29 หน้า' },
+    { id:'ck5', memberId:'u5', date:td,         clockIn:demoTime(Math.max(0,demoMinute-22)), clockOut:'', mode:'wfh',    note:'ดูแลเซิร์ฟเวอร์และฐานข้อมูล' },
     { id:'ck6', memberId:'u1', date:relDate(-1),clockIn:'08:58', clockOut:'18:15', mode:'office', note:'สรุปแผน Sprint' },
     { id:'ck7', memberId:'u1', date:relDate(-2),clockIn:'09:04', clockOut:'18:30', mode:'wfh',    note:'รีวิวงานลูกค้า' },
   ];

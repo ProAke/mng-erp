@@ -51,6 +51,14 @@ function nowHM() {
   return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
 }
 
+// เช็กอินจริงใช้วันเวลาไทยเหมือน API; โหมดสาธิตใช้เวลาของอุปกรณ์
+function attendanceToday() {
+  return Remote.on ? new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Bangkok', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date()) : todayS();
+}
+function validAttendanceTime(value) {
+  return typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+}
+
 function meMember() {
   return Store.data.team.find(u => u.me) || Store.data.team[0] || { id: 'u1', name: 'Worapot', presence: 'online', color: '#FF8A5C' };
 }
@@ -196,6 +204,7 @@ function openCommandPalette(initialQ = '') {
       ['calendar',  '📆 ปฏิทินกลางเต็มจอ (Calendar)'],
       ['tasks',     '✅ งาน & บอร์ด Kanban (Tasks)'],
       ['projects',  '📁 โปรเจกต์ทั้งหมด (Projects)'],
+      ['office',    '🏢 3D Office ออฟฟิศและ WFH'],
       ['ai',        '🤖 ศูนย์ควบคุม AI Workforce (AI Hub)'],
       ['chat',      '💬 แชตทีม & #ai-feed (Team Chat)'],
       ['hr',        '🌿 เช็กอินเข้างาน & ใบลา (HR & Leave)'],
@@ -1677,15 +1686,19 @@ const LEAVE_META = {
 function renderHR() {
   ensureAgencyData();
   const view = $('#view'), side = $('#side');
-  const td = todayS();
+  const td = attendanceToday();
   const me = meMember();
   const checkins = Store.data.checkins;
   const leaves = Store.data.leaves;
   const flt = Store.ui.hrFilter || 'all';
 
-  const todayCheckins = checkins.filter(c => c.date === td);
-  const myToday = todayCheckins.find(c => c.memberId === me.id);
-  const myStreak = Math.max(1, checkins.filter(c => c.memberId === me.id).length);
+  // bootstrap เรียงรายการใหม่ก่อน และโหมดสาธิตเพิ่มรายการใหม่ไว้ต้นอาร์เรย์
+  const todayRecords = checkins.filter(c => c.date === td);
+  const latestByMember = new Map();
+  todayRecords.forEach(c => { if (!latestByMember.has(c.memberId)) latestByMember.set(c.memberId, c); });
+  const todayCheckins = [...latestByMember.values()];
+  const myToday = latestByMember.get(me.id);
+  const myStreak = Math.max(1, new Set(checkins.filter(c => c.memberId === me.id).map(c => c.date)).size);
 
   const myApproved = leaves.filter(l => l.memberId === me.id && l.status === 'approved');
   const usedByKind = k => myApproved.filter(l => l.kind === k).reduce((s, l) => s + (+l.days || 1), 0);
@@ -1704,7 +1717,12 @@ function renderHR() {
           </div>
           ${!myToday.clockOut ? `
             <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="doClockOut()">👋 ลงเวลาเลิกงานวันนี้</button>
-          ` : `<span class="badge b-green">บันทึกเวลาครบแล้ววันนี้ ✅</span>`}
+          ` : `<span class="badge b-green">บันทึกเวลาออกแล้ว ✅</span>
+            <div style="font-size:11px;color:var(--muted);margin:10px 0 6px">กลับมาทำงานอีกครั้ง? เช็กอินรอบใหม่โดยเก็บเวลาเดิมไว้</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <button class="btn btn-primary btn-sm" style="justify-content:center" data-hr-reclock="office" onclick="doClockIn('office')">🏢 ออฟฟิศ</button>
+              <button class="btn btn-ghost btn-sm" style="justify-content:center" data-hr-reclock="wfh" onclick="doClockIn('wfh')">🏠 WFH</button>
+            </div>`}
         ` : `
           <div style="font-size:12px;color:var(--muted);margin-bottom:10px">ยังไม่ได้เช็กอินวันนี้ เลือกรูปแบบเข้างาน:</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -1745,8 +1763,8 @@ function renderHR() {
 
   $$('[data-hrflt]', side).forEach(el => el.onclick = () => { Store.ui.hrFilter = el.dataset.hrflt; App.refresh(); });
 
-  const officeCnt = todayCheckins.filter(c => c.mode === 'office').length;
-  const wfhCnt = todayCheckins.filter(c => c.mode === 'wfh').length;
+  const officeCnt = new Set(todayRecords.filter(c => c.mode === 'office').map(c => c.memberId)).size;
+  const wfhCnt = new Set(todayRecords.filter(c => c.mode === 'wfh').map(c => c.memberId)).size;
   const pendingLeaves = leaves.filter(l => l.status === 'pending').length;
 
   const shownLeaves = leaves.filter(l => {
@@ -1768,6 +1786,7 @@ function renderHR() {
       </div>
     </div>
 
+    <div class="hr-mobile-side">${side.innerHTML}</div>
     <div class="kpi-grid">
       ${pdKpi({ icon: IC.users, grad: 'var(--grad-mint)', num: `${todayCheckins.length}/${Store.data.team.length}`, label: 'เช็กอินเข้างานวันนี้', pill: `ออฟฟิศ ${officeCnt}`, pillCls: 'k-up' })}
       ${pdKpi({ icon: IC.dash, grad: 'var(--grad-cyan)', num: wfhCnt, label: 'ปฏิบัติงาน WFH วันนี้', pill: 'Hybrid', pillCls: 'k-violet' })}
@@ -1836,23 +1855,29 @@ function renderHR() {
       </div>
     </div>
   `;
+  $$('[data-hrflt]', view).forEach(el => el.onclick = () => { Store.ui.hrFilter = el.dataset.hrflt; App.refresh(); });
 }
 
 async function doClockIn(mode = 'office') {
   ensureAgencyData();
+  if (!['office', 'wfh'].includes(mode)) { toast('รูปแบบเช็กอินต้องเป็นออฟฟิศหรือ WFH', 'warn'); return; }
   const me = meMember();
-  const td = todayS();
-  const t = nowHM();
+  const td = attendanceToday();
+  let t = nowHM();
 
   if (Remote.on) {
     try {
-      await Remote.req('/checkins/clock', { method: 'POST', body: { memberId: me.id, mode, note: mode === 'wfh' ? 'ปฏิบัติงาน WFH' : 'เข้าออฟฟิศ' } });
+      const result = await Remote.req('/checkins/clock', { method: 'POST', body: { memberId: me.id, mode, note: mode === 'wfh' ? 'ปฏิบัติงาน WFH' : 'เข้าออฟฟิศ' } });
+      t = result.clockIn || t;
       await Remote.refreshAll();
     } catch (e) { toast(e.message, 'err'); return; }
   } else {
     const ex = Store.data.checkins.find(c => c.memberId === me.id && c.date === td);
-    if (ex) { ex.mode = mode; ex.clockIn = ex.clockIn || t; }
-    else Store.data.checkins.unshift({ id: uid('ck'), memberId: me.id, date: td, clockIn: t, clockOut: '', mode, note: '' });
+    if (ex?.clockIn && !validAttendanceTime(ex.clockIn)) { toast('เวลาเช็กอินเดิมไม่ถูกต้อง กรุณาตรวจสอบข้อมูล', 'warn'); return; }
+    if (ex?.clockOut && (!validAttendanceTime(ex.clockOut) || ex.clockOut < (ex.clockIn || '00:00'))) { toast('เวลาออกเดิมไม่ถูกต้อง กรุณาตรวจสอบข้อมูล', 'warn'); return; }
+    if (ex?.clockOut && t < ex.clockOut) { toast('เวลาเช็กอินรอบใหม่ก่อนเวลาออกเดิม กรุณาตรวจสอบเวลาอุปกรณ์', 'warn'); return; }
+    if (ex && !ex.clockOut) { ex.mode = mode; ex.clockIn = ex.clockIn || t; }
+    else Store.data.checkins.unshift({ id: uid('ck-local-'), memberId: me.id, date: td, clockIn: t, clockOut: '', mode, note: '' });
     me.presence = 'working';
     Store.logActivity(`⏱ <b>${esc(me.name)}</b> เช็กอินเข้างาน (${mode === 'wfh' ? 'WFH' : 'ออฟฟิศ'}) เวลา ${t}`);
     Store.save();
@@ -1865,17 +1890,22 @@ async function doClockIn(mode = 'office') {
 async function doClockOut() {
   ensureAgencyData();
   const me = meMember();
-  const td = todayS();
-  const t = nowHM();
+  const td = attendanceToday();
+  let t = nowHM();
 
   if (Remote.on) {
     try {
-      await Remote.req('/checkins/clock-out', { method: 'POST', body: { memberId: me.id } });
+      const result = await Remote.req('/checkins/clock-out', { method: 'POST', body: { memberId: me.id } });
+      t = result.clockOut || t;
       await Remote.refreshAll();
     } catch (e) { toast(e.message, 'err'); return; }
   } else {
     const ex = Store.data.checkins.find(c => c.memberId === me.id && c.date === td);
-    if (ex) ex.clockOut = t;
+    if (!ex) { toast('ยังไม่มีรายการเช็กอินสำหรับวันนี้', 'warn'); return; }
+    if (!validAttendanceTime(ex.clockIn) || (ex.clockOut && (!validAttendanceTime(ex.clockOut) || ex.clockOut < ex.clockIn))) { toast('เวลาเช็กอินเดิมไม่ถูกต้อง กรุณาตรวจสอบข้อมูล', 'warn'); return; }
+    if (!ex.clockOut && t < ex.clockIn) { toast('เวลาออกก่อนเวลาเข้า กรุณาตรวจสอบเวลาอุปกรณ์', 'warn'); return; }
+    if (!ex.clockOut) ex.clockOut = t;
+    else t = ex.clockOut;
     me.presence = 'away';
     Store.save();
   }
