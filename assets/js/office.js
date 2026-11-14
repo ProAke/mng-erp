@@ -62,9 +62,10 @@ const Office3D = {
   },
 
   demoSnapshot() {
-    // ชุดสาธิตใช้วัน/เวลาของอุปกรณ์เดียวกับหน้าลงเวลาในโหมดสาธิต
+    // ชุดสาธิตใช้ instant ของอุปกรณ์ แต่แปลงแสดงเป็นเวลาไทยเหมือนหน้าลงเวลา
+    const instant = BangkokTime.now(), clock = BangkokTime.fromInstant(instant);
     return {
-      date: todayS(), time: nowHM(), generatedAt: new Date().toISOString(), timezone: 'local-demo',
+      date: clock.date, time: clock.time, generatedAt: instant.toISOString(), timezone: clock.timezone,
       team: Store.data.team || [], checkins: Store.data.checkins || [], events: Store.data.events || [],
     };
   },
@@ -214,7 +215,7 @@ const Office3D = {
 
   syncText() {
     if (!this.snapshot) return this.failed ? 'เชื่อมต่อไม่ได้ · ยังไม่มีข้อมูล' : 'กำลังโหลดข้อมูล';
-    if (this.snapshotSource !== 'remote') return `สาธิต/ออฟไลน์ · เวลาอุปกรณ์ ${fmtD(this.snapshot.date)} ${this.snapshot.time} น. · ข้อมูลในเบราว์เซอร์อาจเก่า`;
+    if (this.snapshotSource !== 'remote') return `สาธิต/ออฟไลน์ · เวลาไทยจากอุปกรณ์ ${fmtD(this.snapshot.date)} ${this.snapshot.time} น. · ข้อมูลในเบราว์เซอร์อาจเก่า`;
     return `MariaDB · เวลาไทย · ข้อมูล ณ ${fmtD(this.snapshot.date)} ${this.snapshot.time} น.${this.failed ? ' · อาจไม่เป็นปัจจุบัน' : ''}`;
   },
   updateSyncText() {

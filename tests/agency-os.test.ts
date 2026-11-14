@@ -36,7 +36,7 @@ describe('MNG ERP (ci-workflow base) + Agency OS (i.playdigital.co.th) integrati
     // Check where boot happens in app.js
     ctx = dom.getInternalVMContext()
     for (const rel of [
-      'assets/js/data.js',
+      'assets/js/bangkok-time.js', 'assets/js/data.js',
       'assets/js/ui.js',
       'assets/js/views.js',
       'assets/js/agency-os.js',

@@ -4,6 +4,7 @@ const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
 const { workPool } = require('./db');
+const BangkokTime = require('../assets/js/bangkok-time');
 
 const router = express.Router();
 const J = (x, fb) => { if (x == null) return fb; if (typeof x !== 'string') return x; try { return JSON.parse(x); } catch { return fb; } };
@@ -15,16 +16,8 @@ const UPLOADS_DIR = path.join(__dirname, '..', 'uploads');
 const SAFE_EXT_RE = /^\.(png|jpe?g|gif|webp|pdf|txt|csv|json|zip|docx?|xlsx?|pptx?|mp4|mp3)$/i;
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // 8 MB
 
-function bkkNow() {
-  const now = new Date();
-  const date = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(now);
-  const time = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false,
-  }).format(now);
-  return { date, time };
-}
+// วันและเวลาลงเวลาอ่านจาก instant เดียวของเซิร์ฟเวอร์ (Asia/Bangkok)
+const bkkNow = () => BangkokTime.fromInstant(new Date());
 
 async function resolveActorTeamId(req) {
   if (!req?.user) return 1;
@@ -611,7 +604,7 @@ router.post(['/checkins/clock', '/checkins/in'], async (req, res) => {
       return { clockIn };
     });
     await logActivity(`⏱ ลงเวลาเข้างาน (${mode === 'wfh' ? 'WFH' : 'เข้าออฟฟิศ'}) เวลา <b>${escS(result.clockIn)}</b>`, req);
-    res.json({ ok: true, clockIn: result.clockIn });
+    res.json({ ok: true, date: today, clockIn: result.clockIn, timezone: BangkokTime.timezone });
   } catch (e) { sendCheckinError(res, e); }
 });
 
@@ -638,7 +631,7 @@ router.post(['/checkins/clock-out', '/checkins/out'], async (req, res) => {
       return { clockOut: time, alreadyClosed: false };
     });
     if (!result.alreadyClosed) await logActivity(`👋 ลงเวลาออกงาน เวลา <b>${escS(result.clockOut)}</b>`, req);
-    res.json({ ok: true, clockOut: result.clockOut });
+    res.json({ ok: true, date: today, clockOut: result.clockOut, timezone: BangkokTime.timezone });
   } catch (e) { sendCheckinError(res, e); }
 });
 

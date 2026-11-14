@@ -10,9 +10,22 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const express = require('express');
 const { authPool, workPool } = require('./db');
+const BangkokTime = require('../assets/js/bangkok-time');
 
 const DEFAULT_POOL_SIZE = 20;
 const DEFAULT_TOKEN_DAYS = parseInt(process.env.API_TOKEN_DAYS || '30', 10);
+
+// TIMESTAMP จาก pool เป็นสตริงเวลาไทยตาม session; API ส่ง instant ISO ที่มี Z
+// เพื่อคงรูปแบบที่ client Hermes ใช้อยู่โดยไม่ parse ตาม timezone ของเครื่อง Node
+function tokenTimestampIso(value) {
+  if (value == null) return null;
+  const text = value instanceof Date ? value.toISOString() : String(value);
+  const bkk = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d{1,6})?$/.test(text);
+  if (!bkk && !/(?:Z|[+-]\d{2}:\d{2})$/.test(text)) throw new Error('invalid_token_timestamp');
+  const ms = Date.parse(bkk ? text.replace(' ', 'T') + '+07:00' : text);
+  if (!Number.isFinite(ms)) throw new Error('invalid_token_timestamp');
+  return new Date(ms).toISOString();
+}
 
 function deriveKey() {
   const secret = process.env.API_TOKEN_SECRET
@@ -103,7 +116,7 @@ async function ensureTokenPool(userId, opts = {}) {
   const days = Math.min(365, Math.max(1, parseInt(opts.days || DEFAULT_TOKEN_DAYS, 10) || DEFAULT_TOKEN_DAYS));
 
   const [existingRows] = await workPool.query(
-    'SELECT * FROM erp_api_tokens WHERE user_id = ? ORDER BY slot ASC',
+    'SELECT *, (expires_at > NOW()) AS is_active FROM erp_api_tokens WHERE user_id = ? ORDER BY slot ASC',
     [userId]
   );
   const bySlot = new Map(existingRows.map(r => [Number(r.slot), r]));
@@ -115,11 +128,12 @@ async function ensureTokenPool(userId, opts = {}) {
   }
 
   const outTokens = [];
-  const nowMs = Date.now();
+  let generated = false;
 
   for (let slot = 1; slot <= poolSize; slot++) {
     const cur = bySlot.get(slot);
-    const expired = cur ? (new Date(cur.expires_at).getTime() <= nowMs) : true;
+    // ใช้เงื่อนไขเดียวกับ SQL ที่ตรวจ token จริง ไม่ parse สตริงเวลาไร้ timezone ใน Node
+    const expired = !cur || Number(cur.is_active) !== 1;
     const rawExisting = cur && !cur.revoked && !expired ? decryptToken(cur.token_enc) : null;
     const mustRegen = !cur || cur.revoked || expired || !rawExisting || (rotate && (!targetSlot || targetSlot === slot));
 
@@ -129,13 +143,14 @@ async function ensureTokenPool(userId, opts = {}) {
         token: rawExisting,
         preview: cur.token_preview,
         useCount: Number(cur.use_count) || 0,
-        lastUsedAt: cur.last_used_at || null,
-        expiresAt: cur.expires_at,
+        lastUsedAt: tokenTimestampIso(cur.last_used_at),
+        expiresAt: tokenTimestampIso(cur.expires_at),
       });
       continue;
     }
 
     const gen = generateSlotToken(slot);
+    generated = true;
     await workPool.query(
       `INSERT INTO erp_api_tokens
          (user_id, slot, token_hash, token_enc, token_preview, label, strict_dual_auth, use_count, last_used_at, revoked, expires_at)
@@ -157,10 +172,19 @@ async function ensureTokenPool(userId, opts = {}) {
       preview: gen.preview,
       useCount: 0,
       lastUsedAt: null,
-      expiresAt: new Date(nowMs + days * 86400 * 1000).toISOString().slice(0, 19).replace('T', ' '),
+      expiresAt: null,
     });
   }
 
+  if (generated) {
+    // ส่ง instant ของวันหมดอายุที่ฐานข้อมูลบันทึกจริง ไม่ประมาณจากนาฬิกา Node
+    const [saved] = await workPool.query('SELECT slot, expires_at FROM erp_api_tokens WHERE user_id = ? ORDER BY slot ASC', [userId]);
+    const savedBySlot = new Map(saved.map(r => [Number(r.slot), r.expires_at]));
+    for (const token of outTokens) {
+      if (!savedBySlot.has(token.slot)) throw new Error('token_pool_not_persisted');
+      token.expiresAt = tokenTimestampIso(savedBySlot.get(token.slot));
+    }
+  }
   return { poolSize, strictDualAuth: !!strictDual, tokens: outTokens };
 }
 
@@ -293,7 +317,8 @@ router.get('/me', (req, res) => {
 router.get('/tokens', async (req, res) => {
   try {
     const [rows] = await workPool.query(
-      `SELECT slot, token_preview, label, strict_dual_auth, use_count, last_used_at, last_agent, revoked, expires_at, created_at
+      `SELECT slot, token_preview, label, strict_dual_auth, use_count, last_used_at, last_agent, revoked, expires_at, created_at,
+              (expires_at > NOW()) AS is_active
        FROM erp_api_tokens WHERE user_id = ? ORDER BY slot ASC`,
       [req.user.user_id]
     );
@@ -301,7 +326,7 @@ router.get('/tokens', async (req, res) => {
     res.json({
       ok: true,
       poolTarget: DEFAULT_POOL_SIZE,
-      activeCount: rows.filter(r => !r.revoked && new Date(r.expires_at).getTime() > Date.now()).length,
+      activeCount: rows.filter(r => !r.revoked && Number(r.is_active) === 1).length,
       strictDualAuth: rows.length ? !!rows[0].strict_dual_auth : false,
       totalUses,
       slots: rows.map(r => ({
@@ -309,10 +334,10 @@ router.get('/tokens', async (req, res) => {
         preview: r.token_preview,
         label: r.label || 'hermes-pool',
         useCount: Number(r.use_count) || 0,
-        lastUsedAt: r.last_used_at || null,
+        lastUsedAt: tokenTimestampIso(r.last_used_at),
         lastAgent: r.last_agent || null,
         revoked: !!r.revoked,
-        expiresAt: r.expires_at,
+        expiresAt: tokenTimestampIso(r.expires_at),
       })),
     });
   } catch (e) {
@@ -386,9 +411,7 @@ router.delete('/tokens', async (req, res) => {
 /* GET /api/hermes/overview — Compact AI-friendly live workspace snapshot from MariaDB */
 router.get('/overview', async (req, res) => {
   try {
-    const today = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',
-    }).format(new Date());
+    const today = BangkokTime.fromInstant(new Date()).date;
 
     const [projs] = await workPool.query(
       'SELECT id, title, erp_code, erp_status, erp_progress, erp_end FROM projects WHERE COALESCE(erp_archived,0)=0 ORDER BY id'

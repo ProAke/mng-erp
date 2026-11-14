@@ -1,3 +1,5 @@
+> **หมายเหตุ:** `web/` เป็น dashboard scaffold สำหรับทดลองแยกต่างหาก ไม่ใช่ frontend ที่ Express ให้บริการหรือใช้แทน Vanilla JS SPA หลัก รายการครบกำหนดใช้วัน Asia/Bangkok และสอบเทียบกับ `/api/clock`; หากเทียบครั้งแรกไม่ได้จะระบุว่าใช้เวลาอุปกรณ์ ดู [คู่มือเวลาไทย](../docs/TIMEZONE.md)
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

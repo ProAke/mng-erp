@@ -3,6 +3,7 @@
    - Enriches the REAL projects/tasks with erp_* metadata (additive only)
    - Guarded by erp_settings seedVersion — safe to run repeatedly         */
 
+const BangkokTime = require('../assets/js/bangkok-time');
 const SEED_VERSION = 5;
 
 const TEAM = [
@@ -151,7 +152,7 @@ const ACTIVITY = [
   [5,'ปิดงาน <b>Chef-jeed v2 deploy</b> — production verified'],
 ];
 
-const bkkDate = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+const bkkDate = () => BangkokTime.fromInstant(new Date()).date;
 
 async function seed(pool) {
   const conn = await pool.getConnection();
@@ -259,20 +260,8 @@ async function seed(pool) {
       console.log('[seed] erp_rooms:', ROOMS.length);
     }
 
-    // HR Check-ins + Leaves
-    [rows] = await conn.query('SELECT COUNT(*) c FROM erp_checkins');
-    if (!rows[0].c) {
-      const td = bkkDate();
-      await conn.query(
-        `INSERT INTO erp_checkins (member_id, date, clock_in, clock_out, mode, note) VALUES
-         ('u1', ?, '09:05', NULL, 'office', 'เข้าออฟฟิศ ประชุมเช้า'),
-         ('u2', ?, '09:18', NULL, 'wfh', 'WFH ปั่นงานดีไซน์ LoveIT'),
-         ('u3', ?, '08:55', NULL, 'office', 'เตรียมเทสต์ระบบ LINE OA'),
-         ('u4', ?, '09:25', NULL, 'office', 'ทำหน้า UI 29 หน้า'),
-         ('u5', ?, '09:12', NULL, 'wfh', 'ดูแลเซิร์ฟเวอร์และฐานข้อมูล')`,
-        [td, td, td, td, td]
-      );
-    }
+    // ห้าม seed เวลาเข้างานตัวอย่างลงฐานข้อมูลจริง แม้ตารางยังว่าง
+    // ข้อมูลสาธิตอยู่เฉพาะใน assets/js/data.js; ไม่ลบรายการเดิมที่แยกจากข้อมูลจริงไม่ได้
     [rows] = await conn.query('SELECT COUNT(*) c FROM erp_leaves');
     if (!rows[0].c) {
       await conn.query(

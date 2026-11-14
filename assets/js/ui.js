@@ -15,19 +15,26 @@ const TH_MONTHS_S = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.
 const TH_DOW      = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
 const TH_DOW_S    = ['อา','จ','อ','พ','พฤ','ศ','ส'];
 
-const d2s   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-const s2d   = s => { if(!s || typeof s!=='string') return new Date(); const [y,m,dd]=s.slice(0,10).split('-').map(Number); return new Date(y||2026, (m||1)-1, dd||1); };
-const todayS = () => d2s(new Date());
-const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+// Date ในปฏิทินเป็นตัวแทนวันที่ล้วนที่เที่ยงคืน UTC ไม่ใช่ instant ของนัดหมาย
+// จึงใช้ UTC getters/setters เฉพาะสำหรับเลขวัน ป้องกัน DST/เขตเวลาของเบราว์เซอร์
+const d2s = d => `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+const todayS = () => BangkokTime.current().date;
+const s2d = s => {
+  const value = typeof s === 'string' && /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(0,10) : todayS();
+  const [y,m,dd] = value.split('-').map(Number);
+  return new Date(Date.UTC(y, m-1, dd));
+};
+const addDays = (d,n) => { const x=new Date(d); x.setUTCDate(x.getUTCDate()+n); return x; };
+const dateAfterDays = n => d2s(addDays(s2d(todayS()), n));
 const sameDay = (a,b) => d2s(a)===d2s(b);
 
 function fmtD(s, opt={}) {           // '2026-10-21' -> '21 ต.ค. 2569'
   if(!s) return '—';
   const d = typeof s==='string' ? s2d(s) : s;
-  const bud = d.getFullYear()+543;
-  if(opt.short) return `${d.getDate()} ${TH_MONTHS_S[d.getMonth()]}`;
-  if(opt.full)  return `วัน${TH_DOW[d.getDay()]}ที่ ${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${bud}`;
-  return `${d.getDate()} ${TH_MONTHS_S[d.getMonth()]} ${bud}`;
+  const bud = d.getUTCFullYear()+543;
+  if(opt.short) return `${d.getUTCDate()} ${TH_MONTHS_S[d.getUTCMonth()]}`;
+  if(opt.full)  return `วัน${TH_DOW[d.getUTCDay()]}ที่ ${d.getUTCDate()} ${TH_MONTHS[d.getUTCMonth()]} ${bud}`;
+  return `${d.getUTCDate()} ${TH_MONTHS_S[d.getUTCMonth()]} ${bud}`;
 }
 function relDay(s){                 // relative to today
   if(!s) return '—';

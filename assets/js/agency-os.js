@@ -16,7 +16,7 @@ function ensureAgencyData() {
   if (!Array.isArray(d.files))    d.files    = JSON.parse(JSON.stringify(SEED.files || []));
   if (!Array.isArray(d.rooms) || !d.rooms.length) d.rooms = JSON.parse(JSON.stringify(SEED.rooms || []));
   if (!Array.isArray(d.bookings)) d.bookings = JSON.parse(JSON.stringify(SEED.bookings || []));
-  if (!Array.isArray(d.checkins)) d.checkins = JSON.parse(JSON.stringify(SEED.checkins || []));
+  if (!Array.isArray(d.checkins)) d.checkins = Remote.on ? [] : JSON.parse(JSON.stringify(SEED.checkins || []));
   if (!Array.isArray(d.leaves))   d.leaves   = JSON.parse(JSON.stringify(SEED.leaves || []));
   if (!d.settings) d.settings = {};
   if (!d.settings.driveFolder) d.settings.driveFolder = 'https://drive.google.com/drive/u/0/my-drive';
@@ -46,14 +46,14 @@ function aiAgentOf(id) {
   return Store.data.aiAgents.find(a => a.id === id || a.code === id) || null;
 }
 
-function nowHM() {
-  const n = new Date();
-  return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`;
-}
+function nowHM() { return BangkokTime.current().time; }
+function nowStamp() { return BangkokTime.current().dateTime; }
 
-// เช็กอินจริงใช้วันเวลาไทยเหมือน API; โหมดสาธิตใช้เวลาของอุปกรณ์
-function attendanceToday() {
-  return Remote.on ? new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Bangkok', year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date()) : todayS();
+// ทั้งโหมดจริงและสาธิตแสดงวันเวลาไทย; โหมดจริงบันทึกเวลาจากเซิร์ฟเวอร์
+function attendanceToday() { return todayS(); }
+// ห้ามสรุปว่าไม่มีเช็กอินหรือเปิดปุ่มลงเวลาเมื่ออ่านข้อมูล/เทียบวันเซิร์ฟเวอร์ไม่ได้
+function attendanceAvailable() {
+  return !Remote.on || (Remote.clockSynced && Store.data.featureAvailability?.attendance === true && Store.data.attendanceDate === attendanceToday());
 }
 function validAttendanceTime(value) {
   return typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
@@ -551,7 +551,7 @@ function openAiDispatchModal(preAgentId = '', preTaskId = '') {
         return;
       }
     } else {
-      const nowAt = `${todayS()} ${nowHM()}`;
+      const nowAt = nowStamp();
       Store.data.aiRuns.unshift({
         id: uid('run'), agentId, taskId, action, detail: summary, durationSec: dur, tokens, status: 'simulated', at: nowAt,
       });
@@ -1126,7 +1126,7 @@ function createTaskFromMessage(msgId) {
     if ($('#fTitle')) $('#fTitle').value = cleanTxt.slice(0, 90);
     if ($('#fDesc')) $('#fDesc').value = `สร้างจากข้อความแชตใน #${chan?.name || 'chat'} โดย ${m.senderName || 'สมาชิก'}:\n"${cleanTxt}"`;
     if (chan?.projectId && $('#fProj')) $('#fProj').value = chan.projectId;
-    if ($('#fDue')) $('#fDue').value = d2s(addDays(new Date(), 3));
+    if ($('#fDue')) $('#fDue').value = dateAfterDays(3);
   }
 }
 
@@ -1167,7 +1167,7 @@ async function openDirectChat(targetId) {
       Store.data.messages.push({
         id: uid('m'), channelId: id, senderId: partner.id, senderName: `${partner.code || partner.name} (AI)`, kind: 'ai',
         body: `✨ ห้องนี้ใช้คำตอบจากแม่แบบ ไม่ได้เรียกโมเดล AI จริง หากต้องการให้ AI ช่วยร่าง ให้ใช้ Project Flow → AI & ส่งออก`,
-        pinned: false, reactions: {}, at: `${todayS()} ${nowHM()}`,
+        pinned: false, reactions: {}, at: nowStamp(),
       });
     }
     Store.save();
@@ -1210,7 +1210,7 @@ async function postChatMessage(channelId, body) {
   const me = meMember();
   const chan = Store.data.channels.find(c => c.id === channelId);
   const senderName = me.nickname ? `${me.name} (${me.nickname})` : me.name;
-  const nowAt = `${todayS()} ${nowHM()}`;
+  const nowAt = nowStamp();
   const replyTo = Store.ui.chatReplyTo || null;
   const att = Store.ui.chatPendingAttach || null;
 
@@ -1267,7 +1267,7 @@ async function postChatMessage(channelId, body) {
     } else {
       Store.data.messages.push({
         id: uid('m'), channelId, senderId: targetAi.id, senderName: `${targetAi.code} (AI)`, kind: 'ai',
-        body: reply, pinned: false, reactions: { '⚡': [me.id] }, at: `${todayS()} ${nowHM()}`,
+        body: reply, pinned: false, reactions: { '⚡': [me.id] }, at: nowStamp(),
       });
       Store.save();
     }
@@ -1328,7 +1328,7 @@ async function handleChatFileUpload(channelId, file) {
       id: fid, channelId, projectId: chan?.projectId || null,
       uploaderId: me.id, uploaderName: me.name, name: file.name,
       mime: file.type || 'application/octet-stream', size: file.size,
-      url: dataUrl, source: 'upload', at: `${todayS()} ${nowHM()}`,
+      url: dataUrl, source: 'upload', at: nowStamp(),
     };
     Store.data.files.unshift(item);
     Store.ui.chatPendingAttach = { id: fid, name: file.name, url: dataUrl, type: item.mime, size: file.size };
@@ -1391,7 +1391,7 @@ function openShareDriveModal(channelId) {
       Store.data.files.unshift({
         id: uid('f'), channelId: cid, projectId: chan?.projectId || null,
         uploaderId: me.id, uploaderName: me.name, name, mime: 'application/vnd.google-apps.file',
-        size: 0, url, source: 'drive', at: `${todayS()} ${nowHM()}`,
+        size: 0, url, source: 'drive', at: nowStamp(),
       });
     }
     Store.ui.chatPendingAttach = { name, url, type: 'drive', size: 0 };
@@ -1479,7 +1479,7 @@ function editChatMessage(msgId) {
       } catch (err) { toast(err.message, 'err'); return; }
     }
     m.body = txt;
-    m.editedAt = `${todayS()} ${nowHM()}`;
+    m.editedAt = nowStamp();
     Store.save();
     closeModal();
     renderChat();
@@ -1522,7 +1522,7 @@ async function askAiInChannel(channelId) {
   } else {
     Store.data.messages.push({
       id: uid('m'), channelId, senderId: echo.id, senderName: `${echo.code} (AI)`, kind: 'ai',
-      body: summary, pinned: false, reactions: { '👍': ['u1'] }, at: `${todayS()} ${nowHM()}`,
+      body: summary, pinned: false, reactions: { '👍': ['u1'] }, at: nowStamp(),
     });
     Store.save();
     renderChat();
@@ -1662,7 +1662,7 @@ function openChannelForm(chanId = '') {
       Store.data.messages.push({
         id: uid('m'), channelId: id, senderId: me.id, senderName: me.name, kind: 'system',
         body: `สร้างกลุ่ม #${name} แล้ว — เชิญทุกคนแชร์งานและไฟล์ผ่าน Google Drive ที่นี่`,
-        pinned: false, reactions: {}, at: `${todayS()} ${nowHM()}`,
+        pinned: false, reactions: {}, at: nowStamp(),
       });
       Store.ui.activeChannel = id;
       Store.save();
@@ -1686,6 +1686,19 @@ const LEAVE_META = {
 function renderHR() {
   ensureAgencyData();
   const view = $('#view'), side = $('#side');
+  if (!attendanceAvailable()) {
+    const reason = !Remote.clockSynced
+      ? 'ยังเทียบเวลาเซิร์ฟเวอร์ไม่ได้ จึงยังแสดงวันและสถานะลงเวลาไม่ได้อย่างมั่นใจ'
+      : Store.data.featureAvailability?.attendance === true && Store.data.attendanceDate !== attendanceToday()
+        ? 'รายการลงเวลาของวันใหม่ยังไม่พร้อม จึงไม่สรุปว่าไม่มีรายการ'
+        : 'ไม่สามารถอ่านรายการลงเวลาจากฐานข้อมูลได้ จึงไม่สรุปว่าไม่มีรายการ';
+    side.innerHTML = '';
+    view.innerHTML = `<div class="sec-head"><div><h2>ลงเวลา (HR & Attendance)</h2>
+      <div class="sub">เวลาไทย · Asia/Bangkok (UTC+7)</div></div></div>
+      <div class="card" style="padding:20px"><p style="color:var(--red);margin-bottom:12px">${reason}</p>
+      <button class="btn btn-primary btn-sm" data-act="hr-retry-clock">ลองเชื่อมต่ออีกครั้ง</button></div>`;
+    return;
+  }
   const td = attendanceToday();
   const me = meMember();
   const checkins = Store.data.checkins;
@@ -1698,7 +1711,15 @@ function renderHR() {
   todayRecords.forEach(c => { if (!latestByMember.has(c.memberId)) latestByMember.set(c.memberId, c); });
   const todayCheckins = [...latestByMember.values()];
   const myToday = latestByMember.get(me.id);
-  const myStreak = Math.max(1, new Set(checkins.filter(c => c.memberId === me.id).map(c => c.date)).size);
+  const myDates = new Set(checkins.filter(c => c.memberId === me.id).map(c => c.date));
+  let streakDay = s2d(td), myStreak = 0;
+  if (!myDates.has(td)) streakDay = addDays(streakDay, -1);
+  while (myDates.has(d2s(streakDay))) { myStreak++; streakDay = addDays(streakDay, -1); }
+  const previousByDate = new Map();
+  checkins.filter(c => c.memberId === me.id && c.date < td).forEach(c => {
+    if (!previousByDate.has(c.date)) previousByDate.set(c.date, c);
+  });
+  const previousOpen = [...previousByDate.values()].find(c => !c.clockOut);
 
   const myApproved = leaves.filter(l => l.memberId === me.id && l.status === 'approved');
   const usedByKind = k => myApproved.filter(l => l.kind === k).reduce((s, l) => s + (+l.days || 1), 0);
@@ -1708,8 +1729,10 @@ function renderHR() {
       <div class="checkin-widget">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <b style="font-size:13px;color:var(--ink)">⏱ ลงเวลา (${esc(me.nickname || me.name)})</b>
-          <span class="streak-badge">🔥 ${myStreak} วันติด</span>
+          <span class="streak-badge">🔥 ${Remote.on ? 'อย่างน้อย ' : ''}${myStreak} วันติด</span>
         </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">เวลาไทย · Asia/Bangkok (UTC+7)</div>
+        ${previousOpen ? `<div style="font-size:11px;color:var(--red);margin-bottom:8px">พบรอบวันที่ ${fmtD(previousOpen.date)} ที่ยังไม่ลงเวลาออก ระบบยังไม่รองรับการลงเวลาออกข้ามวัน กรุณาติดต่อผู้ดูแล</div>` : ''}
         ${myToday ? `
           <div style="font-size:12.5px;color:var(--ink-2);margin-bottom:10px">
             เข้างานเวลา <b>${esc(myToday.clockIn)}</b> (${myToday.mode === 'wfh' ? '🏠 WFH' : '🏢 ออฟฟิศ'})
@@ -1763,8 +1786,9 @@ function renderHR() {
 
   $$('[data-hrflt]', side).forEach(el => el.onclick = () => { Store.ui.hrFilter = el.dataset.hrflt; App.refresh(); });
 
-  const officeCnt = new Set(todayRecords.filter(c => c.mode === 'office').map(c => c.memberId)).size;
-  const wfhCnt = new Set(todayRecords.filter(c => c.mode === 'wfh').map(c => c.memberId)).size;
+  // นับรูปแบบล่าสุดของแต่ละคน ไม่ให้นับซ้ำเมื่อเปลี่ยนออฟฟิศ/WFH ระหว่างวัน
+  const officeCnt = todayCheckins.filter(c => c.mode === 'office').length;
+  const wfhCnt = todayCheckins.filter(c => c.mode === 'wfh').length;
   const pendingLeaves = leaves.filter(l => l.status === 'pending').length;
 
   const shownLeaves = leaves.filter(l => {
@@ -1778,7 +1802,7 @@ function renderHR() {
     <div class="sec-head">
       <div>
         <h2>เช็กอินเข้างาน & บริหารใบลา (HR & Attendance)</h2>
-        <div class="sub">${fmtD(td, { full: true })} · ติดตามการเข้างานรายวัน WFH และอนุมัติคำขอลาของทีม</div>
+        <div class="sub">${fmtD(td, { full: true })} · เวลาไทย (UTC+7) · ติดตามการเข้างานรายวัน WFH และอนุมัติคำขอลาของทีม</div>
       </div>
       <div class="sec-actions">
         ${!myToday ? `<button class="btn btn-ghost" onclick="doClockIn('office')">🏢 เช็กอินเข้างาน</button>` : ''}
@@ -1791,7 +1815,7 @@ function renderHR() {
       ${pdKpi({ icon: IC.users, grad: 'var(--grad-mint)', num: `${todayCheckins.length}/${Store.data.team.length}`, label: 'เช็กอินเข้างานวันนี้', pill: `ออฟฟิศ ${officeCnt}`, pillCls: 'k-up' })}
       ${pdKpi({ icon: IC.dash, grad: 'var(--grad-cyan)', num: wfhCnt, label: 'ปฏิบัติงาน WFH วันนี้', pill: 'Hybrid', pillCls: 'k-violet' })}
       ${pdKpi({ icon: IC.clock, grad: 'var(--grad-amber)', num: pendingLeaves, label: 'ใบลารออนุมัติ', pill: pendingLeaves ? 'รออนุมัติ' : 'ครบแล้ว', pillCls: pendingLeaves ? 'k-down' : 'k-up' })}
-      ${pdKpi({ icon: IC.flame, grad: 'var(--grad-violet)', num: `${myStreak} วัน`, label: 'สถิติเช็กอินต่อเนื่อง', pill: 'ต่อเนื่อง', pillCls: 'k-violet' })}
+      ${pdKpi({ icon: IC.flame, grad: 'var(--grad-violet)', num: `${myStreak} วัน`, label: Remote.on ? 'เช็กอินต่อเนื่อง (อย่างน้อย)' : 'สถิติเช็กอินต่อเนื่อง', pill: 'ต่อเนื่อง', pillCls: 'k-violet' })}
     </div>
 
     <div class="card" style="margin-bottom:18px;padding:18px">
@@ -1860,23 +1884,26 @@ function renderHR() {
 
 async function doClockIn(mode = 'office') {
   ensureAgencyData();
+  if (!attendanceAvailable()) { toast('ยังไม่พร้อมลงเวลา กรุณาลองเชื่อมต่ออีกครั้ง', 'warn'); return; }
   if (!['office', 'wfh'].includes(mode)) { toast('รูปแบบเช็กอินต้องเป็นออฟฟิศหรือ WFH', 'warn'); return; }
   const me = meMember();
-  const td = attendanceToday();
-  let t = nowHM();
+  // อ่านวันและเวลาจาก instant เดียวกัน ป้องกันวันที่กับเวลาข้ามเที่ยงคืนไม่ตรงกัน
+  const clock = BangkokTime.current(), td = clock.date;
+  let t = clock.time, recordedDate = td;
 
   if (Remote.on) {
     try {
       const result = await Remote.req('/checkins/clock', { method: 'POST', body: { memberId: me.id, mode, note: mode === 'wfh' ? 'ปฏิบัติงาน WFH' : 'เข้าออฟฟิศ' } });
       t = result.clockIn || t;
-      await Remote.refreshAll();
+      recordedDate = result.date || td;
+      if (!await Remote.refreshAll() || !attendanceAvailable()) { toast('บันทึกเวลาเข้าแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ กรุณาลองเชื่อมต่ออีกครั้ง', 'warn'); return; }
     } catch (e) { toast(e.message, 'err'); return; }
   } else {
     const ex = Store.data.checkins.find(c => c.memberId === me.id && c.date === td);
     if (ex?.clockIn && !validAttendanceTime(ex.clockIn)) { toast('เวลาเช็กอินเดิมไม่ถูกต้อง กรุณาตรวจสอบข้อมูล', 'warn'); return; }
     if (ex?.clockOut && (!validAttendanceTime(ex.clockOut) || ex.clockOut < (ex.clockIn || '00:00'))) { toast('เวลาออกเดิมไม่ถูกต้อง กรุณาตรวจสอบข้อมูล', 'warn'); return; }
     if (ex?.clockOut && t < ex.clockOut) { toast('เวลาเช็กอินรอบใหม่ก่อนเวลาออกเดิม กรุณาตรวจสอบเวลาอุปกรณ์', 'warn'); return; }
-    if (ex && !ex.clockOut) { ex.mode = mode; ex.clockIn = ex.clockIn || t; }
+    if (ex && !ex.clockOut) { ex.mode = mode; ex.clockIn = ex.clockIn || t; t = ex.clockIn; }
     else Store.data.checkins.unshift({ id: uid('ck-local-'), memberId: me.id, date: td, clockIn: t, clockOut: '', mode, note: '' });
     me.presence = 'working';
     Store.logActivity(`⏱ <b>${esc(me.name)}</b> เช็กอินเข้างาน (${mode === 'wfh' ? 'WFH' : 'ออฟฟิศ'}) เวลา ${t}`);
@@ -1884,20 +1911,22 @@ async function doClockIn(mode = 'office') {
   }
   App.renderTopbar();
   App.refresh();
-  toast(`✅ เช็กอินเข้างาน (${mode === 'wfh' ? 'WFH' : 'ออฟฟิศ'}) เวลา ${t} เรียบร้อย!`);
+  toast(`✅ เช็กอินเข้างาน (${mode === 'wfh' ? 'WFH' : 'ออฟฟิศ'}) วันที่ ${fmtD(recordedDate)} เวลา ${t} เรียบร้อย!`);
 }
 
 async function doClockOut() {
   ensureAgencyData();
+  if (!attendanceAvailable()) { toast('ยังไม่พร้อมลงเวลา กรุณาลองเชื่อมต่ออีกครั้ง', 'warn'); return; }
   const me = meMember();
-  const td = attendanceToday();
-  let t = nowHM();
+  const clock = BangkokTime.current(), td = clock.date;
+  let t = clock.time, recordedDate = td;
 
   if (Remote.on) {
     try {
       const result = await Remote.req('/checkins/clock-out', { method: 'POST', body: { memberId: me.id } });
       t = result.clockOut || t;
-      await Remote.refreshAll();
+      recordedDate = result.date || td;
+      if (!await Remote.refreshAll() || !attendanceAvailable()) { toast('บันทึกเวลาออกแล้ว แต่โหลดข้อมูลล่าสุดไม่สำเร็จ กรุณาลองเชื่อมต่ออีกครั้ง', 'warn'); return; }
     } catch (e) { toast(e.message, 'err'); return; }
   } else {
     const ex = Store.data.checkins.find(c => c.memberId === me.id && c.date === td);
@@ -1911,7 +1940,7 @@ async function doClockOut() {
   }
   App.renderTopbar();
   App.refresh();
-  toast(`👋 บันทึกเวลาเลิกงาน ${t} เรียบร้อย พักผ่อนให้เต็มที่ครับ!`);
+  toast(`👋 บันทึกเวลาเลิกงาน วันที่ ${fmtD(recordedDate)} เวลา ${t} เรียบร้อย พักผ่อนให้เต็มที่ครับ!`);
 }
 
 function openLeaveForm() {

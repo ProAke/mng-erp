@@ -43,10 +43,12 @@ export const useApp = create<AppState>((set, get) => ({
 
 /* ---------- selectors ---------- */
 
-export const useProjects = () => useApp((s) => s.data?.projects ?? [])
-export const useTasks = () => useApp((s) => s.data?.tasks ?? [])
-export const useTeam = () => useApp((s) => s.data?.team ?? [])
-export const useClients = () => useApp((s) => s.data?.clients ?? [])
-export const useEvents = () => useApp((s) => s.data?.events ?? [])
-export const useInvoices = () => useApp((s) => s.data?.invoices ?? [])
-export const useActivity = () => useApp((s) => s.data?.activity ?? [])
+// Zustand ต้องได้ snapshot เดิมระหว่างรอ bootstrap ไม่เช่นนั้น React จะ render วน
+const EMPTY_ITEMS: never[] = []
+export const useProjects = () => useApp((s) => s.data?.projects ?? EMPTY_ITEMS)
+export const useTasks = () => useApp((s) => s.data?.tasks ?? EMPTY_ITEMS)
+export const useTeam = () => useApp((s) => s.data?.team ?? EMPTY_ITEMS)
+export const useClients = () => useApp((s) => s.data?.clients ?? EMPTY_ITEMS)
+export const useEvents = () => useApp((s) => s.data?.events ?? EMPTY_ITEMS)
+export const useInvoices = () => useApp((s) => s.data?.invoices ?? EMPTY_ITEMS)
+export const useActivity = () => useApp((s) => s.data?.activity ?? EMPTY_ITEMS)

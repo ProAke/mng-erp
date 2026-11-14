@@ -2,6 +2,7 @@
 const express = require('express');
 const { workPool, authPool } = require('./db');
 const ProjectPlan = require('../assets/js/project-plan');
+const BangkokTime = require('../assets/js/bangkok-time');
 const ProjectFlow = require('./project-flow');
 
 const router = express.Router();
@@ -149,9 +150,7 @@ const shapeFile = r => ({
   at: String(r.created_at || '').slice(0, 16),
 });
 
-const bkkDate = () => new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',
-}).format(new Date());
+const bkkDate = () => BangkokTime.fromInstant(new Date()).date;
 
 async function resolveActorTeamId(req) {
   if (!req?.user) return 1;
@@ -189,8 +188,14 @@ router.get('/bootstrap', async (req, res) => {
     const [invR]    = await workPool.query('SELECT * FROM erp_invoices ORDER BY no');
     const [actR]    = await workPool.query('SELECT * FROM erp_activity ORDER BY id DESC LIMIT 30');
     const [setR]    = await workPool.query('SELECT data FROM erp_settings WHERE id = 1');
+    const matchedMe = team.find(r =>
+      (req.user?.email && r.email && r.email.toLowerCase() === req.user.email.toLowerCase()) ||
+      (req.user?.user_id && r.auth_user_id === req.user.user_id)
+    );
+    const featureAvailability = { projectFlow: true, docs: true, attendance: true };
 
     // Agency OS collections (graceful fallback if any table empty)
+    let attendanceDate = null;
     let aiAgentR = [], aiRunR = [], chanR = [], msgR = [], fileR = [], roomR = [], bookR = [], checkinR = [], leaveR = [], flowR = [], docR = [];
     try {
       [aiAgentR] = await workPool.query('SELECT * FROM erp_ai_agents ORDER BY id');
@@ -200,15 +205,35 @@ router.get('/bootstrap', async (req, res) => {
       [fileR]    = await workPool.query('SELECT * FROM erp_files ORDER BY id DESC LIMIT 120');
       [roomR]    = await workPool.query('SELECT * FROM erp_rooms ORDER BY id');
       [bookR]    = await workPool.query('SELECT * FROM erp_bookings ORDER BY date, start');
-      // HR ต้องเห็นรอบล่าสุดของทุกคนในวันนี้ แม้มีมากกว่า 90 รายการ; ประวัติวันอื่นจำกัด 90 รายการเหมือนเดิม
-      const today = bkkDate();
+      [leaveR]   = await workPool.query('SELECT * FROM erp_leaves ORDER BY id DESC LIMIT 60');
+    } catch {}
+    try {
+      // แยกการอ่านเช็กอินจากโมดูลอื่น: ถ้าอ่านไม่ได้ต้องแจ้ง ไม่ใช่แสดงว่าไม่มีใครลงเวลา
+      const today = attendanceDate = bkkDate();
       const [todayCheckins] = await workPool.query('SELECT * FROM erp_checkins WHERE date=? ORDER BY id DESC', [today]);
       const [olderCheckins] = await workPool.query('SELECT * FROM erp_checkins WHERE date<>? ORDER BY date DESC, id DESC LIMIT 90', [today]);
       checkinR = [...todayCheckins, ...olderCheckins];
-      [leaveR]   = await workPool.query('SELECT * FROM erp_leaves ORDER BY id DESC LIMIT 60');
-    } catch {}
+      // รอบค้างของผู้ใช้ต้องไม่หายจากคำเตือนเมื่อประวัติทีมเกิน 90 รายการ
+      const me = matchedMe || team.find(r => r.is_me) || team[0];
+      if (me) {
+        const ids = ['u' + me.id, String(me.id)];
+        const [open] = await workPool.query(
+          `SELECT c.* FROM erp_checkins c WHERE c.member_id IN (?,?) AND c.date < ?
+           AND (c.clock_out IS NULL OR c.clock_out = '')
+           AND NOT EXISTS (SELECT 1 FROM erp_checkins newer
+             WHERE newer.member_id IN (?,?) AND newer.date = c.date AND newer.id > c.id)
+           ORDER BY c.date DESC, c.id DESC LIMIT 1`,
+          [ids[0], ids[1], today, ids[0], ids[1]]
+        );
+        const seen = new Set(checkinR.map(r => r.id));
+        checkinR.push(...open.filter(r => !seen.has(r.id)));
+      }
+    } catch (e) {
+      checkinR = [];
+      featureAvailability.attendance = false;
+      console.warn('[bootstrap] attendance unavailable:', e.message);
+    }
     // แยกการตรวจตารางใหม่จากข้อมูลเดิม เพื่อไม่ให้หน้าอื่นพังหาก migration ยังไม่สำเร็จ
-    const featureAvailability = { projectFlow: true, docs: true };
     try { [flowR] = await workPool.query('SELECT * FROM erp_project_flows ORDER BY project_id'); }
     catch (e) { featureAvailability.projectFlow = false; console.warn('[bootstrap] project flows unavailable:', e.message); }
     try { [docR] = await workPool.query('SELECT * FROM erp_docs ORDER BY COALESCE(pinned,0) DESC, id DESC'); }
@@ -239,10 +264,6 @@ router.get('/bootstrap', async (req, res) => {
       .filter(w => w[1] > 0.5).sort((a, b) => b[1] - a[1]).slice(0, 8)
       .map(w => [w[0], Math.round(w[1]), w[2]]);
 
-    const matchedMe = team.find(r =>
-      (req.user?.email && r.email && r.email.toLowerCase() === req.user.email.toLowerCase()) ||
-      (req.user?.user_id && r.auth_user_id === req.user.user_id)
-    );
     const rawSettings = J(setR[0]?.data, {}) || {};
     const mergedSettings = {
       theme: '#6C5CE7',
@@ -292,6 +313,8 @@ router.get('/bootstrap', async (req, res) => {
         start: r.start, end: r.end, hostId: r.host_id || 'u1',
         members: J(r.members, []), note: r.note || '',
       })),
+      // ระบุวันที่ที่อ่านข้อมูลครบ เพื่อไม่ให้ client นำ cache วันเก่าไปสรุปยอดของวันใหม่
+      attendanceDate,
       checkins: checkinR.map(r => ({
         id: 'ck' + r.id, memberId: checkinTeamId(r.member_id), date: r.date,
         clockIn: r.clock_in || '', clockOut: r.clock_out || '', mode: r.mode || 'office', note: r.note || '',
@@ -413,6 +436,16 @@ router.delete('/tasks/:id', async (req, res) => {
 });
 
 /* ---------------- EVENTS ---------------- */
+// วันที่ล้วนและเวลา HH:mm คือวัน/เวลาท้องถิ่นของกรุงเทพ ไม่ใช่ UTC instant
+function validCalendarDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || Number(value.slice(0, 4)) < 1000) return false;
+  const time = Date.parse(value + 'T00:00:00Z');
+  return Number.isFinite(time) && new Date(time).toISOString().slice(0, 10) === value;
+}
+const validCalendarTime = value => typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+function calendarTimeError(res) {
+  return res.status(400).json({ error: 'invalid_event_datetime', detail: 'วันที่หรือเวลาปฏิทินไม่ถูกต้อง กิจกรรมแบบระบุเวลาต้องสิ้นสุดหลังเริ่มภายในวันเดียวกัน' });
+}
 router.get('/events', async (req, res) => {
   try {
     const [rows] = await workPool.query('SELECT * FROM erp_events ORDER BY date ASC, start ASC');
@@ -427,12 +460,14 @@ router.get('/events', async (req, res) => {
 
 router.post('/events', async (req, res) => {
   const b = req.body || {};
-  if (!b.title?.trim() || !b.date) return res.status(400).json({ error: 'title_date_required' });
+  if (typeof b.title !== 'string' || !b.title.trim() || !b.date) return res.status(400).json({ error: 'title_date_required' });
+  const start = b.start || '10:00', end = b.end || '11:00';
+  if (!validCalendarDate(b.date) || !validCalendarTime(start) || !validCalendarTime(end) || (!b.allday && end <= start)) return calendarTimeError(res);
   try {
     const [r] = await workPool.query(
       `INSERT INTO erp_events (title, cat, date, start, end, allday, loc, descp, members, project_id, task_id)
        VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      [b.title.trim(), b.cat || 'meeting', b.date, b.start || '10:00', b.end || '11:00', b.allday ? 1 : 0,
+      [b.title.trim(), b.cat || 'meeting', b.date, start, end, b.allday ? 1 : 0,
        b.loc || null, b.desc || null, JSON.stringify((b.members || []).map(numid)),
        b.project ? numid(b.project) : null, b.task ? numid(b.task) : null]);
     await logActivity(`สร้างกิจกรรม <b>${escS(b.title.trim())}</b>`, 1);
@@ -443,6 +478,9 @@ router.post('/events', async (req, res) => {
 router.patch('/events/:id', async (req, res) => {
   const id = numid(req.params.id);
   const b = req.body || {};
+  if ((b.date !== undefined && !validCalendarDate(b.date)) ||
+      (b.start !== undefined && !validCalendarTime(b.start)) ||
+      (b.end !== undefined && !validCalendarTime(b.end))) return calendarTimeError(res);
   const sets = [], vals = [];
   const map = {
     title: v => { sets.push('title=?');   vals.push(v); },
@@ -461,7 +499,25 @@ router.patch('/events/:id', async (req, res) => {
   if (!sets.length) return res.json({ ok: true, noop: true });
   try {
     vals.push(id);
-    await workPool.query(`UPDATE erp_events SET ${sets.join(', ')} WHERE id=?`, vals);
+    if (b.start !== undefined || b.end !== undefined || b.allday !== undefined) {
+      // ล็อกก่อนรวมค่าที่ส่งมาเพียงบางฟิลด์ เพื่อไม่ให้คำขอพร้อมกันสร้างช่วงเวลาผิด
+      const conn = await workPool.getConnection();
+      try {
+        await conn.beginTransaction();
+        const [rows] = await conn.query('SELECT start, end, allday FROM erp_events WHERE id=? FOR UPDATE', [id]);
+        if (!rows.length) { await conn.rollback(); return res.status(404).json({ error: 'event_not_found' }); }
+        const start = b.start === undefined ? rows[0].start : b.start;
+        const end = b.end === undefined ? rows[0].end : b.end;
+        const allday = b.allday === undefined ? !!rows[0].allday : !!b.allday;
+        if (!allday && (!validCalendarTime(start) || !validCalendarTime(end) || end <= start)) {
+          await conn.rollback();
+          return calendarTimeError(res);
+        }
+        await conn.query(`UPDATE erp_events SET ${sets.join(', ')} WHERE id=?`, vals);
+        await conn.commit();
+      } catch (err) { await conn.rollback().catch(() => {}); throw err; }
+      finally { conn.release(); }
+    } else await workPool.query(`UPDATE erp_events SET ${sets.join(', ')} WHERE id=?`, vals);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

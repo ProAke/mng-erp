@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       logList.innerHTML = log.slice(0, 20).map(l => {
-        const time = new Date(l.timestamp).toLocaleTimeString('th-TH');
+        const time = new Date(l.timestamp).toLocaleTimeString('th-TH', { timeZone: 'Asia/Bangkok', hour12: false });
         return `<div class="log-item"><span class="log-time">${time}</span>${l.detail}</div>`;
       }).join('');
     });

@@ -40,6 +40,15 @@ describe('Plesk Phusion Passenger & Live MariaDB Production Regressions', () => 
       expect(healthJson.ok).toBe(true);
       expect(bootMs).toBeLessThan(1500);
 
+      // นาฬิกาสำหรับสอบเทียบต้องตอบเป็น UTC instant พร้อมเขตเวลาที่ใช้แสดงผล
+      const clock = await fetch(`http://127.0.0.1:${port}/api/clock`);
+      expect(clock.status).toBe(200);
+      expect(clock.headers.get('cache-control')).toContain('no-store');
+      const clockJson = await clock.json();
+      expect(clockJson.timezone).toBe('Asia/Bangkok');
+      expect(clockJson.serverTime).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
+      expect(Math.abs(Date.parse(clockJson.serverTime) - Date.now())).toBeLessThan(5000);
+
       // Verify internal /server directory is NOT exposed as static files
       const secRes = await fetch(`http://127.0.0.1:${port}/server/config.js`);
       expect(secRes.status).toBe(404);
@@ -92,6 +101,7 @@ describe('Plesk Phusion Passenger & Live MariaDB Production Regressions', () => 
     expect(wsRoutes).toContain("'/checkins/clock'");
     expect(wsRoutes).toContain("'/checkins/clock-out'");
     expect(wsRoutes).toContain("'/messages/:id/pin'");
-    expect(wsRoutes).toContain("timeZone: 'Asia/Bangkok'");
+    expect(wsRoutes).toContain("require('../assets/js/bangkok-time')");
+    expect(require('../assets/js/bangkok-time').timezone).toBe('Asia/Bangkok');
   });
 });
