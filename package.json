@@ -4,6 +4,11 @@
   "workspaces": [
     "server"
   ],
+  "overrides": {
+    "express": {
+      "body-parser": "~1.20.9"
+    }
+  },
   "scripts": {
     "lint": "eslint .",
     "test": "vitest run",
