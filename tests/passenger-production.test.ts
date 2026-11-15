@@ -49,6 +49,14 @@ describe('Plesk Phusion Passenger & Live MariaDB Production Regressions', () => 
       expect(clockJson.serverTime).toMatch(/^\d{4}-\d{2}-\d{2}T.*Z$/);
       expect(Math.abs(Date.parse(clockJson.serverTime) - Date.now())).toBeLessThan(5000);
 
+      // จำกัด payload ของแมนนี่ก่อน auth/body parser ขนาดใหญ่สำหรับรูปโปรไฟล์
+      const oversized = await fetch(`http://127.0.0.1:${port}/api/manny/assist`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:'x'.repeat(70000)})
+      });
+      expect(oversized.status).toBe(413);
+      expect(oversized.headers.get('cache-control')).toContain('no-store');
+      expect((await oversized.json()).error).toContain('ยาวเกิน');
+
       // Verify internal /server directory is NOT exposed as static files
       const secRes = await fetch(`http://127.0.0.1:${port}/server/config.js`);
       expect(secRes.status).toBe(404);
@@ -64,6 +72,11 @@ describe('Plesk Phusion Passenger & Live MariaDB Production Regressions', () => 
       expect(flowDoc.status).toBe(200);
       expect(flowDoc.headers.get('content-type')).toContain('text/markdown');
       expect(await flowDoc.text()).toContain('X-MNG-Signature');
+      // ลิงก์สัมพัทธ์ในคู่มือ API ต้องเปิดได้เมื่อคู่มือถูกเสิร์ฟผ่าน /api/hermes/manual.md ด้วย
+      const mannyDoc = await fetch(`http://127.0.0.1:${port}/api/hermes/TEXT-SPEED-MANNY.md`);
+      expect(mannyDoc.status).toBe(200);
+      expect(mannyDoc.headers.get('content-type')).toContain('text/markdown');
+      expect(await mannyDoc.text()).toContain('MANNY_ENCRYPTION_KEY');
 
       // Verify /hub is excluded from SPA catch-all
       const hubRes = await fetch(`http://127.0.0.1:${port}/hub`);

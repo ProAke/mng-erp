@@ -973,6 +973,7 @@ function renderSettings(){
       <div class="side-row"><label>องค์กร</label></div>
       <div class="side-row"><label>การแจ้งเตือน</label></div>
       <div class="side-row"><label>ธีมสี</label></div>
+      <div class="side-row"><label>Text Speed & แมนนี่</label></div>
       <div class="side-row"><label>ข้อมูล & สำรอง</label></div>
     </div>` +
     promoCard('MNG ERP v2','ออกแบบตาม reference ที่ส่งมา — ปฏิทินใหญ่เต็มจอ ครบทุกโมดูล','กลับแดชบอร์ด','nav:dashboard');
@@ -1076,6 +1077,7 @@ function renderSettings(){
     </div>`;
 
   view.innerHTML = `<div class="set-grid">
+    <div id="mannySettings" style="grid-column:1/-1"></div>
     ${dbAuditSection}
     ${hermesSection}
     ${adminSection}
@@ -1118,6 +1120,7 @@ function renderSettings(){
       </div>
     </div>
   </div>`;
+  if (typeof MannySettings !== 'undefined') MannySettings.mount($('#mannySettings'));
   $$('#themeDots .theme-dot').forEach(d=>d.onclick=()=>{st.theme=d.dataset.theme; Store.save(); Remote.push('/settings','PUT',st); App.applyTheme(); renderSettings(); toast('เปลี่ยนธีมสีแล้ว');});
   $$('[data-set]', view).forEach(sw=>sw.onclick=()=>{st[sw.dataset.set]=!st[sw.dataset.set]; sw.classList.toggle('on'); Store.save(); Remote.push('/settings','PUT',st);});
   // lazy-load คลังโปรเจกต์ + DB Audit + Hermes 20-Token Pool
@@ -1129,9 +1132,28 @@ function renderSettings(){
 /* ---------- side search wiring ---------- */
 function wireSideCommon(view){
   const inp = $('#sideQ');
-  if(inp){ inp.addEventListener('input', ()=>{ Store.ui.q[inp.dataset.key]=inp.value; }); 
-    inp.addEventListener('keydown', e=>{ if(e.key==='Enter') App.refresh(); });
-    inp.addEventListener('input', debounce(()=>App.refresh(),350));
-  }
+  if(!inp) return;
+  const route = Store.ui.route, hash = location.hash, token = Remote.token, remoteOn = Remote.on;
+  let timer;
+  const retryAfterBlur = () => { clearTimeout(timer); timer=setTimeout(refreshSearch,0); };
+  const refreshSearch = () => {
+    // การค้นหาที่ค้างเวลาไว้ต้องไม่ render หน้า/บัญชีใหม่หลังนำทางหรือออกจากระบบ
+    if(!inp.isConnected || $('#appShell').style.display==='none' || location.hash!==hash || Store.ui.route!==route || Remote.token!==token || Remote.on!==remoteOn) return;
+    const active = document.activeElement;
+    // อย่าทำลายช่องอื่นที่กำลังพิมพ์อยู่ด้วยการ render ผลค้นหาใหม่ รอจนออกจากช่องนั้น
+    if(active !== inp && active?.matches?.('input,textarea,select,[contenteditable="true"]') && !active.closest('#modalRoot,#textSpeedRoot')){
+      active.addEventListener('blur', retryAfterBlur, {once:true}); return;
+    }
+    const focused = active === inp, start = inp.selectionStart, end = inp.selectionEnd, direction = inp.selectionDirection;
+    App.refresh();
+    const replacement = $('#sideQ');
+    if(replacement && replacement.dataset.key===inp.dataset.key && Store.ui.route===route && location.hash===hash){
+      // เก็บ element เดิมเพื่อให้เคอร์เซอร์และการย้อนกลับของ Text Speed ยังใช้ได้หลังกรองผล
+      replacement.replaceWith(inp);
+      if(focused){ inp.focus({preventScroll:true}); try { inp.setSelectionRange(start,end,direction); } catch {} }
+    }
+  };
+  inp.addEventListener('input', ()=>{ Store.ui.q[inp.dataset.key]=inp.value; clearTimeout(timer); timer=setTimeout(refreshSearch,350); });
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ clearTimeout(timer); refreshSearch(); } });
 }
 function debounce(fn,ms){ let t; return (...a)=>{clearTimeout(t); t=setTimeout(()=>fn(...a),ms);}; }

@@ -223,7 +223,9 @@ class MngErpRotatingClient {
 | `GET` | `/api/hermes/overview` | **แนะนำสำหรับ AI**: สรุปยอดโปรเจกต์ งานค้าง งานด่วน บิลรอเก็บ นัดหมาย และข้อความล่าสุดใน Payload ขนาดกะทัดรัด |
 | `GET` | `/api/hermes/endpoints` | ดึงรายการ API Catalog ทั้งหมดในรูปแบบ JSON |
 | `GET` | `/api/bootstrap` | ดึงข้อมูลดิบครบทั้ง 13 โมดูลของระบบในครั้งเดียว |
-| `GET` | `/api/db/audit` | ตรวจสอบการเชื่อมต่อและนับจำนวนแถวของ 27 ตารางรวม Auth DB; ไม่ตรวจความครบถ้วนของทุกคอลัมน์หรือการเชื่อมต่อภายนอก |
+| `GET` | `/api/db/audit` | ตรวจสอบการเชื่อมต่อและนับจำนวนแถวของ 29 ตารางรวม Auth DB; ไม่ตรวจความครบถ้วนของทุกคอลัมน์หรือการเชื่อมต่อภายนอก |
+
+> Text Speed / แมนนี่ใช้ `/api/manny` กับ web session เท่านั้น ไม่รับ Hermes token; การเรียก AI ส่งข้อความและอาจมีค่าใช้จ่าย ดูสิทธิ์และ endpoint ใน [คู่มือ Text Speed & แมนนี่](TEXT-SPEED-MANNY.md)
 
 ### 5.2 การ์ดงาน Kanban & Sprint (Tasks)
 - **`GET /api/tasks`**

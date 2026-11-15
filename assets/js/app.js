@@ -300,6 +300,7 @@ const App = {
     if(!location.hash) location.hash = '#/dashboard';
     this.route();
     this.startClock();
+    if (typeof TextSpeed !== 'undefined') TextSpeed.init();
     // โหลดรูป/โปรไฟล์ของบัญชีปัจจุบันไว้ในหน่วยความจำ เพื่อแสดง avatar ทุกหน้าหลังเข้าสู่ระบบ
     if (Remote.on && typeof loadMyProfile === 'function' && !Remote.profile && !Remote.profileLoading) loadMyProfile();
     if(this._bootToast){ toast(this._bootToast[0], this._bootToast[1]); this._bootToast = null; }
@@ -396,6 +397,7 @@ const App = {
 
   forceLogin(msg){
     if(typeof Office3D !== 'undefined') Office3D.destroy();
+    if(typeof TextSpeed !== 'undefined') TextSpeed.destroy();
     this.stopClock();
     Remote.on = false; Remote.token = null; Remote.user = null; Remote.profile = null; Remote.connections = null; localStorage.removeItem('mng_token');
     $('#appShell').style.display = 'none';
@@ -404,6 +406,7 @@ const App = {
   },
 
   showLogin(msg){
+    if(typeof TextSpeed !== 'undefined') TextSpeed.destroy();
     if($('.login-ov')) { if(msg && $('.login-ov .login-err')) { $('.login-ov .login-err').innerHTML = IC.alarm+' '+esc(msg); $('.login-ov .login-err').style.display='flex'; } return; }
     const ov = document.createElement('div');
     ov.className = 'login-ov';
@@ -491,7 +494,8 @@ const App = {
     const previousRoute = Store.ui.route;
     Store.ui.route = name;
     const shell = $('#appShell');
-    shell.classList.toggle('project-feature-route', ['project-flow','docs','office','hr','calendar','profile','users'].includes(name));
+    shell.classList.toggle('project-feature-route', ['project-flow','docs','office','hr','calendar','profile','users','settings'].includes(name));
+    shell.classList.toggle('settings-route', name==='settings');
     shell.classList.toggle('hr-route', name==='hr');
     shell.classList.toggle('calendar-route', name==='calendar');
     if (name !== 'calendar') shell.classList.remove('cal-side-open');
@@ -739,6 +743,7 @@ const App = {
 /* ---------- logout ---------- */
 async function doLogout(){
   if(typeof Office3D !== 'undefined') Office3D.destroy();
+  if(typeof TextSpeed !== 'undefined') TextSpeed.destroy();
   const tok = Remote.token;
   // แจ้งเซิร์ฟเวอร์ลบ session ก่อน (รอให้จบ — server เคลียร์ก่อน client)
   if(tok){
@@ -871,7 +876,7 @@ function openTaskForm(id, presetStatus){
     title:'', status:presetStatus||'todo', priority:'med', assignee:'u1', aiAgentId:'',
     start:todayS(), due:todayS(), progress:0, est:8, spent:0, tags:[], subtasks:[], comments:[], desc:''
   };
-  openModal(`${modalHead(id?`แก้ไขงาน — ${t.code}`:'เพิ่มงานใหม่ (<CODE>-10xx)', id?'':'สร้างงานพร้อมรหัสโปรเจกต์อัตโนมัติ และผูกผู้ช่วย AI ได้ทันที')}
+  openModal(`${modalHead(id?`แก้ไขงาน — ${esc(t.code)}`:'เพิ่มงานใหม่ (&lt;CODE&gt;-10xx)', id?'':'สร้างงานพร้อมรหัสโปรเจกต์อัตโนมัติ และผูกผู้ช่วย AI ได้ทันที')}
     <div class="modal-body"><div class="form-grid">
       <div class="f-group full"><label>ชื่องาน *</label><input id="fTitle" value="${esc(t.title)}" placeholder="เช่น พัฒนาหน้า checkout"></div>
       <div class="f-group"><label>โปรเจกต์</label><select id="fProj">${Store.data.projects.map(p=>`<option value="${p.id}" ${p.id===t.project?'selected':''}>[${esc(p.code||'PRJ')}] ${esc(p.short)}</option>`).join('')}</select></div>
@@ -1083,7 +1088,7 @@ function openProjectForm(p){
   if(!p){ openProjectWizard(); return; }
   const isEdit = !!p; p = p || {};
   const clientName = isEdit ? (Store.clientOf(p)?.name || p.clientName || '') : '';
-  openModal(`${modalHead(isEdit ? `แก้ไขโปรเจกต์ — ${esc(p.name||'')}` : 'เพิ่มโปรเจกต์ใหม่', isEdit ? 'บันทึกแล้วลง MariaDB ทันที คนทั้งทีมเห็นพร้อมกัน' : 'กำหนดรหัสย่อ เช่น ERP, LVT เพื่อสร้างเลขงาน <CODE>-10xx อัตโนมัติ')}
+  openModal(`${modalHead(isEdit ? `แก้ไขโปรเจกต์ — ${esc(p.name||'')}` : 'เพิ่มโปรเจกต์ใหม่', isEdit ? 'บันทึกแล้วลง MariaDB ทันที คนทั้งทีมเห็นพร้อมกัน' : 'กำหนดรหัสย่อ เช่น ERP, LVT เพื่อสร้างเลขงาน &lt;CODE&gt;-10xx อัตโนมัติ')}
     <div class="modal-body"><div class="form-grid">
       <div class="f-group"><label>ชื่อโปรเจกต์ *</label><input id="pName" value="${esc(p.name||'')}" placeholder="เช่น เว็บ e-commerce ร้าน X"></div>
       <div class="f-group"><label>รหัสโปรเจกต์ (2–4 ตัวอักษร)</label><input id="pCode" value="${esc(p.code||'')}" maxlength="5" placeholder="เช่น ECX, ERP"></div>

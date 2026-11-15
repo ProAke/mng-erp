@@ -976,6 +976,8 @@ router.get('/db/audit', async (_req, res) => {
     ['erp_oauth_identities', 'บัญชีที่เชื่อมต่อ (erp_oauth_identities)'],
     ['erp_oauth_states', 'คำขอยืนยันตัวตน (erp_oauth_states)'],
     ['erp_oauth_results', 'ผลยืนยันตัวตน (erp_oauth_results)'],
+    ['erp_manny_user_settings', 'ตั้งค่าแมนนี่ส่วนตัว (erp_manny_user_settings)'],
+    ['erp_manny_shared_keys', 'ชุด key แมนนี่ส่วนกลาง (erp_manny_shared_keys)'],
     ['erp_project_flows', 'ผัง Flow & Mindmap โปรเจกต์ (erp_project_flows)'],
     ['erp_flow_actions', 'รายการดำเนินการจากผัง (erp_flow_actions)'],
     ['erp_flow_action_events', 'ประวัติอนุมัติและส่งออก (erp_flow_action_events)'],

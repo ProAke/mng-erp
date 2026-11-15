@@ -18,6 +18,8 @@ module.exports = defineConfig({
       for (const name of fs.readdirSync(vendorDir)) {
         this.emitFile({ type: 'asset', fileName: `assets/vendor/${name}`, source: fs.readFileSync(path.join(vendorDir, name)) });
       }
+      // ลิงก์คู่มือจากหน้า Setting ต้องใช้ได้ทั้ง Express root และ static build
+      this.emitFile({ type:'asset', fileName:'docs/TEXT-SPEED-MANNY.md', source:fs.readFileSync(path.join(__dirname, 'docs', 'TEXT-SPEED-MANNY.md')) });
     },
   }],
 });
