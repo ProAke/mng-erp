@@ -414,7 +414,7 @@ describe('PlayDigital Chat (i.playdigital.co.th parity) & End-to-End Real MariaD
       expect(delRes.status).toBe(200)
     })
 
-    it('persists Clients CRM, Invoices CRUD, Rooms CRUD, Settings, and passes /api/db/audit across all 29 tables', async () => {
+    it('persists Clients CRM, Invoices CRUD, Rooms CRUD, Settings, and passes /api/db/audit across all 33 tables', async () => {
       // Clients CRUD
       const clCreate = await (await fetch(`${baseUrl}/api/clients`, {
         method: 'POST',
@@ -467,10 +467,10 @@ describe('PlayDigital Chat (i.playdigital.co.th parity) & End-to-End Real MariaD
       expect(setRes.ok).toBe(true)
       expect(setRes.settings.orgName).toBe('MNG Groups Thailand')
 
-      // pacific_mng.users + 28 pacific_mngworks tables including Flow, profile/OAuth and Manny
+      // pacific_mng.users + 32 ตารางใน works รวม Task Management, Flow, profile/OAuth และ Manny
       const audit = await (await fetch(`${baseUrl}/api/db/audit`)).json()
       expect(audit.ok).toBe(true)
-      expect(audit.modules.length).toBe(29)
+      expect(audit.modules.length).toBe(33)
       expect(audit.modules.every((m: any) => m.ok)).toBe(true)
       expect(executedSql.length).toBeGreaterThan(25)
     })

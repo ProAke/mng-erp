@@ -135,7 +135,7 @@ const Store = {
   save(){
     this.data.settings.calView = this.ui.calView;
     // บรีฟและคู่มือจริงอ่านจาก MariaDB หลังล็อกอินเสมอ ไม่ค้างเป็นข้อมูลสาธิตในเบราว์เซอร์
-    const snapshot = Remote.on ? { ...this.data, projectFlows: {}, customDocs: [], authUsers:undefined, _hermesPool:undefined, _dbAudit:undefined } : this.data;
+    const snapshot = Remote.on ? { ...this.data, projectFlows: {}, customDocs: [], taskManagementDemo:undefined, authUsers:undefined, _hermesPool:undefined, _dbAudit:undefined } : this.data;
     localStorage.setItem(this.KEY, JSON.stringify(snapshot));
   },
 
@@ -226,6 +226,7 @@ const App = {
     dashboard:{ title:'ภาพรวมวันนี้',           sub:'MNG Workspace · ปฏิทิน · งาน · AI Workforce', icon:IC.dash,   label:'แดชบอร์ด', render:renderDashboard },
     calendar: { title:'ปฏิทินงาน',              sub:'ตารางนัดหมาย เดดไลน์งาน และคิวจองห้อง',       icon:IC.cal,    label:'ปฏิทิน',   render:renderCalendar,  badge:()=>Store.data.events.filter(e=>e.date===todayS()).length },
     tasks:    { title:'บอร์ดงาน',               sub:'ติดตามงานแบบ Kanban และตาราง',                icon:IC.task,   label:'งาน',      render:renderTasks,     badge:()=>Store.data.tasks.filter(t=>t.status!=='done').length },
+    'task-management': { title:'Task Management', sub:'ไทม์ไลน์โครงการ · ทีม · ปัญหาและกำหนดส่ง', icon:IC.timeline, label:'ไทม์ไลน์', render:()=>{ if(typeof renderTaskManagement==='function') renderTaskManagement(); else { $('#side').innerHTML=''; $('#view').innerHTML='<div role="alert">ไม่สามารถโหลด Task Management ได้ กรุณารีเฟรช</div>'; } } },
     projects: { title:'โปรเจกต์ทั้งหมด',        sub:'ภาพรวมความคืบหน้าและงบประมาณ',                icon:IC.proj,   label:'โปรเจกต์', render:renderProjects },
     'project-flow': { title:'Project Flow & Mindmap', sub:'จากบรีฟสู่แผนงาน ทีม การขาย และการดูแลลูกค้า', icon:IC.flow, label:'ผังงาน', render:renderProjectFlow },
     docs:     { title:'คู่มือ & Docs',           sub:'คู่มือการใช้งานและคลังความรู้ของทีม',          icon:IC.book,   label:'คู่มือ',    render:renderDocs },
@@ -397,6 +398,7 @@ const App = {
 
   forceLogin(msg){
     if(typeof Office3D !== 'undefined') Office3D.destroy();
+    if(typeof TaskManagement !== 'undefined') TaskManagement.destroy();
     if(typeof TextSpeed !== 'undefined') TextSpeed.destroy();
     this.stopClock();
     Remote.on = false; Remote.token = null; Remote.user = null; Remote.profile = null; Remote.connections = null; localStorage.removeItem('mng_token');
@@ -490,11 +492,12 @@ const App = {
     // คืน WebGL context, listener และตัวจับเวลาเมื่อเปลี่ยนหน้าหรือ render ใหม่
     if(typeof Office3D !== 'undefined') Office3D.destroy();
     const name = (location.hash.replace('#/','')||'dashboard').split('?')[0];
+    if (name !== 'task-management' && typeof TaskManagement !== 'undefined') TaskManagement.destroy();
     const r = this.routes[name] || this.routes.dashboard;
     const previousRoute = Store.ui.route;
     Store.ui.route = name;
     const shell = $('#appShell');
-    shell.classList.toggle('project-feature-route', ['project-flow','docs','office','hr','calendar','profile','users','settings'].includes(name));
+    shell.classList.toggle('project-feature-route', ['task-management','project-flow','docs','office','hr','calendar','profile','users','settings'].includes(name));
     shell.classList.toggle('settings-route', name==='settings');
     shell.classList.toggle('hr-route', name==='hr');
     shell.classList.toggle('calendar-route', name==='calendar');
@@ -518,7 +521,7 @@ const App = {
   renderRail(){
     const rail = $('#rail');
     const cur = Store.ui.route;
-    const coreOrder = ['dashboard','calendar','tasks','projects','project-flow','finance','team','clients','reports'];
+    const coreOrder = ['dashboard','calendar','tasks','task-management','projects','project-flow','finance','team','clients','reports'];
     const osOrder   = ['office','ai','chat','hr','rooms','docs'];
     const btnHtml = k => {
       const r = this.routes[k];
@@ -743,6 +746,7 @@ const App = {
 /* ---------- logout ---------- */
 async function doLogout(){
   if(typeof Office3D !== 'undefined') Office3D.destroy();
+  if(typeof TaskManagement !== 'undefined') TaskManagement.destroy();
   if(typeof TextSpeed !== 'undefined') TextSpeed.destroy();
   const tok = Remote.token;
   // แจ้งเซิร์ฟเวอร์ลบ session ก่อน (รอให้จบ — server เคลียร์ก่อน client)
@@ -888,8 +892,8 @@ function openTaskForm(id, presetStatus){
       <div class="f-group"><label>สถานะ</label><select id="fStatus">${Object.entries(STATUS_META).map(([k,v])=>`<option value="${k}" ${k===t.status?'selected':''}>${v.label}</option>`).join('')}</select></div>
       <div class="f-group"><label>ความสำคัญ</label><select id="fPrio">${Object.entries(PRIO_META).map(([k,v])=>`<option value="${k}" ${k===t.priority?'selected':''}>${v.label}</option>`).join('')}</select></div>
       <div class="f-group"><label>ความคืบหน้า — <b id="progLbl">${t.progress}%</b></label><input type="range" id="fProg" min="0" max="100" value="${t.progress}" style="--p:${t.progress}%"></div>
-      <div class="f-group"><label>วันเริ่ม</label><input type="date" id="fStart" value="${t.start}"></div>
-      <div class="f-group"><label>กำหนดส่ง *</label><input type="date" id="fDue" value="${t.due}"></div>
+      <div class="f-group"><label>วันเริ่ม</label><input type="date" id="fStart" value="${esc(t.start||'')}"></div>
+      <div class="f-group"><label>กำหนดส่ง *</label><input type="date" id="fDue" value="${esc(t.due||'')}"></div>
       <div class="f-group"><label>ชั่วโมงประเมิน</label><input type="number" id="fEst" min="0" value="${t.est}"></div>
       <div class="f-group"><label>ชั่วโมงใช้จริง</label><input type="number" id="fSpent" min="0" step="0.5" value="${t.spent||0}"></div>
       <div class="f-group full"><label>แท็ก (คั่นด้วยจุลภาค)</label><input id="fTags" value="${esc(t.tags.join(', '))}" placeholder="Frontend, API"></div>
@@ -911,26 +915,30 @@ function openTaskForm(id, presetStatus){
       title, project:selProjId, assignee:$('#fUser').value,
       aiAgentId:$('#fAiAgent').value || null,
       status:$('#fStatus').value, priority:$('#fPrio').value,
-      start:$('#fStart').value||todayS(), due:$('#fDue').value||todayS(),
+      start:$('#fStart').value||null, due:$('#fDue').value||null,
       progress:+pr.value, est:+$('#fEst').value||0, spent:+$('#fSpent').value||0,
       tags:$('#fTags').value.split(',').map(s=>s.trim()).filter(Boolean),
       desc:$('#fDesc').value.trim(),
     };
+    if (!payload.due || (payload.start && payload.start > payload.due)) return toast('กรุณาตรวจสอบวันเริ่มและกำหนดส่ง','warn');
     if(payload.status==='done') payload.progress=100;
     if(!id) t.code = `${pCode}-${1040 + Store.data.tasks.length}`;
-    Object.assign(t, payload);
-    if(Remote.on){
-      if(id) Remote.push('/tasks/'+t.id, 'PATCH', payload);
-      else {
-        try { await Remote.req('/tasks', {method:'POST', body:payload}); }
-        catch(e){ toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+e.message,'err'); return; }
-      }
+    const wasRemote=Remote.on, button=$('#fSave');
+    button.disabled=true;
+    if(wasRemote){
+      try { await Remote.req(id ? '/tasks/'+t.id : '/tasks', {method:id?'PATCH':'POST', body:payload}); }
+      catch(e){ if (button.isConnected) button.disabled=false; toast('บันทึกเข้าฐานข้อมูลไม่สำเร็จ: '+esc(e.message),'err'); return; }
+      if (!Remote.on) return; // อย่าเปลี่ยนข้อมูลสาธิตหลัง session หมด
     }
+    Object.assign(t, payload);
     if(!id){ Store.data.tasks.push(t); Store.logActivity(`สร้างงาน <b>${t.code}</b> — ${esc(title)}`); }
     else Store.logActivity(`แก้ไขงาน <b>${t.code}</b>`);
     Store.save(); closeModal();
-    if(Remote.on && !id) await Remote.refreshAll(); else App.refresh();
-    toast(id?'บันทึกงานแล้ว':`สร้างงาน ${t.code} แล้ว — เดดไลน์ขึ้นปฏิทินอัตโนมัติ${Remote.on?' (MariaDB ✓)':''}`);
+    if(wasRemote){
+      const refreshed=await Remote.refreshAll();
+      if (!refreshed && Remote.on) { App.refresh(); toast('บันทึกแล้ว แต่ยังโหลดข้อมูลล่าสุดไม่ได้ กรุณาอัปเดตอีกครั้ง','warn'); return; }
+    } else App.refresh();
+    toast(id?'บันทึกงานแล้ว':`สร้างงาน ${esc(t.code)} แล้ว — เดดไลน์ขึ้นปฏิทินอัตโนมัติ${wasRemote?' (MariaDB ✓)':''}`);
   };
 }
 

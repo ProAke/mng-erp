@@ -339,6 +339,47 @@ const TABLES = [
      UNIQUE KEY uk_proj_flow (project_id)
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  /* โครงสร้างโปรเจกต์แยกจากตารางเดิมของ Hub และไม่เดาความสัมพันธ์จากชื่อ */
+  `CREATE TABLE IF NOT EXISTS erp_task_project_links (
+     child_project_id INT UNSIGNED PRIMARY KEY,
+     parent_project_id INT UNSIGNED NOT NULL,
+     updated_by BIGINT UNSIGNED NOT NULL,
+     updated_name VARCHAR(100) NOT NULL,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+     INDEX idx_task_project_parent (parent_project_id)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  /* แถว lock กลางทำให้การย้ายโปรเจกต์พร้อมกันไม่สร้างวงจร */
+  `CREATE TABLE IF NOT EXISTS erp_task_project_lock (
+     id TINYINT UNSIGNED PRIMARY KEY
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_task_issues (
+     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     task_id INT UNSIGNED NOT NULL,
+     description TEXT NOT NULL,
+     status VARCHAR(12) NOT NULL DEFAULT 'open',
+     revision INT UNSIGNED NOT NULL DEFAULT 1,
+     created_by BIGINT UNSIGNED NOT NULL,
+     created_name VARCHAR(100) NOT NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+     INDEX idx_task_issue_task (task_id, id),
+     INDEX idx_task_issue_status (status)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  /* บันทึกการติดตาม/แก้ไขแบบต่อท้ายเพื่อรักษาประวัติเดิม */
+  `CREATE TABLE IF NOT EXISTS erp_task_issue_events (
+     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+     issue_id BIGINT UNSIGNED NOT NULL,
+     event_type VARCHAR(16) NOT NULL,
+     note TEXT NOT NULL,
+     actor_id BIGINT UNSIGNED NOT NULL,
+     actor_name VARCHAR(100) NOT NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     INDEX idx_task_issue_event (issue_id, id)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   /* งานส่งออกจาก Flow แยกจากงานในบอร์ดและมีประวัติทุกการเปลี่ยนสถานะ */
   `CREATE TABLE IF NOT EXISTS erp_flow_actions (
      id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
