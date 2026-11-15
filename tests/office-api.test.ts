@@ -47,7 +47,7 @@ describe('3D Office API — auth, department and truthful snapshot', () => {
       throw new Error('unexpected SQL: '+s)
     }}
     const authPool = { async query(sql:string,params:any[]=[]) {
-      if (/SELECT status, role, name FROM users/i.test(sql)) return [[{status:'active',role:params[0]===1?'manager':'user',name:params[0]===1?'Manager':'Member'}]]
+      if (/SELECT status, role, name, email FROM users/i.test(sql)) return [[{status:'active',role:params[0]===1?'manager':'user',name:params[0]===1?'Manager':'Member',email:params[0]===1?'manager@example.test':'member@example.test'}]]
       if (/SELECT id FROM users WHERE email/i.test(sql)) return [[]]
       return [[]]
     }}

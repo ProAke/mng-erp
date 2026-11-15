@@ -970,7 +970,7 @@ function renderReports(){
 function renderSettings(){
   const view=$('#view'), side=$('#side');
   side.innerHTML = `<div class="side-block"><h3>ตั้งค่า</h3>
-      <div class="side-row"><label>โปรไฟล์ & องค์กร</label></div>
+      <div class="side-row"><label>องค์กร</label></div>
       <div class="side-row"><label>การแจ้งเตือน</label></div>
       <div class="side-row"><label>ธีมสี</label></div>
       <div class="side-row"><label>ข้อมูล & สำรอง</label></div>
@@ -980,27 +980,6 @@ function renderSettings(){
   const st = Store.data.settings;
   const me = (Remote.on && Remote.user) ? Remote.user : { name:'ผู้ใช้สาธิต', email:'demo', role:'viewer', authId:0 };
   const isAdm = Remote.on && ['super_admin','admin'].includes(me.role);
-  const ROLE_TH = { super_admin:'Super Admin', admin:'Admin', manager:'Manager', user:'User', viewer:'Viewer' };
-  const ST_TH = { active:'ใช้งาน', inactive:'ปิดไว้', suspended:'ระงับ', pending:'รอยืนยัน' };
-  const users = Store.data.authUsers;
-
-  const userRows = (users||[]).map(u=>`
-    <tr>
-      <td><div style="display:flex;gap:9px;align-items:center">
-        <div class="av" style="width:30px;height:30px;font-size:10px;background:${u.role==='super_admin'?'linear-gradient(135deg,#FFB26B,#FF6B9D)':'linear-gradient(135deg,#6C5CE7,#8E7CF3)'}">${esc(initials(u.name))}</div>
-        <div><b>${esc(u.name)}</b>${u.authId===me.authId?' <small style="color:var(--purple)">(คุณ)</small>':''}${u.phone?`<br><small style="color:var(--muted)">${esc(u.phone)}</small>`:''}</div>
-      </div></td>
-      <td style="font-size:12px">${esc(u.email)}</td>
-      <td><span class="urole ur-${u.role}">${ROLE_TH[u.role]||u.role}</span></td>
-      <td><span class="ust ul-${u.status}">${ST_TH[u.status]||u.status}</span></td>
-      <td style="font-size:11.5px;color:var(--muted)">${u.lastLogin ? esc(String(u.lastLogin).replace('T',' ').slice(0,16)) : 'ยังไม่เคย'}</td>
-      <td><div style="display:flex;gap:2px;justify-content:flex-end">
-        <button class="icon-btn" title="แก้ไขผู้ใช้" data-act="user-edit" data-id="${u.authId}">✏️</button>
-        <button class="icon-btn" title="รีเซ็ตรหัสผ่าน" data-act="user-pass" data-id="${u.authId}">🔑</button>
-        ${u.authId!==me.authId?`<button class="icon-btn" title="${u.status==='active'?'ระงับการใช้งาน':'เปิดใช้งาน'}" data-act="user-toggle" data-id="${u.authId}">${u.status==='active'?'⏸':'▶️'}</button>`:''}
-      </div></td>
-    </tr>`).join('');
-
   const arch = Store.data.archProjects;
   const archRows = (arch||[]).map(p=>`
     <tr><td><div style="display:flex;gap:9px;align-items:center"><span class="pdot" style="background:${esc(p.color)}"></span><b>${esc(p.name)}</b>${p.client?`<br><small style="color:var(--muted)">${esc(p.client)}</small>`:''}</div></td>
@@ -1008,19 +987,6 @@ function renderSettings(){
       <td style="text-align:right"><button class="btn btn-ghost btn-sm" data-act="proj-restore" data-id="${p.id}">↩ กู้คืน</button></td></tr>`).join('');
 
   const adminSection = (Remote.on && isAdm) ? `
-    <div class="card card-pad" style="grid-column:1/-1">
-      <div class="card-head" style="margin-bottom:10px">
-        <div class="card-title">🛡 ผู้ใช้และสิทธิ์ (Admin เท่านั้น)</div>
-        <button class="btn btn-primary btn-sm" data-act="user-new">${IC.plus} เพิ่มผู้ใช้</button>
-      </div>
-      ${users===undefined
-        ? '<div class="empty-state" style="padding:22px">กำลังโหลดรายชื่อผู้ใช้…</div>'
-        : users.length ? `<div style="overflow-x:auto"><table class="tbl">
-            <thead><tr><th>ผู้ใช้</th><th>อีเมล</th><th>สิทธิ์</th><th>สถานะ</th><th>เข้าใช้ล่าสุด</th><th style="text-align:right">จัดการ</th></tr></thead>
-            <tbody>${userRows}</tbody></table></div>
-            <p style="font-size:11px;color:var(--muted);margin-top:10px">ผู้ใช้ถูกเก็บในฐาน <b>pacific_mng.users</b> — ใช้ login ร่วมกับ MNG Hub ทุกระบบ · การเปลี่ยนสิทธิ์/ระงับมีผลทันที (session ถูกตรวจสดทุก request)</p>`
-          : '<div class="empty-state" style="padding:22px">ยังไม่มีรายชื่อ</div>'}
-    </div>
     <div class="card card-pad" style="grid-column:1/-1">
       <div class="card-title" style="margin-bottom:8px">🗄 คลังโปรเจกต์ (เก็บถาวรแล้ว — ไม่มีข้อมูลถูกลบจริง)</div>
       ${arch===undefined ? '<div class="empty-state" style="padding:16px">กำลังโหลดคลัง…</div>'
@@ -1041,7 +1007,7 @@ function renderSettings(){
       ${!Remote.on
         ? `<div style="margin-top:10px;font-size:12.5px;color:var(--ink-2)">ขณะนี้อยู่ในโหมดสาธิต — เข้าสู่ระบบด้วยบัญชีจริงเพื่อซิงก์กับ MariaDB อัตโนมัติ</div>`
         : dbAudit
-          ? `<div style="margin-top:8px;font-size:12px;color:var(--mint);font-weight:600">✓ ตรวจสอบสำเร็จทั้ง ${dbAudit.modules.length} ตาราง · Latency ${dbAudit.latencyMs} ms</div>
+          ? `<div style="margin-top:8px;font-size:12px;color:${dbAudit.ok?'var(--mint)':'var(--red)'};font-weight:600">${dbAudit.ok ? `✓ ตรวจสอบสำเร็จทั้ง ${dbAudit.modules.length} ตาราง` : `⚠ อ่านไม่ได้ ${dbAudit.modules.filter(m=>!m.ok).length} จาก ${dbAudit.modules.length} ตาราง`} · Latency ${dbAudit.latencyMs} ms</div>
              <div class="db-audit-grid">
                ${dbAudit.modules.map(m => `<div class="db-audit-item">
                  <span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.ok ? '🟢' : '🔴'} ${esc(m.label)}</span>
@@ -1114,11 +1080,7 @@ function renderSettings(){
     ${hermesSection}
     ${adminSection}
     <div class="card card-pad">
-      <div class="card-title" style="margin-bottom:8px">${IC.user} โปรไฟล์ & องค์กร</div>
-      <div style="display:flex;gap:14px;align-items:center;margin:14px 0 18px">
-        <div class="av av-xl" style="background:linear-gradient(135deg,#ffb26b,#ff6b9d)">${esc(initials(me.name||'W'))}</div>
-        <div><b style="font-size:15px">${esc(me.name)} — ${ROLE_TH[me.role]||'ผู้ใช้'}</b><div style="font-size:12px;color:var(--muted)">${esc(me.email)} · ${esc(st.orgName||'MNG Groups')}</div></div>
-      </div>
+      <div class="card-title" style="margin-bottom:8px">${IC.gear} องค์กร</div>
       <div class="form-grid">
         <div class="f-group"><label>ชื่อองค์กร</label><input value="${esc(st.orgName||'MNG Groups')}" id="setOrg"></div>
         <div class="f-group"><label>โดเมน</label><input value="mng.uarea.in" disabled></div>
@@ -1140,13 +1102,6 @@ function renderSettings(){
         </div>
         <p style="font-size:11.5px;color:var(--muted);margin-top:12px">สีหลักใช้กับปุ่ม ไอคอน และปฏิทิน "วันนี้"</p>
       </div>
-      ${Remote.on ? `<div class="card card-pad">
-        <div class="card-title" style="margin-bottom:12px">🔑 เปลี่ยนรหัสผ่านของฉัน</div>
-        <div class="f-group"><label>รหัสผ่านปัจจุบัน</label><input type="password" id="pwCur" autocomplete="current-password"></div>
-        <div class="f-group"><label>รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)</label><input type="password" id="pwNew" autocomplete="new-password"></div>
-        <div class="f-group"><label>ยืนยันรหัสผ่านใหม่</label><input type="password" id="pwNew2" autocomplete="new-password"></div>
-        <button class="btn btn-primary" data-act="self-pass">บันทึกรหัสผ่านใหม่</button>
-      </div>` : ''}
       <div class="card card-pad">
         <div class="card-title" style="margin-bottom:10px">${IC.export} ข้อมูล & สำรอง</div>
         <div style="display:flex;flex-direction:column;gap:9px">
@@ -1165,10 +1120,9 @@ function renderSettings(){
   </div>`;
   $$('#themeDots .theme-dot').forEach(d=>d.onclick=()=>{st.theme=d.dataset.theme; Store.save(); Remote.push('/settings','PUT',st); App.applyTheme(); renderSettings(); toast('เปลี่ยนธีมสีแล้ว');});
   $$('[data-set]', view).forEach(sw=>sw.onclick=()=>{st[sw.dataset.set]=!st[sw.dataset.set]; sw.classList.toggle('on'); Store.save(); Remote.push('/settings','PUT',st);});
-  // lazy-load รายชื่อผู้ใช้ + คลังโปรเจกต์ + DB Audit + Hermes 20-Token Pool
+  // lazy-load คลังโปรเจกต์ + DB Audit + Hermes 20-Token Pool
   if(Remote.on && Store.data._dbAudit===undefined && typeof runDbAudit==='function') runDbAudit(true);
   if(Remote.on && Store.data._hermesPool===undefined && typeof loadHermesTokens==='function') loadHermesTokens(true);
-  if(isAdm && Store.data.authUsers===undefined) loadAuthUsers().catch(()=>{ Store.data.authUsers=[]; });
   if(isAdm && Store.data.archProjects===undefined) loadArchivedProjects().catch(()=>{ Store.data.archProjects=[]; });
 }
 

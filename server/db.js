@@ -97,6 +97,48 @@ const TABLES = [
      id TINYINT UNSIGNED PRIMARY KEY, data LONGTEXT
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  /* โปรไฟล์ส่วนตัวและบัญชีภายนอกอ้างอิง auth user ID โดยไม่แก้ schema ของ MNG Hub */
+  `CREATE TABLE IF NOT EXISTS erp_user_profiles (
+     user_id BIGINT UNSIGNED PRIMARY KEY,
+     first_name VARCHAR(80) NOT NULL DEFAULT '',
+     last_name VARCHAR(80) NOT NULL DEFAULT '',
+     biography TEXT NULL,
+     skills TEXT NULL,
+     avatar_mime VARCHAR(30) NULL,
+     avatar_data MEDIUMBLOB NULL,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_oauth_identities (
+     provider VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+     subject VARBINARY(255) NOT NULL,
+     user_id BIGINT UNSIGNED NOT NULL,
+     provider_email VARCHAR(255) NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     PRIMARY KEY (provider, subject),
+     UNIQUE KEY uk_oauth_user_provider (user_id, provider)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_oauth_states (
+     state_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+     provider VARCHAR(16) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+     purpose VARCHAR(8) NOT NULL,
+     user_id BIGINT UNSIGNED NULL,
+     session_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NULL,
+     verifier VARCHAR(128) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+     nonce VARCHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+     expires_at TIMESTAMP NOT NULL,
+     INDEX idx_oauth_state_expiry (expires_at),
+     INDEX idx_oauth_state_user_provider (user_id, provider, purpose)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_oauth_results (
+     result_hash CHAR(64) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+     session_token CHAR(64) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+     expires_at TIMESTAMP NOT NULL,
+     INDEX idx_oauth_result_expiry (expires_at)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   `CREATE TABLE IF NOT EXISTS erp_sessions (
      token VARCHAR(64) PRIMARY KEY,
      user_id BIGINT UNSIGNED NOT NULL, name VARCHAR(100) NOT NULL,
@@ -334,6 +376,7 @@ const TABLES = [
 const ADDITIVE_COLS = [
   ['erp_project_flows', 'revision INT UNSIGNED NOT NULL DEFAULT 1'],
   ['erp_flow_actions', 'delivery_payload LONGTEXT NULL'],
+  ['erp_team', 'auth_user_id BIGINT UNSIGNED NULL'],
   ['erp_team', 'nickname VARCHAR(40) NULL'],
   ['erp_team', 'department VARCHAR(80) NULL'],
   ['erp_team', "presence VARCHAR(20) DEFAULT 'online'"],

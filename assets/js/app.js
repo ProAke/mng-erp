@@ -135,7 +135,7 @@ const Store = {
   save(){
     this.data.settings.calView = this.ui.calView;
     // บรีฟและคู่มือจริงอ่านจาก MariaDB หลังล็อกอินเสมอ ไม่ค้างเป็นข้อมูลสาธิตในเบราว์เซอร์
-    const snapshot = Remote.on ? { ...this.data, projectFlows: {}, customDocs: [] } : this.data;
+    const snapshot = Remote.on ? { ...this.data, projectFlows: {}, customDocs: [], authUsers:undefined, _hermesPool:undefined, _dbAudit:undefined } : this.data;
     localStorage.setItem(this.KEY, JSON.stringify(snapshot));
   },
 
@@ -238,7 +238,9 @@ const App = {
     team:     { title:'ทีมงาน & ภาระงาน',       sub:'ทีมมนุษย์และ AI · สถานะสด · โหลดงาน',         icon:IC.team,   label:'ทีม',      render:renderTeam },
     clients:  { title:'ลูกค้า (CRM)',           sub:'ฐานข้อมูลลูกค้าและประวัติโครงการ',            icon:IC.client, label:'ลูกค้า',   render:renderClients },
     reports:  { title:'รายงานผู้บริหาร',        sub:'วิเคราะห์แนวโน้มงาน รายได้ และชั่วโมงทีม',    icon:IC.report, label:'รายงาน',   render:renderReports },
-    settings: { title:'ตั้งค่าระบบ',            sub:'โปรไฟล์ · ธีมสี · สำรองข้อมูล',               icon:IC.gear,   label:'ตั้งค่า',  render:renderSettings },
+    profile:  { title:'โปรไฟล์ของฉัน',          sub:'ข้อมูลส่วนตัว · บัญชีที่เชื่อมต่อ',           icon:IC.user,   label:'โปรไฟล์', render:()=>{ if(typeof renderProfile==='function') renderProfile(); } },
+    users:    { title:'ผู้ใช้และสิทธิ์',         sub:'จัดการบัญชีและสิทธิ์ · Admin เท่านั้น',       icon:IC.users,  label:'ผู้ใช้',   render:()=>{ if(typeof renderAdminUsers==='function') renderAdminUsers(); } },
+    settings: { title:'ตั้งค่าระบบ',            sub:'องค์กร · ธีมสี · สำรองข้อมูล',               icon:IC.gear,   label:'ตั้งค่า',  render:renderSettings },
   },
 
   async init(){
@@ -246,14 +248,38 @@ const App = {
     Remote.clockSynced = false;
     Store.load();
     const initialToday = Store.ui.calSel;
+    // ลบสถานะ callback ออกจาก URL ก่อนโหลดหน้า ไม่เคยใส่ code หรือ session ใน URL ของ SPA
+    const currentUrl = new URL(location.href);
+    const oauthResult = currentUrl.searchParams.get('oauth');
+    if (oauthResult) { currentUrl.searchParams.delete('oauth'); history.replaceState(null, '', currentUrl.pathname + currentUrl.search + currentUrl.hash); }
+    const oauthMessages = {
+      linked:'เชื่อมต่อบัญชีเรียบร้อยแล้ว',
+      cancelled:'ยกเลิกการเชื่อมต่อหรือเข้าสู่ระบบแล้ว',
+      expired:'คำขอเชื่อมต่อหมดอายุหรือไม่ตรงกับเบราว์เซอร์ กรุณาลองใหม่',
+      conflict:'บัญชีภายนอกนี้ถูกผูกแล้ว หรือบัญชี ERP มีการเชื่อมต่อผู้ให้บริการนี้อยู่',
+      not_linked:'บัญชีนี้ยังไม่ได้ผูกกับ ERP กรุณาเข้าสู่ระบบด้วยอีเมลและเชื่อมต่อในโปรไฟล์ก่อน',
+      account_inactive:'บัญชี ERP นี้ไม่ได้เปิดใช้งาน กรุณาติดต่อผู้ดูแล',
+      session_expired:'เซสชัน ERP หมดอายุ กรุณาเข้าสู่ระบบแล้วเชื่อมต่อใหม่',
+      unavailable:'ผู้ดูแลยังไม่ได้ตั้งค่าการเชื่อมต่อนี้',
+      failed:'เชื่อมต่อหรือยืนยันตัวตนไม่สำเร็จ กรุณาลองใหม่',
+    };
+    let oauthMessage = oauthMessages[oauthResult] || '';
     this.splash('กำลังเชื่อมต่อฐานข้อมูล MariaDB…');
     const healthy = await Remote.health();
-    // นาฬิกาเซิร์ฟเวอร์อาจทำให้วันไทยต่างจากนาฬิกาของอุปกรณ์
     Store.followToday(initialToday);
     let needLogin = false;
+    if (oauthResult === 'login' && healthy) {
+      try {
+        const result = await Remote.req('/oauth/complete', {method:'POST', body:{}, _skipAuthGuard:true});
+        Remote.token = result.token; localStorage.setItem('mng_token', result.token);
+        Remote.profile = null; Remote.connections = null;
+        oauthMessage = 'เข้าสู่ระบบด้วยบัญชีที่เชื่อมต่อแล้ว';
+      } catch { oauthMessage = 'การเข้าสู่ระบบหมดเวลาหรือไม่สำเร็จ กรุณาลองใหม่'; needLogin = true; }
+    }
     if(!healthy){
-      this._bootToast = ['ไม่พบเซิร์ฟเวอร์ API — ทำงานในโหมดสาธิต (localStorage)', 'warn'];
-    } else if(Remote.token){
+      if (oauthResult) { needLogin = true; oauthMessage = 'ติดต่อฐานข้อมูลไม่ได้ กรุณาลองใหม่'; }
+      else this._bootToast = ['ไม่พบเซิร์ฟเวอร์ API — ทำงานในโหมดสาธิต (localStorage)', 'warn'];
+    } else if(Remote.token && !needLogin){
       try {
         Remote.on = true;
         Store.hydrate(await Remote.req('/bootstrap'));
@@ -261,7 +287,8 @@ const App = {
       } catch(e){ needLogin = true; Remote.on = false; }
     } else needLogin = true;
     this.splash(false);
-    if(needLogin){ this.showLogin(); return; }
+    if(needLogin){ this.showLogin(oauthMessage); return; }
+    if (oauthMessage) this._bootToast = [oauthMessage, oauthResult === 'linked' || oauthResult === 'login' ? 'ok' : 'warn'];
     this.start();
   },
 
@@ -273,6 +300,8 @@ const App = {
     if(!location.hash) location.hash = '#/dashboard';
     this.route();
     this.startClock();
+    // โหลดรูป/โปรไฟล์ของบัญชีปัจจุบันไว้ในหน่วยความจำ เพื่อแสดง avatar ทุกหน้าหลังเข้าสู่ระบบ
+    if (Remote.on && typeof loadMyProfile === 'function' && !Remote.profile && !Remote.profileLoading) loadMyProfile();
     if(this._bootToast){ toast(this._bootToast[0], this._bootToast[1]); this._bootToast = null; }
     if(Remote.on) {
       if (!Remote.clockSynced) toast('เทียบเวลาเซิร์ฟเวอร์ไม่สำเร็จ หน้าจอใช้เวลาอุปกรณ์ กรุณาตรวจสอบนาฬิกา', 'warn');
@@ -368,14 +397,14 @@ const App = {
   forceLogin(msg){
     if(typeof Office3D !== 'undefined') Office3D.destroy();
     this.stopClock();
-    Remote.on = false; Remote.token = null; localStorage.removeItem('mng_token');
+    Remote.on = false; Remote.token = null; Remote.user = null; Remote.profile = null; Remote.connections = null; localStorage.removeItem('mng_token');
     $('#appShell').style.display = 'none';
     closeModal();
     this.showLogin(msg);
   },
 
   showLogin(msg){
-    if($('.login-ov')) { if(msg) $('.login-ov .login-err') && ($('.login-ov .login-err').innerHTML = IC.alarm+' '+msg); return; }
+    if($('.login-ov')) { if(msg && $('.login-ov .login-err')) { $('.login-ov .login-err').innerHTML = IC.alarm+' '+esc(msg); $('.login-ov .login-err').style.display='flex'; } return; }
     const ov = document.createElement('div');
     ov.className = 'login-ov';
     ov.innerHTML = `
@@ -389,16 +418,42 @@ const App = {
           <div class="f-group"><label>รหัสผ่าน</label><input type="password" id="lgPass" placeholder="••••••••" autocomplete="current-password" required></div>
           <button class="btn btn-primary lg-btn" type="submit" id="lgBtn">เข้าสู่ระบบ (เชื่อมฐานข้อมูลจริง)</button>
         </form>
+        <div class="login-social-divider">หรือเข้าสู่ระบบด้วยบัญชีที่ผูกไว้</div>
+        <div class="login-social"><button type="button" id="loginGoogle" disabled><span class="social-g">G</span> Google / Gmail</button><button type="button" id="loginLine" disabled><span class="social-line">LINE</span> LINE</button></div>
+        <p class="login-social-hint" id="loginSocialHint">ต้องเข้าสู่ระบบด้วยอีเมลและผูกบัญชีในโปรไฟล์ก่อน · กำลังตรวจสอบการตั้งค่า…</p>
         <div class="login-db"><span class="dot ok"></span> MariaDB · pacific_mng (auth) + pacific_mngworks (data) · 203.146.252.149</div>
       </div>`;
     document.body.appendChild(ov);
-    if(msg) { const e=$('#lgErr'); e.innerHTML = IC.alarm+' '+msg; e.style.display='flex'; }
+    if(msg) { const e=$('#lgErr'); e.innerHTML = IC.alarm+' '+esc(msg); e.style.display='flex'; }
     $('#lgPass').focus();
+    // ปุ่มจะแสดงเป็นปิดใช้งานจนกว่าผู้ดูแลตั้งค่า provider ฝั่งเซิร์ฟเวอร์จริง
+    Remote.req('/oauth/providers', {_skipAuthGuard:true}).then(providers=>{
+      if (!ov.isConnected) return;
+      $('#loginGoogle').disabled = !providers.google?.enabled;
+      $('#loginLine').disabled = !providers.line?.enabled;
+      $('#loginSocialHint').textContent = providers.google?.enabled || providers.line?.enabled
+        ? 'ต้องเข้าสู่ระบบด้วยอีเมลและผูกบัญชีในโปรไฟล์ก่อน · ไม่อ่านอีเมลหรือข้อความ'
+        : 'ผู้ดูแลยังไม่ได้ตั้งค่า Google / LINE · ใช้อีเมลและรหัสผ่าน ERP ได้ตามปกติ';
+    }).catch(()=>{ if (ov.isConnected) $('#loginSocialHint').textContent = 'ไม่สามารถตรวจสอบการเชื่อมต่อ Google / LINE ได้'; });
+    for (const [provider, id] of [['google','loginGoogle'],['line','loginLine']]) {
+      $('#'+id).addEventListener('click', async ()=>{
+        const button = $('#'+id); button.disabled = true;
+        try {
+          const out = await Remote.req('/oauth/'+provider+'/start', {method:'POST', body:{}, _skipAuthGuard:true});
+          if (typeof safeAuthorizationUrl !== 'function' || !safeAuthorizationUrl(out.url, provider)) throw new Error('ปลายทางยืนยันตัวตนไม่ถูกต้อง');
+          location.assign(out.url);
+        } catch (error) {
+          button.disabled = false;
+          const eb = $('#lgErr'); eb.innerHTML = IC.alarm+' '+esc(error.message || 'เข้าสู่ระบบไม่สำเร็จ'); eb.style.display='flex';
+        }
+      });
+    }
     $('#lgForm').addEventListener('submit', async e=>{
       e.preventDefault();
       const btn = $('#lgBtn'); btn.disabled = true; btn.textContent = 'กำลังตรวจสอบ…';
       try {
         await Remote.login($('#lgEmail').value.trim(), $('#lgPass').value);
+        Remote.profile = null; Remote.profileError = ''; Remote.connections = null;
         Remote.on = true;
         const previousToday = todayS();
         await Remote.syncClock();
@@ -414,7 +469,7 @@ const App = {
           : err.message==='Failed to fetch' ? 'ติดต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่'
           : /^[45]\d\d$/.test(err.message||'') ? `เซิร์ฟเวอร์ตอบกลับผิดพลาด (HTTP ${err.message})`
           : (err.message||'เข้าสู่ระบบไม่สำเร็จ');
-        const eb = $('#lgErr'); eb.innerHTML = IC.alarm+' '+msg; eb.style.display='flex';
+        const eb = $('#lgErr'); eb.innerHTML = IC.alarm+' '+esc(msg); eb.style.display='flex';
       }
     });
   },
@@ -436,7 +491,7 @@ const App = {
     const previousRoute = Store.ui.route;
     Store.ui.route = name;
     const shell = $('#appShell');
-    shell.classList.toggle('project-feature-route', ['project-flow','docs','office','hr','calendar'].includes(name));
+    shell.classList.toggle('project-feature-route', ['project-flow','docs','office','hr','calendar','profile','users'].includes(name));
     shell.classList.toggle('hr-route', name==='hr');
     shell.classList.toggle('calendar-route', name==='calendar');
     if (name !== 'calendar') shell.classList.remove('cal-side-open');
@@ -468,14 +523,14 @@ const App = {
         ${r.icon}<span>${r.label}</span>${b?`<span class="rail-badge">${b}</span>`:''}</button>`;
     };
     const meName = Store.data?.user?.name || (typeof meMember === 'function' ? meMember().name : 'Worapot');
-    const meRole = Store.data?.user?.role || 'Admin';
     rail.innerHTML = `<div class="logo" data-act="nav:dashboard" title="MNG ERP">M</div>` +
       coreOrder.map(btnHtml).join('') +
       `<div class="rail-sep"></div>` +
       osOrder.map(btnHtml).join('') +
       `<div class="spacer"></div>
+       ${Remote.on && ['admin','super_admin'].includes(Remote.user?.role) ? `<button class="rail-btn ${cur==='users'?'active':''}" data-act="nav:users" title="ผู้ใช้และสิทธิ์">${IC.users}<span>ผู้ใช้</span></button>` : ''}
        <button class="rail-btn ${cur==='settings'?'active':''}" data-act="nav:settings" title="ตั้งค่า">${IC.gear}<span>ตั้งค่า</span></button>
-       <div class="rail-avatar" data-act="user-menu" title="${esc(meName)} — ${esc(meRole)}">${esc(initials(meName))}</div>`;
+       <button class="rail-avatar" data-act="nav:profile" title="โปรไฟล์ของฉัน — ${esc(meName)}" aria-label="โปรไฟล์ของฉัน">${typeof myAvatar==='function' ? myAvatar(meName) : esc(initials(meName))}</button>`;
   },
 
   renderTopbar(r){
@@ -516,11 +571,12 @@ const App = {
           </div>
         </div>
         <div class="user-chip" id="userChip">
-          <span class="uc-av">${initials(meName)}</span>
+          <span class="uc-av">${typeof myAvatar==='function' ? myAvatar(meName) : esc(initials(meName))}</span>
           <span class="uc-name">${esc(meName)}<small>${esc(meRole)}</small></span>
           ${IC.chevD}
           <div class="user-menu" id="userMenu">
-            <a data-act="nav:settings">${IC.user} โปรไฟล์ของฉัน</a>
+            <a data-act="nav:profile">${IC.user} โปรไฟล์ของฉัน</a>
+            ${Remote.on && ['admin','super_admin'].includes(Remote.user?.role) ? `<a data-act="nav:users">${IC.users} ผู้ใช้และสิทธิ์</a>` : ''}
             <a data-act="nav:settings">${IC.gear} ตั้งค่าระบบ</a>
             <a href="https://mng.uarea.in/hub" target="_blank" rel="noopener">${IC.link} กลับสู่ MNG Hub</a>
             <a data-act="logout">${IC.logout} ออกจากระบบ</a>
@@ -662,6 +718,7 @@ const App = {
         case 'user-new':    openUserForm(); break;
         case 'user-edit':   { const u = findAuthUser(+id); if(u) openUserForm(u); break; }
         case 'user-pass':   { const u = findAuthUser(+id); if(u) openUserPass(u); break; }
+        case 'user-connections': { const u = findAuthUser(+id); if(u && typeof openAdminConnections==='function') openAdminConnections(u); break; }
         case 'user-toggle': { const u = findAuthUser(+id); if(u) toggleAuthUser(u); break; }
         case 'self-pass':   saveSelfPass(); break;
         case 'team-new':    openTeamForm(); break;
@@ -693,7 +750,7 @@ async function doLogout(){
     } catch {}
   }
   // ล้าง local ทั้งหมด
-  Remote.token = null; Remote.user = null; Remote.on = false;
+  Remote.token = null; Remote.user = null; Remote.on = false; Remote.profile = null; Remote.connections = null;
   localStorage.removeItem('mng_token');
   localStorage.removeItem('mng_erp_token');
   // รีเซ็ต UI state ฝั่ง client
@@ -1282,7 +1339,11 @@ async function runDbAudit(silent = false){
   try {
     Store.data._dbAudit = await Remote.req('/db/audit');
     if(Store.ui?.route === 'settings') renderSettings();
-    if(!silent) toast(`ตรวจสอบ MariaDB สำเร็จครบ ${Store.data._dbAudit.modules.length} ตาราง (${Store.data._dbAudit.latencyMs}ms) ✓`);
+    if(!silent) {
+      const a = Store.data._dbAudit;
+      if (a.ok) toast(`ตรวจสอบ MariaDB สำเร็จครบ ${a.modules.length} ตาราง (${a.latencyMs}ms) ✓`);
+      else toast(`ตรวจสอบ MariaDB แล้วพบ ${a.modules.filter(m=>!m.ok).length} ตารางที่อ่านไม่ได้ กรุณาตรวจสอบ`, 'warn');
+    }
   } catch(e){
     if(!silent) toast('ตรวจสอบฐานข้อมูลไม่สำเร็จ: '+e.message, 'err');
   }
@@ -1317,10 +1378,22 @@ const ROLE_TH = { super_admin:'Super Admin', admin:'Admin', manager:'Manager', u
 const UST_TH  = { active:'ใช้งาน', inactive:'ปิดไว้', suspended:'ระงับ', pending:'รอยืนยัน' };
 
 async function loadAuthUsers(reload){
-  if(!Remote.on) return;
-  const list = await Remote.req('/users');
-  Store.data.authUsers = list;
-  if(location.hash.includes('settings')) App.refresh();
+  if(!Remote.on || Store.ui?._authUsersLoading) return;
+  Store.ui._authUsersLoading = true; Store.ui._authUsersError = '';
+  const token = Remote.token;
+  try {
+    const list = await Remote.req('/users');
+    if (Remote.token !== token || !Remote.on) return;
+    Store.data.authUsers = list;
+  } catch(e) {
+    if (Store.ui && Remote.token === token) Store.ui._authUsersError = e.message || 'โหลดรายชื่อไม่สำเร็จ';
+    throw e;
+  } finally {
+    if (Store.ui && Remote.token === token) {
+      Store.ui._authUsersLoading = false;
+      if(Store.ui.route === 'users') App.refresh();
+    }
+  }
 }
 function findAuthUser(authId){ return (Store.data.authUsers||[]).find(u=>u.authId===authId); }
 
@@ -1343,7 +1416,7 @@ function openUserForm(u){
         </select></div>` : ''}
       </div>
       ${!isEdit ? `<div class="f-group"><label>รหัสผ่านเริ่มต้น * (อย่างน้อย 6 ตัวอักษร)</label><input id="ufPass" type="password" autocomplete="new-password"></div>` : ''}
-      <p style="font-size:11px;color:var(--muted);margin-top:8px">ข้อมูลถูกบันทึกลงฐาน <b>pacific_mng.users</b> โดยตรง — ผู้ใช้สามารถเข้าสู่ระบบทุกแอปของ MNG Hub ได้ทันที${isEdit&&u.authId===meId?' · <b>หมายเหตุ:</b> เปลี่ยนสถานะ/สิทธิ์ของตัวเองไม่ได้ (server บล็อกไว้กันหลงล็อก)':''}</p>
+      <p style="font-size:11px;color:var(--muted);margin-top:8px">ข้อมูลบันทึกลง <b>pacific_mng.users</b> และมีผลกับ MNG Hub ตามนโยบายของแต่ละระบบ${isEdit?' · เปลี่ยนอีเมลจะล้างสถานะยืนยันเดิม ระบบนี้ยังไม่ส่งอีเมลยืนยันใหม่':''}${isEdit&&u.authId===meId?' · <b>หมายเหตุ:</b> เปลี่ยนสถานะ/สิทธิ์ของตัวเองไม่ได้ (server บล็อกไว้กันหลงล็อก)':''}</p>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeModal()">ยกเลิก</button>
       <button class="btn btn-primary" id="ufSave">${isEdit?'บันทึกการแก้ไข':'สร้างผู้ใช้'}</button></div>`);
@@ -1363,10 +1436,11 @@ function openUserForm(u){
     }
     const btn = $('#ufSave'); btn.disabled = true; btn.textContent = 'กำลังบันทึก…';
     try {
-      if(isEdit) await Remote.req('/users/' + u.authId, { method:'PATCH', body });
-      else       await Remote.req('/users', { method:'POST', body });
+      const result = isEdit ? await Remote.req('/users/' + u.authId, { method:'PATCH', body })
+        : await Remote.req('/users', { method:'POST', body });
       closeModal();
-      toast(isEdit ? 'บันทึกผู้ใช้แล้ว ✓' : `สร้างผู้ใช้ <b>${esc(body.name)}</b> สำเร็จ — login ได้ทันที ✓`, 'ok');
+      if (result.teamSync === false) toast('บันทึกบัญชีแล้ว แต่ซิงก์อีเมลสมาชิกทีมไม่สำเร็จ กรุณาตรวจสอบ', 'warn');
+      else toast(isEdit ? 'บันทึกผู้ใช้แล้ว ✓' : `สร้างผู้ใช้ <b>${esc(body.name)}</b> สำเร็จ — login ได้ทันที ✓`, 'ok');
       await loadAuthUsers(true);
     } catch(e){
       toast(e.message || 'บันทึกไม่สำเร็จ', 'error');
@@ -1381,7 +1455,7 @@ function openUserPass(u){
     <div class="modal-body">
       <div class="f-group"><label>รหัสผ่านใหม่ * (อย่างน้อย 6 ตัวอักษร)</label><input id="upPass" type="password" autocomplete="new-password"></div>
       <div class="f-group"><label>ยืนยันรหัสผ่านใหม่ *</label><input id="upPass2" type="password" autocomplete="new-password"></div>
-      <p style="font-size:11px;color:var(--muted)">บันทึกแล้ว session ทั้งหมดของ ${esc(u.name)} จะถูกเด้งออก ต้อง login ด้วยรหัสใหม่เท่านั้น</p>
+      <p style="font-size:11px;color:var(--muted)">บันทึกแล้ว session ทั้งหมดของ ${esc(u.name)} จะถูกเด้งออก บัญชี Google / LINE ที่ผูกไว้ยังใช้เข้าสู่ระบบได้ หากบัญชีภายนอกมีปัญหา ให้ผู้ดูแลยกเลิกจากปุ่ม 🔗 หรือให้เจ้าของยกเลิกในโปรไฟล์</p>
     </div>
     <div class="modal-foot"><button class="btn" onclick="closeModal()">ยกเลิก</button>
       <button class="btn btn-primary" id="upSet">ตั้งรหัสใหม่</button></div>`);
@@ -1441,10 +1515,8 @@ function openTeamForm(u){
       <div class="f-group"><label>เบอร์โทร</label><input id="tmPhone" value="${esc(u.phone||'')}"></div>
       <div class="f-group full"><label>ทักษะ (Skills คั่นด้วยจุลภาค ,)</label><input id="tmSkills" value="${esc((u.skills||[]).join(', '))}" placeholder="เช่น Node.js, UX/UI, QA"></div>
       <div class="f-group full"><label>อีเมล (ผูกบัญชี login ให้เห็นงานทั้ง Hub)</label><input id="tmEmail" type="email" value="${esc(u.email||'')}" placeholder="name@mng.co.th"></div>
-      ${isEdit && u.authUserId ? `<div class="f-group"><label>สิทธิ์ระบบของบัญชีนี้</label><select id="tmAuthRole">
-        ${['viewer','user','manager','admin','super_admin'].map(r=>`<option value="${r}" ${u.authRole===r?'selected':''} ${r==='super_admin' && Remote.user?.role!=='super_admin'?'disabled':''}>${ROLE_TH[r]}</option>`).join('')}
-      </select><small style="color:var(--muted);font-size:10.5px">แก้ลง pacific_mng.users โดยตรง — มีผลทุกแอป MNG Hub</small></div>` : ''}
-      ${isEdit && !u.authUserId ? `<div class="f-group full"><small style="color:var(--muted)">ยังไม่มีบัญชี login กับอีเมลนี้ — สร้างได้ที่ ตั้งค่า → ผู้ใช้และสิทธิ์ แล้วกลับมากรอกอีเมลให้ตรงกัน</small></div>` : ''}
+      ${isEdit && u.authUserId ? `<div class="f-group full"><small style="color:var(--muted)">บัญชีนี้มีสิทธิ์ ${esc(ROLE_TH[u.authRole] || 'ผู้ใช้')} · ผู้ดูแลจัดการสิทธิ์ได้จากหน้า ผู้ใช้และสิทธิ์</small></div>` : ''}
+      ${isEdit && !u.authUserId ? `<div class="f-group full"><small style="color:var(--muted)">ยังไม่มีบัญชี login กับอีเมลนี้ — ให้ผู้ดูแลเพิ่มที่หน้า ผู้ใช้และสิทธิ์ แล้วกลับมากรอกอีเมลให้ตรงกัน</small></div>` : ''}
       <div class="f-group full"><label>สีโปรไฟล์</label><div class="chips" id="tmColor">
         ${['#6C5CE7','#3BA7FF','#F25C8B','#14B890','#F2994A','#17A2B8','#4B5ED9','#5A6280'].map(c=>`<span class="chip ${(u.color===c)||(!isEdit&&c==='#6C5CE7')?'on':''}" data-c="${c}"><span class="dot" style="background:${c}"></span>${c}</span>`).join('')}</div></div>
     </div></div>
@@ -1467,11 +1539,8 @@ function openTeamForm(u){
     const btn = $('#tmSave'); btn.disabled = true;
     if(Remote.on){
       try {
-        if(isEdit){
-          await Remote.req('/teams/'+u.id, {method:'PATCH', body});
-          if(u.authUserId && $('#tmAuthRole')?.value && $('#tmAuthRole').value !== u.authRole)
-            await Remote.req('/users/'+u.authUserId, {method:'PATCH', body:{ role: $('#tmAuthRole').value }});
-        } else await Remote.req('/teams', {method:'POST', body});
+        if(isEdit) await Remote.req('/teams/'+u.id, {method:'PATCH', body});
+        else await Remote.req('/teams', {method:'POST', body});
         closeModal(); await Remote.refreshAll();
         toast((isEdit?'บันทึกสมาชิกแล้ว ✓':'เพิ่มสมาชิก ✓') + ' (MariaDB)');
       } catch(e){ toast('บันทึกไม่สำเร็จ: '+e.message,'err'); btn.disabled=false; }
@@ -1485,7 +1554,7 @@ function openTeamForm(u){
 function deleteTeamMember(u){
   const n = Store.data.tasks.filter(t=>t.assignee===u.id).length;
   confirmDlg(`ลบ ${u.name} ออกจากทีม?`,
-    (n? `งาน <b>${n} ชิ้น</b> ของเขาจะกลายเป็น "ไม่มีผู้รับผิดชอบ" · `:'') + `บัญชี login เดิม (ถ้ามี) จะยังอยู่ — ลบบัญชีทำที่ ตั้งค่า → ผู้ใช้และสิทธิ์`,
+    (n? `งาน <b>${n} ชิ้น</b> ของเขาจะกลายเป็น "ไม่มีผู้รับผิดชอบ" · `:'') + `บัญชี login เดิม (ถ้ามี) จะยังอยู่ — ผู้ดูแลจัดการสถานะบัญชีได้ที่หน้า ผู้ใช้และสิทธิ์`,
     async ()=>{
       if(Remote.on){
         try {

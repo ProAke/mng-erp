@@ -155,12 +155,12 @@ const bkkDate = () => BangkokTime.fromInstant(new Date()).date;
 async function resolveActorTeamId(req) {
   if (!req?.user) return 1;
   try {
-    if (req.user.email) {
-      const [rows] = await workPool.query('SELECT id FROM erp_team WHERE LOWER(email) = LOWER(?) LIMIT 1', [req.user.email]);
-      if (rows.length) return rows[0].id;
-    }
     if (req.user.user_id) {
       const [rows] = await workPool.query('SELECT id FROM erp_team WHERE auth_user_id = ? LIMIT 1', [req.user.user_id]);
+      if (rows.length) return rows[0].id;
+    }
+    if (req.user.email) {
+      const [rows] = await workPool.query('SELECT id FROM erp_team WHERE LOWER(email) = LOWER(?) AND (auth_user_id IS NULL OR auth_user_id=?) LIMIT 1', [req.user.email, req.user.user_id]);
       if (rows.length) return rows[0].id;
     }
   } catch {}
@@ -188,10 +188,9 @@ router.get('/bootstrap', async (req, res) => {
     const [invR]    = await workPool.query('SELECT * FROM erp_invoices ORDER BY no');
     const [actR]    = await workPool.query('SELECT * FROM erp_activity ORDER BY id DESC LIMIT 30');
     const [setR]    = await workPool.query('SELECT data FROM erp_settings WHERE id = 1');
-    const matchedMe = team.find(r =>
-      (req.user?.email && r.email && r.email.toLowerCase() === req.user.email.toLowerCase()) ||
-      (req.user?.user_id && r.auth_user_id === req.user.user_id)
-    );
+    // auth_user_id มีลำดับสำคัญกว่าอีเมลที่อาจเปลี่ยนได้ เพื่อรักษาเจ้าของการลงเวลาเดิม
+    const matchedMe = team.find(r => req.user?.user_id && String(r.auth_user_id || '') === String(req.user.user_id)) ||
+      team.find(r => req.user?.email && !r.auth_user_id && r.email && r.email.toLowerCase() === req.user.email.toLowerCase());
     const featureAvailability = { projectFlow: true, docs: true, attendance: true };
 
     // Agency OS collections (graceful fallback if any table empty)
@@ -973,6 +972,10 @@ router.get('/db/audit', async (_req, res) => {
     ['erp_activity', 'บันทึกกิจกรรม (erp_activity)'],
     ['erp_settings', 'การตั้งค่าระบบ (erp_settings)'],
     ['erp_api_tokens', 'โทเคน AI/Hermes 20 ชุด (erp_api_tokens)'],
+    ['erp_user_profiles', 'โปรไฟล์ส่วนตัว (erp_user_profiles)'],
+    ['erp_oauth_identities', 'บัญชีที่เชื่อมต่อ (erp_oauth_identities)'],
+    ['erp_oauth_states', 'คำขอยืนยันตัวตน (erp_oauth_states)'],
+    ['erp_oauth_results', 'ผลยืนยันตัวตน (erp_oauth_results)'],
     ['erp_project_flows', 'ผัง Flow & Mindmap โปรเจกต์ (erp_project_flows)'],
     ['erp_flow_actions', 'รายการดำเนินการจากผัง (erp_flow_actions)'],
     ['erp_flow_action_events', 'ประวัติอนุมัติและส่งออก (erp_flow_action_events)'],

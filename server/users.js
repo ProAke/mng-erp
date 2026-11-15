@@ -3,6 +3,7 @@
 const express = require('express');
 const bcrypt  = require('bcryptjs');
 const { authPool, workPool } = require('./db');
+const { prepareTeamEmail, syncTeamEmail } = require('./team-identity');
 
 const router = express.Router();
 const ADMIN_ROLES  = ['super_admin', 'admin'];
@@ -13,6 +14,9 @@ const EMAIL_RE     = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const isAdmin = req => ADMIN_ROLES.includes(req.user?.role);
 const isSuper = req => req.user?.role === 'super_admin';
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// route ส่วนตัวต้องอยู่ก่อน /:id และไม่ให้ role จาก body เปลี่ยนสิทธิ์
+router.use('/me', require('./profile').router);
 
 function guardAdmin(req, res) {
   if (!isAdmin(req)) { res.status(403).json({ error: 'สิทธิ์ไม่พอ — เฉพาะ Admin ขึ้นไป' }); return false; }
@@ -106,13 +110,14 @@ router.patch('/:id', async (req, res) => {
 
     const sets = [], vals = [];
     const changes = [];
+    let revokeSessions = false;
     if (b.name != null && String(b.name).trim() && String(b.name).trim() !== target.name) {
       sets.push('name = ?'); vals.push(String(b.name).trim()); changes.push('ชื่อ');
     }
     if (b.email != null) {
       const em = String(b.email).trim().toLowerCase();
       if (!EMAIL_RE.test(em)) return res.status(400).json({ error: 'รูปแบบอีเมลไม่ถูกต้อง' });
-      if (em !== target.email) { sets.push('email = ?'); vals.push(em); changes.push('อีเมล'); }
+      if (em !== String(target.email).toLowerCase()) { sets.push('email = ?'); vals.push(em); changes.push('อีเมล'); }
     }
     if (b.phone !== undefined) { sets.push('phone = ?'); vals.push(b.phone ? String(b.phone).trim() : null); changes.push('เบอร์'); }
     if (b.role != null && b.role !== target.role) {
@@ -126,20 +131,85 @@ router.patch('/:id', async (req, res) => {
       if (!VALID_STATUS.includes(b.status)) return res.status(400).json({ error: 'สถานะไม่ถูกต้อง' });
       if (self) return res.status(400).json({ error: 'เปลี่ยนสถานะของตัวเองไม่ได้' });
       sets.push('status = ?'); vals.push(b.status); changes.push(`สถานะ→${b.status}`);
-      if (b.status !== 'active') await workPool.query('DELETE FROM erp_sessions WHERE user_id = ?', [id]).catch(() => {});
+      revokeSessions = b.status !== 'active';
     }
     if (!sets.length) return res.json({ ok: true, unchanged: true });
+    const emailChanged = sets.includes('email = ?');
+    const newEmail = emailChanged ? String(b.email).trim().toLowerCase() : null;
+    if (emailChanged) {
+      const [duplicate] = await authPool.query('SELECT id FROM users WHERE LOWER(email)=? AND id<>? LIMIT 1', [newEmail, id]);
+      if (duplicate.length) return res.status(409).json({ error:'อีเมลนี้มีผู้ใช้อยู่แล้ว' });
+      const [oldDuplicate] = await authPool.query('SELECT id FROM users WHERE LOWER(email)=? AND id<>? LIMIT 1', [String(target.email).toLowerCase(), id]);
+      if (oldDuplicate.length) return res.status(409).json({ error:'อีเมลเดิมตรงกับหลายบัญชี กรุณาตรวจสอบก่อน' });
+    }
+    const teamId = emailChanged ? await prepareTeamEmail(workPool, id, target.email, newEmail) : null;
+    if (emailChanged) sets.push('email_verified_at = NULL');
     vals.push(id);
-    try { await authPool.query(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`, vals); }
-    catch (e) { if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'อีเมลนี้มีผู้ใช้อยู่แล้ว' }); throw e; }
+    if (emailChanged) vals.push(target.email);
+    try {
+      const [updated] = await authPool.query(`UPDATE users SET ${sets.join(', ')} WHERE id = ?${emailChanged ? ' AND LOWER(email)=LOWER(?)' : ''}`, vals);
+      if (emailChanged && !updated.affectedRows) return res.status(409).json({ error:'อีเมลบัญชีเปลี่ยนระหว่างทำรายการ กรุณาโหลดใหม่' });
+    } catch (e) { if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'อีเมลนี้มีผู้ใช้อยู่แล้ว' }); throw e; }
+    const teamSync = emailChanged ? await syncTeamEmail(workPool, teamId, id, target.email, newEmail) : true;
+    if (revokeSessions) await workPool.query('DELETE FROM erp_sessions WHERE user_id = ?', [id]).catch(() => {});
     // ทำให้ session เก่าเห็นข้อมูล/สิทธิ์ใหม่ (role ตรวจสดทุก request อยู่แล้ว แต่ว่า name ด้วย)
-    await workPool.query('UPDATE erp_sessions SET name = COALESCE(?, name), email = COALESCE(?, email), role = COALESCE(?, role) WHERE user_id = ?',
+    // คงวันหมดอายุเดิม แม้ MariaDB รุ่นเก่าจะตั้ง ON UPDATE บน TIMESTAMP แรกอัตโนมัติ
+    await workPool.query('UPDATE erp_sessions SET name = COALESCE(?, name), email = COALESCE(?, email), role = COALESCE(?, role), expires_at = expires_at WHERE user_id = ?',
       [sets.includes('name = ?')  ? String(b.name).trim() : null,
        sets.includes('email = ?') ? String(b.email).trim().toLowerCase() : null,
        sets.includes('role = ?')  ? b.role : null, id]).catch(() => {});
     await userLog(req, `แก้ไขผู้ใช้ <b>${esc(target.name)}</b> (${changes.join(', ')})`);
-    res.json({ ok: true });
-  } catch (e) { console.error('[users/patch]', e.message); res.status(500).json({ error: 'server_error' }); }
+    res.json({ ok: true, teamSync });
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ error:e.message });
+    console.error('[users/patch]', e.message); res.status(500).json({ error: 'server_error' });
+  }
+});
+
+/* ---- admin: ดูสถานะ/ยกเลิกบัญชีภายนอกของผู้อื่น โดยไม่เปิดเผย subject หรือข้อมูลโปรไฟล์ ---- */
+async function connectionTarget(req, res) {
+  if (!guardAdmin(req, res)) return null;
+  const id = /^\d+$/.test(req.params.id) ? Number(req.params.id) : 0;
+  if (!Number.isSafeInteger(id) || !id) { res.status(400).json({error:'bad_id'}); return null; }
+  const [rows] = await authPool.query('SELECT id,name,role FROM users WHERE id=? LIMIT 1', [id]);
+  if (!rows.length) { res.status(404).json({error:'ไม่พบผู้ใช้'}); return null; }
+  if (rows[0].role === 'super_admin' && String(id) !== String(req.user.user_id) && !isSuper(req)) {
+    res.status(403).json({error:'จัดการบัญชี Super Admin ต้องเป็น Super Admin'}); return null;
+  }
+  return rows[0];
+}
+router.get('/:id/connections', async (req, res) => {
+  try {
+    const target = await connectionTarget(req, res); if (!target) return;
+    const [rows] = await workPool.query('SELECT provider FROM erp_oauth_identities WHERE user_id=?', [target.id]);
+    res.json({google:rows.some(r=>r.provider==='google'), line:rows.some(r=>r.provider==='line')});
+  } catch (e) { console.error('[users/connections]', e.code || e.message); res.status(503).json({error:'ตรวจสอบการเชื่อมต่อไม่สำเร็จ'}); }
+});
+router.delete('/:id/connections/:provider', async (req, res) => {
+  let conn;
+  try {
+    const target = await connectionTarget(req, res); if (!target) return;
+    if (!['google','line'].includes(req.params.provider)) return res.status(404).json({error:'ไม่พบผู้ให้บริการ'});
+    if (String(target.id) === String(req.user.user_id)) return res.status(400).json({error:'กรุณาจัดการบัญชีของตัวเองจากหน้าโปรไฟล์'});
+    if (!req.token || String(req.token).startsWith('mng_s')) return res.status(403).json({error:'กรุณาเข้าสู่ระบบเว็บเพื่อทำรายการ'});
+    const pw = req.body?.password;
+    if (typeof pw !== 'string' || !pw || pw.length > 1024) return res.status(400).json({error:'กรุณายืนยันรหัสผ่าน Admin ปัจจุบัน'});
+    const [current] = await authPool.query('SELECT password FROM users WHERE id=? LIMIT 1', [req.user.user_id]);
+    if (!current.length || !await bcrypt.compare(pw, current[0].password)) return res.status(400).json({error:'รหัสผ่าน Admin ไม่ถูกต้อง'});
+    conn = await workPool.getConnection(); await conn.beginTransaction();
+    // ล็อก session → state → identity ตามลำดับเดียวกับ callback เพื่อยกเลิกคำขอที่กำลังดำเนินการได้ด้วย
+    await conn.query('SELECT token FROM erp_sessions WHERE user_id=? FOR UPDATE', [target.id]);
+    await conn.query("DELETE FROM erp_oauth_states WHERE user_id=? AND provider=? AND purpose='link'", [target.id, req.params.provider]);
+    await conn.query('DELETE FROM erp_oauth_identities WHERE user_id=? AND provider=?', [target.id, req.params.provider]);
+    await conn.query('DELETE FROM erp_sessions WHERE user_id=?', [target.id]);
+    await conn.commit(); conn.release(); conn = null;
+    await userLog(req, `ยกเลิกบัญชี ${req.params.provider === 'google' ? 'Google' : 'LINE'} ของ <b>${esc(target.name)}</b> และออกจาก session เว็บ`);
+    res.json({ok:true});
+  } catch (e) {
+    if (conn) await conn.rollback().catch(() => {});
+    console.error('[users/connections/delete]', e.code || e.message);
+    res.status(503).json({error:'ยกเลิกการเชื่อมต่อไม่สำเร็จ'});
+  } finally { conn?.release(); }
 });
 
 /* ---- admin: รีเซ็ตรหัสผ่านให้ผู้ใช้ ---- */

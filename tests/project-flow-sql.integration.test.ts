@@ -41,8 +41,8 @@ suite('Project Flow against a real local MySQL/MariaDB engine', () => {
     // Minimal legacy ci-workflow tables; ensureSchema adds all erp_* columns.
     await admin.query(`CREATE TABLE projects (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, hub_id VARCHAR(200), title VARCHAR(250), description TEXT, stat VARCHAR(20), icon VARCHAR(20), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
     await admin.query(`CREATE TABLE tasks (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, project_id INT UNSIGNED, title VARCHAR(300), description TEXT, status VARCHAR(20), priority VARCHAR(20), due_date DATE NULL, progress INT DEFAULT 0, archived TINYINT DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
-    // ตารางทีมรุ่นเดิมไม่มี department: ตรวจ migration แบบ additive และรักษาข้อมูลเดิม
-    await admin.query(`CREATE TABLE erp_team (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, role VARCHAR(80) NOT NULL DEFAULT '', color VARCHAR(20) NOT NULL DEFAULT '#8E7CF3', email VARCHAR(255), phone VARCHAR(30), is_me TINYINT(1) DEFAULT 0, auth_user_id BIGINT UNSIGNED NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
+    // ตารางทีมรุ่นเดิมไม่มี department หรือ auth_user_id: ตรวจ migration แบบ additive และรักษาข้อมูลเดิม
+    await admin.query(`CREATE TABLE erp_team (id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, role VARCHAR(80) NOT NULL DEFAULT '', color VARCHAR(20) NOT NULL DEFAULT '#8E7CF3', email VARCHAR(255), phone VARCHAR(30), is_me TINYINT(1) DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
     await admin.query('INSERT INTO erp_team (name,role,email,is_me) VALUES (?,?,?,1)', ['ผู้ทดสอบ','Project Manager','flow-test@example.test'])
     const cfg = require('../server/config')
     cfg.authDb = { ...common, database:authName, connectionLimit:4 }
@@ -258,6 +258,8 @@ suite('Project Flow against a real local MySQL/MariaDB engine', () => {
   it('migrates legacy departments and persists the Office snapshot on real MariaDB', async () => {
     const [columns]:any=await db.workPool.query("SHOW COLUMNS FROM erp_team LIKE 'department'")
     expect(columns).toHaveLength(1)
+    const [authColumn]:any=await db.workPool.query("SHOW COLUMNS FROM erp_team LIKE 'auth_user_id'")
+    expect(authColumn).toHaveLength(1)
     const [[legacy]]:any=await db.workPool.query('SELECT name, role, department FROM erp_team WHERE id=1')
     expect(legacy).toMatchObject({name:'ผู้ทดสอบ',role:'Project Manager',department:null})
     expect((await req('/office/snapshot','GET',undefined,false)).status).toBe(401)
@@ -443,7 +445,7 @@ suite('Project Flow against a real local MySQL/MariaDB engine', () => {
     expect(boot.json.settings.orgName).toBe('องค์กรทดสอบ MariaDB')
     const audit=await req('/db/audit')
     expect(audit.json.ok).toBe(true)
-    expect(audit.json.modules).toHaveLength(23)
+    expect(audit.json.modules).toHaveLength(27)
   }, 30000)
 
   it('persists drafts, AI generation, approval, signed webhook dispatch and uncertain delivery on MariaDB', async () => {
