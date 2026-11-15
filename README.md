@@ -77,9 +77,14 @@
 cd server
 # เฉพาะการติดตั้งใหม่ที่ยังไม่มี .env: คัดลอกจาก .env.example แล้วใส่ค่าในเซิร์ฟเวอร์
 # อย่าเขียนทับ .env เดิมหรือ commit รหัสผ่าน/Token
-npm install
+npm ci --workspaces=false --omit=dev  # ใช้ server/package-lock.json สำหรับติดตั้งเซิร์ฟเวอร์
+npm ls --workspaces=false body-parser # ต้องไม่มีรายการ invalid
+# ตรวจเวอร์ชัน body-parser ที่ Express ใช้งานจริง (ต้องเป็น 1.20.9 หรือ patch ใหม่ใน 1.20.x)
+node -e "const {createRequire}=require('module');const r=createRequire(require.resolve('express'));console.log(r('body-parser/package.json').version)"
 npm start                 # เปิด http://localhost:8080
 ```
+
+> ช่องโหว่ [GHSA-27r3-jxmh-p828](https://github.com/advisories/GHSA-27r3-jxmh-p828) ถูกแก้ใน `body-parser` 1.20.9 โดยทั้ง workspace และ server มี lockfile รุ่นที่แก้แล้วและตั้ง npm override ไว้ช่วยควบคุมการ resolve **`npm ci` ยังอาจติดตั้งรุ่นเก่าจาก lockfile เก่าแม้มี override** จึงต้องใช้ lockfile ฉบับอัปเดตและตรวจเวอร์ชันที่ Express resolve จริง การอัปเดตโค้ดอย่างเดียวไม่แก้เซิร์ฟเวอร์ที่รันอยู่: ติดตั้ง dependency ในสภาพแวดล้อมจริงแล้วรีสตาร์ต Node/Passenger ตามขั้นตอนโฮสต์ หากติดตั้งจาก repo root ให้ใช้ `npm ci` และระวัง `server/node_modules` รุ่นเก่าที่ Node อาจเลือกก่อน
 
 เซิร์ฟเวอร์จะ:
 1. ต่อ MariaDB 2 ก้อน **แยก connection pool** (ห้าม cross-join — ตามข้อกำหนดเดิมของระบบ)
