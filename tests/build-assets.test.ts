@@ -27,5 +27,6 @@ describe('Vanilla SPA production build', () => {
       expect(fs.readFileSync(path.join(root, 'dist', asset))).toEqual(fs.readFileSync(path.join(root, asset)))
     }
     expect(fs.readFileSync(path.join(root,'dist/assets/js/office-scene.js'),'utf8')).toContain('../vendor/three.module.min.js')
+    expect(fs.readFileSync(path.join(root,'dist/docs/TEXT-SPEED-MANNY.md'),'utf8')).toBe(fs.readFileSync(path.join(root,'docs/TEXT-SPEED-MANNY.md'),'utf8'))
   }, 40000)
 })

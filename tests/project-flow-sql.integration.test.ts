@@ -445,7 +445,7 @@ suite('Project Flow against a real local MySQL/MariaDB engine', () => {
     expect(boot.json.settings.orgName).toBe('องค์กรทดสอบ MariaDB')
     const audit=await req('/db/audit')
     expect(audit.json.ok).toBe(true)
-    expect(audit.json.modules).toHaveLength(27)
+    expect(audit.json.modules).toHaveLength(29)
   }, 30000)
 
   it('persists drafts, AI generation, approval, signed webhook dispatch and uncertain delivery on MariaDB', async () => {

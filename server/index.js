@@ -12,6 +12,13 @@ const oauth = require('./oauth').createOAuth();
 const api = require('./routes');
 
 const app = express();
+// คำสั่งและคีย์ของแมนนี่มีขนาดเล็กกว่ารูปโปรไฟล์/ไฟล์ที่ API อื่นรองรับมาก
+app.use('/api/manny', express.json({ limit: '64kb' }));
+app.use('/api/manny', (err, _req, res, next) => {
+  if (err.type === 'entity.too.large') return res.status(413).set('Cache-Control', 'no-store').json({error:'ข้อมูลสำหรับแมนนี่ยาวเกินกำหนด'});
+  if (err.type === 'entity.parse.failed') return res.status(400).set('Cache-Control', 'no-store').json({error:'รูปแบบข้อมูลไม่ถูกต้อง'});
+  next(err);
+});
 app.use(express.json({ limit: '15mb' }));
 
 const setNoStore = (res) => {
@@ -70,6 +77,7 @@ app.get('/api/health', async (_req, res) => {
 
 app.get('/api/hermes/manual.md', hermes.serveMarkdownDoc('docs/API-MANUAL.md'));
 app.get('/api/hermes/flow-integrations.md', hermes.serveMarkdownDoc('docs/FLOW-INTEGRATIONS.md'));
+app.get('/api/hermes/text-speed-manny.md', hermes.serveMarkdownDoc('docs/TEXT-SPEED-MANNY.md'));
 app.get('/api/hermes/skill.md', hermes.serveMarkdownDoc('skills/mng-erp/SKILL.md'));
 app.get('/api/hermes/client.py', hermes.serveMarkdownDoc('skills/mng-erp/scripts/mng_erp_client.py', 'text/x-python; charset=utf-8'));
 
@@ -108,6 +116,7 @@ app.use('/api/oauth', async (_req, _res, next) => { await waitDbReady(); next();
 app.use('/api/users/me/connections', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, oauth.connectionRouter);
 app.use('/api/hermes', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, hermes.router);
 app.use('/api/users', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, require('./users'));
+app.use('/api/manny', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, require('./manny').createManny().router);
 app.use('/api', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, api);
 
 /* ---------- static SPA + safe /uploads ---------- */

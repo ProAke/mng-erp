@@ -139,6 +139,30 @@ const TABLES = [
      INDEX idx_oauth_result_expiry (expires_at)
    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
 
+  /* คีย์ผู้ช่วยเป็นของเจ้าของบัญชี หรือเป็นชุดส่วนกลางของ Admin เท่านั้น
+     secret_enc เข้ารหัสด้วย master key ที่อยู่ใน environment ไม่ใช่ฐานข้อมูล */
+  `CREATE TABLE IF NOT EXISTS erp_manny_user_settings (
+     user_id BIGINT UNSIGNED PRIMARY KEY,
+     provider VARCHAR(20) NOT NULL,
+     model VARCHAR(120) NOT NULL,
+     endpoint VARCHAR(600) NOT NULL DEFAULT '',
+     secret_enc TEXT NOT NULL,
+     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
+  `CREATE TABLE IF NOT EXISTS erp_manny_shared_keys (
+     id CHAR(32) CHARACTER SET ascii COLLATE ascii_bin PRIMARY KEY,
+     label VARCHAR(80) NOT NULL,
+     provider VARCHAR(20) NOT NULL,
+     model VARCHAR(120) NOT NULL,
+     endpoint VARCHAR(600) NOT NULL DEFAULT '',
+     secret_enc TEXT NOT NULL,
+     enabled TINYINT(1) NOT NULL DEFAULT 1,
+     created_by BIGINT UNSIGNED NOT NULL,
+     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+     INDEX idx_manny_shared_enabled (enabled)
+   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
+
   `CREATE TABLE IF NOT EXISTS erp_sessions (
      token VARCHAR(64) PRIMARY KEY,
      user_id BIGINT UNSIGNED NOT NULL, name VARCHAR(100) NOT NULL,
