@@ -14,8 +14,14 @@ async function login(email, password) {
   const ok = await bcrypt.compare(password, u.password);
   if (!ok) throw Object.assign(new Error('รหัสผ่านไม่ถูกต้อง'), { code: 401 });
 
+  return createSession(u);
+}
+
+// ทั้ง password และบัญชีภายนอกออก session แบบเดียวกัน โดยไม่สร้างบัญชีใหม่อัตโนมัติ
+async function createSession(u, executor = workPool) {
+  if (!u || u.status !== 'active') throw Object.assign(new Error('บัญชีนี้ไม่ได้เปิดใช้งาน'), { code: 403 });
   const token = crypto.randomBytes(32).toString('hex');
-  await workPool.query(
+  await executor.query(
     `INSERT INTO erp_sessions (token, user_id, name, email, role, expires_at)
      VALUES (?,?,?,?,?, DATE_ADD(NOW(), INTERVAL ? DAY))`,
     [token, u.id, u.name, u.email, u.role, cfg.sessionDays]);
@@ -61,11 +67,12 @@ async function middleware(req, res, next) {
     if (!rows.length) return res.status(401).json({ error: 'session_expired' });
     req.user = rows[0];
     // เช็คสดจาก auth DB ทุก request — ระงับ/ลดสิทธิ์แล้วมีผลทันที
-    const [u] = await authPool.query('SELECT status, role, name FROM users WHERE id = ? LIMIT 1', [rows[0].user_id]);
+    const [u] = await authPool.query('SELECT status, role, name, email FROM users WHERE id = ? LIMIT 1', [rows[0].user_id]);
     if (!u.length) return res.status(403).json({ error: 'account_removed' });
     if (u[0].status !== 'active') return res.status(403).json({ error: 'บัญชีนี้ถูกระงับการใช้งาน' });
     req.user.role = u[0].role;
     req.user.name = u[0].name;
+    req.user.email = u[0].email;
     req.token = token;
     next();
   } catch (e) {
@@ -73,4 +80,4 @@ async function middleware(req, res, next) {
   }
 }
 
-module.exports = { login, logout, middleware };
+module.exports = { login, createSession, logout, middleware };

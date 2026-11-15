@@ -8,6 +8,7 @@ const BangkokTime = require('../assets/js/bangkok-time');
 const { ensureSchema, healthCheck, workPool } = require('./db');
 const auth = require('./auth');
 const hermes = require('./hermes');
+const oauth = require('./oauth').createOAuth();
 const api = require('./routes');
 
 const app = express();
@@ -101,7 +102,10 @@ app.post('/api/auth/logout', async (req, res) => {
   res.json({ ok: true, success: true });
 });
 
-/* ---------- protected API ---------- */
+/* ---------- OAuth callback + protected API ---------- */
+// provider status เป็นสาธารณะ; callback ใช้ state/cookie แบบครั้งเดียว ไม่ใส่ session ใน URL
+app.use('/api/oauth', async (_req, _res, next) => { await waitDbReady(); next(); }, oauth.publicRouter);
+app.use('/api/users/me/connections', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, oauth.connectionRouter);
 app.use('/api/hermes', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, hermes.router);
 app.use('/api/users', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, require('./users'));
 app.use('/api', async (_req, _res, next) => { await waitDbReady(); next(); }, auth.middleware, api);

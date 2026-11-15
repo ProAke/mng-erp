@@ -22,12 +22,12 @@ const bkkNow = () => BangkokTime.fromInstant(new Date());
 async function resolveActorTeamId(req) {
   if (!req?.user) return 1;
   try {
-    if (req.user.email) {
-      const [rows] = await workPool.query('SELECT id FROM erp_team WHERE LOWER(email)=LOWER(?) LIMIT 1', [req.user.email]);
-      if (rows.length) return rows[0].id;
-    }
     if (req.user.user_id) {
       const [rows] = await workPool.query('SELECT id FROM erp_team WHERE auth_user_id=? LIMIT 1', [req.user.user_id]);
+      if (rows.length) return rows[0].id;
+    }
+    if (req.user.email) {
+      const [rows] = await workPool.query('SELECT id FROM erp_team WHERE LOWER(email)=LOWER(?) AND (auth_user_id IS NULL OR auth_user_id=?) LIMIT 1', [req.user.email, req.user.user_id]);
       if (rows.length) return rows[0].id;
     }
   } catch {}
