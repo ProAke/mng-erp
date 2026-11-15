@@ -72,6 +72,7 @@ const IC = (() => {
     dash:    w('<rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/>'),
     cal:     w('<rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><circle cx="8.5" cy="14.5" r="1.2" fill="currentColor"/><circle cx="12" cy="14.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="14.5" r="1.2" fill="currentColor"/>'),
     task:    w('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>'),
+    timeline:w('<path d="M4 5v14M4 8h5M4 16h8"/><rect x="9" y="6" width="9" height="4" rx="2"/><rect x="12" y="14" width="8" height="4" rx="2"/>'),
     proj:    w('<path d="M3.5 8a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z"/>'),
     office:  w('<path d="M4 20V7l8-4 8 4v13M2.5 20h19M9 20v-5h6v5M8 9h1M15 9h1M8 12h1M15 12h1"/>'),
     money:   w('<circle cx="12" cy="12" r="8.5"/><path d="M9 9.5h6M9 12.5h6M12 7v10"/>'),

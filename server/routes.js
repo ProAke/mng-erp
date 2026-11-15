@@ -979,6 +979,10 @@ router.get('/db/audit', async (_req, res) => {
     ['erp_manny_user_settings', 'ตั้งค่าแมนนี่ส่วนตัว (erp_manny_user_settings)'],
     ['erp_manny_shared_keys', 'ชุด key แมนนี่ส่วนกลาง (erp_manny_shared_keys)'],
     ['erp_project_flows', 'ผัง Flow & Mindmap โปรเจกต์ (erp_project_flows)'],
+    ['erp_task_project_links', 'โครงสร้างโปรเจกต์หลักและย่อย (erp_task_project_links)'],
+    ['erp_task_project_lock', 'ตัวล็อกโครงสร้างโปรเจกต์ (erp_task_project_lock)'],
+    ['erp_task_issues', 'ปัญหาของงาน (erp_task_issues)'],
+    ['erp_task_issue_events', 'ประวัติการแก้ปัญหา (erp_task_issue_events)'],
     ['erp_flow_actions', 'รายการดำเนินการจากผัง (erp_flow_actions)'],
     ['erp_flow_action_events', 'ประวัติอนุมัติและส่งออก (erp_flow_action_events)'],
     ['erp_docs', 'คลังคู่มือ & SOP ทีม (erp_docs)'],
@@ -1012,7 +1016,8 @@ router.get('/db/audit', async (_req, res) => {
   }
 });
 
-/* ---------------- 3D OFFICE + AGENCY OS WORKSPACE ROUTES ---------------- */
+/* ---------------- TASK MANAGEMENT + AGENCY OS WORKSPACE ROUTES ---------------- */
+router.use('/task-management', require('./task-management-routes'));
 router.use(require('./office-routes'));
 router.use(require('./workspace-routes'));
 
